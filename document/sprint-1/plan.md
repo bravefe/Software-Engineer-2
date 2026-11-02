@@ -1,10 +1,11 @@
 # Sprint 1 Planning
 
-This plan organizes the Sprint 1 work into ten issues. Each issue has a corresponding branch, implementation tasks, and acceptance criteria.
+This plan organizes the Sprint 1 work into nine issues. Each issue has a corresponding branch, implementation tasks, and acceptance criteria.
 
 ## Issue 1: Project Planning & Documentation
 
-**Branch:** `docs/project-planning`
+- **Issue**: #2
+- **Branch:** `docs/sprint-1-planning`
 
 ### Description
 
@@ -18,12 +19,16 @@ This issue covers the preparation of the initial project planning documents to e
 - [ ] Prepare the Sprint 1 plan and task allocation.
 - [ ] Document the overall project development plan.
 - [ ] Organize project planning documents under `docs/project-planning`.
+- [ ] Create all project issues in GitHub based on the project scope and development plan.
+- [ ] Define issue titles, descriptions, tasks, acceptance criteria, and associated branches where applicable.
 
 ### Acceptance Criteria
 
 - Project context and objectives are documented.
 - Sprint 1 tasks are allocated.
 - The project plan is documented and accessible.
+- All planned project issues are created in GitHub.
+- Each issue has a clear description, tasks, and acceptance criteria.
 - Documentation is committed to the repository.
 
 ---
@@ -66,7 +71,6 @@ The documentation should describe the system requirements, planned features, and
 ### Description
 
 Establish the initial application structure and configure the server, client, database, and client-side routing.
-
 This issue provides the technical foundation required for the subsequent feature development in Sprint 1.
 
 ### Tasks
@@ -100,7 +104,6 @@ This issue provides the technical foundation required for the subsequent feature
 ### Description
 
 Implement the authentication functionality required for users to securely access the application.
-
 This issue covers the login and logout functionality, together with session or token handling to maintain the user's authenticated state.
 
 ### Tasks
@@ -112,6 +115,9 @@ This issue covers the login and logout functionality, together with session or t
 - [ ] Handle authentication failures and invalid credentials.
 - [ ] Maintain the user's authentication state.
 - [ ] Integrate authentication with the client and server.
+- [ ] Implement the login and logout interfaces.
+- [ ] Connect the authentication interfaces to the authentication APIs.
+- [ ] Display authentication loading, validation, and error states.
 
 ### Acceptance Criteria
 
@@ -121,6 +127,8 @@ This issue covers the login and logout functionality, together with session or t
 - Session or token handling works correctly.
 - Protected authentication state is handled appropriately.
 - Authentication functionality is integrated with the application.
+- Users can log in and log out through the user interface.
+- Authentication errors and loading states are displayed appropriately.
 
 ---
 
@@ -132,7 +140,6 @@ This issue covers the login and logout functionality, together with session or t
 ### Description
 
 Implement role-based access control (RBAC) to manage user permissions and restrict access to application features according to assigned roles.
-
 This issue ensures that users can only access the functionality and resources permitted by their roles.
 
 ### Tasks
@@ -144,6 +151,9 @@ This issue ensures that users can only access the functionality and resources pe
 - [ ] Restrict access to protected features and resources.
 - [ ] Integrate authorization with authentication.
 - [ ] Handle unauthorized access attempts.
+- [ ] Implement role-aware navigation and UI behavior.
+- [ ] Show or hide relevant interface actions according to user permissions.
+- [ ] Handle attempts to access pages or actions that the user's role does not permit.
 
 ### Acceptance Criteria
 
@@ -153,6 +163,8 @@ This issue ensures that users can only access the functionality and resources pe
 - Users can access only features permitted by their roles.
 - Unauthorized access is rejected appropriately.
 - Role-based authorization works with the authentication system.
+- The interface reflects the permissions associated with the authenticated user's role.
+- Unauthorized page and action access is handled appropriately in the interface.
 
 ---
 
@@ -164,7 +176,6 @@ This issue ensures that users can only access the functionality and resources pe
 ### Description
 
 Implement the main business/domain workflow of the application based on the requirements defined in the SRS.
-
 This issue focuses on developing the core application functionality and its associated business logic.
 
 ### Tasks
@@ -176,6 +187,13 @@ This issue focuses on developing the core application functionality and its asso
 - [ ] Connect the workflow with the database.
 - [ ] Handle valid and invalid workflow operations.
 - [ ] Integrate the workflow with the application.
+- [ ] Implement the user interface for the main domain workflow.
+- [ ] Implement the required workflow pages, forms, lists, and detail views.
+- [ ] Create reusable UI components where appropriate.
+- [ ] Implement navigation between relevant workflow pages.
+- [ ] Connect UI components to the required API endpoints.
+- [ ] Implement appropriate loading, validation, empty, and error states.
+- [ ] Verify that users can complete the main workflow through the interface.
 
 ### Acceptance Criteria
 
@@ -186,44 +204,13 @@ This issue focuses on developing the core application functionality and its asso
 - Valid workflow operations are supported.
 - Invalid operations are handled appropriately.
 - Implementation follows the documented requirements.
+- The main domain workflow can be completed through the user interface.
+- UI components communicate with the backend APIs correctly.
+- Relevant pages render, navigate, and handle loading and error states correctly.
 
 ---
 
-## Issue 7: User Interface Implementation
-
-**Branch:** `feature/user-interface`
-**Dependencies:** Issue 5 (`feature/role-based-access`), Issue 6 (`feature/domain-workflow`)
-
-### Description
-
-Develop the user interface and integrate the application pages with the implemented backend functionality.
-
-This issue focuses on providing the necessary pages, navigation, and user interactions required for the Sprint 1 application.
-
-### Tasks
-
-- [ ] Implement the required application pages.
-- [ ] Create reusable UI components where appropriate.
-- [ ] Implement page navigation.
-- [ ] Integrate login and logout interfaces.
-- [ ] Integrate role-based UI behavior.
-- [ ] Connect UI components with the required APIs.
-- [ ] Implement appropriate loading and error states.
-- [ ] Verify page integration and navigation.
-
-### Acceptance Criteria
-
-- Required application pages are implemented.
-- Users can navigate between relevant pages.
-- Authentication interfaces are integrated.
-- UI behavior reflects user permissions where applicable.
-- UI components communicate with the backend APIs.
-- Main application workflows can be accessed through the interface.
-- Pages render and function correctly.
-
----
-
-## Issue 8: Authentication & Authorization Tests
+## Issue 7: Authentication & Authorization Tests
 
 **Branch:** `test/authentication-tests`
 **Dependencies:** Issue 5 (`feature/role-based-access`)
@@ -231,7 +218,6 @@ This issue focuses on providing the necessary pages, navigation, and user intera
 ### Description
 
 Develop automated tests to verify the authentication and authorization functionality of the application.
-
 The tests should cover login, logout, session or token handling, and role-based access permissions.
 
 ### Tasks
@@ -257,7 +243,7 @@ The tests should cover login, logout, session or token handling, and role-based 
 
 ---
 
-## Issue 9: Domain Workflow & API Tests
+## Issue 8: Domain Workflow & API Tests
 
 **Branch:** `test/domain-workflow-tests`
 **Dependencies:** Issue 6 (`feature/domain-workflow`)
@@ -265,7 +251,6 @@ The tests should cover login, logout, session or token handling, and role-based 
 ### Description
 
 Develop automated tests to verify the main domain workflow and associated API functionality.
-
 These tests ensure that the implemented business logic, API endpoints, and database interactions behave according to the documented requirements.
 
 ### Tasks
@@ -290,15 +275,14 @@ These tests ensure that the implemented business logic, API endpoints, and datab
 
 ---
 
-## Issue 10: Integration & End-to-End Tests
+## Issue 9: Integration & End-to-End Tests
 
 **Branch:** `test/integration-tests`
-**Dependencies:** Issue 3 (`init/server-client-db-routing`), Issue 4 (`feature/authentication`), Issue 5 (`feature/role-based-access`), Issue 6 (`feature/domain-workflow`), Issue 7 (`feature/user-interface`)
+**Dependencies:** Issue 5 (`feature/role-based-access`), Issue 6 (`feature/domain-workflow`)
 
 ### Description
 
 Develop integration and end-to-end tests to verify that the main application components work together correctly.
-
 This issue focuses on testing the complete application flow across the client, server, database, authentication, authorization, and main domain workflow.
 
 ### Tasks
