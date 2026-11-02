@@ -95,7 +95,7 @@ This issue provides the technical foundation required for the subsequent feature
 ## Issue 4: Authentication Implementation
 
 **Branch:** `feature/authentication`
-**Dependencies:** Issue 2 (`docs/srs-sds`), Issue 3 (`init/server-client-db-routing`)
+**Dependencies:** Issue 3 (`init/server-client-db-routing`)
 
 ### Description
 
@@ -159,7 +159,7 @@ This issue ensures that users can only access the functionality and resources pe
 ## Issue 6: Main Domain Workflow
 
 **Branch:** `feature/domain-workflow`
-**Dependencies:** Issue 2 (`docs/srs-sds`), Issue 3 (`init/server-client-db-routing`)
+**Dependencies:** Issue 3 (`init/server-client-db-routing`)
 
 ### Description
 
@@ -192,7 +192,7 @@ This issue focuses on developing the core application functionality and its asso
 ## Issue 7: User Interface Implementation
 
 **Branch:** `feature/user-interface`
-**Dependencies:** Issue 3 (`init/server-client-db-routing`), Issue 4 (`feature/authentication`), Issue 5 (`feature/role-based-access`), Issue 6 (`feature/domain-workflow`)
+**Dependencies:** Issue 5 (`feature/role-based-access`), Issue 6 (`feature/domain-workflow`)
 
 ### Description
 
@@ -226,7 +226,7 @@ This issue focuses on providing the necessary pages, navigation, and user intera
 ## Issue 8: Authentication & Authorization Tests
 
 **Branch:** `test/authentication-tests`
-**Dependencies:** Issue 4 (`feature/authentication`), Issue 5 (`feature/role-based-access`)
+**Dependencies:** Issue 5 (`feature/role-based-access`)
 
 ### Description
 
