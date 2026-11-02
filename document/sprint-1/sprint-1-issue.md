@@ -1,4 +1,4 @@
-# Sprint 1 Planning
+# Sprint 1 Issue
 
 This plan organizes the Sprint 1 work into nine issues. Each issue has a corresponding branch, implementation tasks, and acceptance criteria.
 
