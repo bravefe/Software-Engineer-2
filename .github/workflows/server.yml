@@ -1,0 +1,14 @@
+name: Server CI
+
+on:
+  pull_request:
+    branches:
+      - sprint-1
+      - sprint-2
+      - sprint-3
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
