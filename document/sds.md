@@ -4,11 +4,31 @@
 
 ### 1.1 Frontend Technologies
 
+- Framework: React
+- Build Tool: Vite
+- Programming Language: TypeScript
+- Styling: Tailwind css
+- HTTP Client: Fetch API
+
 ### 1.2 Backend Technologies
+
+- Runtime Environment: Node.js
+- Framework: Express.js
+- Programming Language: TypeScript
+- API Architecture: RESTful API
 
 ### 1.3 Database Technologies
 
+- Database Management System: PostgreSQL
+- ORM: Prisma ORM
+
 ### 1.4 Development and Testing Tools
+
+- Frontend and Backend Unit Testing: Vitest
+- End-to-End Testing: Playwright
+- Version Control: Git
+- Package Manager: NPM
+- Continuous Integration: Git Action
 
 ---
 
