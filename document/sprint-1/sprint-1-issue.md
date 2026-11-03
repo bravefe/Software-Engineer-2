@@ -163,8 +163,6 @@ Deliver the Sprint 1 purchase approval workflow: a Requester drafts or submits a
 
 ## Issue 7: Authentication & Authorization Tests
 
-- **Issue:** #3
-- **PR:** #12
 - **Branch:** `test/authentication-tests`
 - **Feature scope:** Verification for `FEAT-01` and `FEAT-02`
 - **Dependencies:** Issues 4 and 5
