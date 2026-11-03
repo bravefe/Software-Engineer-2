@@ -36,8 +36,12 @@ The local database is exposed on port 5433 to avoid the default PostgreSQL port.
 
 ```powershell
 npm run build
+npm run test:unit
+npm run test:e2e
 npm run db:down
 ```
+
+The tests corresponding to `document/test.md` are currently registered as TODOs under `tests/server`, `tests/client`, and `tests/e2e`. Unit, integration/API, and component cases use Vitest; browser journey cases use Playwright. They are placeholders and do not verify application behavior until implemented.
 
 `npm run db:down` stops the database but keeps its named volume. To remove the local database and its data, run `docker compose -f database/docker-compose.yml down --volumes`.
 
