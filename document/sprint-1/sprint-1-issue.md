@@ -22,10 +22,8 @@ Establish project context, team responsibilities, scope, and the Sprint 1 develo
 
 ### Acceptance criteria
 
-- The project context, objectives, scope, and Sprint 1 goal are documented.
-- The plan identifies the Sprint 1 work, dependencies, delivery schedule, and responsible tasks.
-- The Sprint 1 issue list has clear descriptions, tasks, and acceptance criteria.
-- Planning documents are committed and accessible to the team.
+- Project context, scope, Sprint 1 work, dependencies, schedule, and task allocation are documented.
+- Issues have clear descriptions, tasks, and acceptance criteria; planning documents are committed and accessible.
 
 ---
 
@@ -50,12 +48,9 @@ Prepare the requirements and design documentation and keep the feature inventory
 
 ### Acceptance criteria
 
-- The SRS defines the project scope, requirements, business rules, non-functional requirements, assumptions, and acceptance criteria.
-- The SDS describes the system architecture, components, data, and relevant interfaces consistently with the SRS.
-- The feature inventory identifies features, priorities, sprint allocation, and dependencies.
-- The traceability matrix connects requirements, features, tests, and acceptance criteria.
-- The test specification defines planned test cases and their expected results.
-- All documentation is committed and accessible to the team.
+- The SRS, SDS, feature inventory, traceability matrix, and test specification are complete and consistent.
+- Requirements, features, tests, and acceptance criteria are traceable across the documents.
+- Documentation is committed and accessible to the team.
 
 ---
 
@@ -79,10 +74,8 @@ Establish the application structure and configure the client, server, database, 
 
 ### Acceptance criteria
 
-- The client and server start using the documented instructions.
-- Database connectivity and client-server communication are verified.
-- Initial routes render and navigation works.
-- Setup instructions allow another team member to run the project.
+- Client, server, database, and initial routes run and communicate as expected.
+- Setup instructions enable another team member to run the project.
 
 ---
 
@@ -107,10 +100,8 @@ Implement secure login, logout, session restoration, and authenticated user stat
 
 ### Acceptance criteria
 
-- Users can log in and log out, and the system identifies the authenticated user's role.
-- A valid session can be restored; logout clears the session and prevents further authenticated access.
-- Invalid credentials and unauthenticated requests are rejected.
-- The login interface provides appropriate validation, loading, and error feedback.
+- Users can log in, restore their session, and log out; invalid credentials and unauthenticated access are rejected.
+- The system identifies the user's role and displays login validation, loading, and error feedback.
 
 ---
 
@@ -135,10 +126,8 @@ Enforce the Requester and Reviewer permission boundaries in server endpoints and
 
 ### Acceptance criteria
 
-- Server-side checks allow or deny protected operations according to the authenticated user's role.
-- Unauthenticated users are prevented from accessing protected routes and endpoints.
-- The interface displays navigation and actions appropriate to the user's role.
-- Direct requests cannot bypass authorization enforced by the server.
+- Server-side authorization blocks unauthenticated users and disallowed roles, including direct requests.
+- Routes, navigation, and actions reflect the authenticated user's role.
 
 ---
 
@@ -164,16 +153,11 @@ Deliver the Sprint 1 purchase approval workflow: a Requester drafts or submits a
 
 ### Acceptance criteria
 
-- Requesters can create and submit purchase requests, and see their own requests and current statuses.
-- Each submitted request is assigned to an eligible Reviewer, who can view and review only requests assigned to them.
-- Reviewers can approve requests and can reject or return requests only with a reason.
-- Requesters cannot review or approve their own requests.
-- Requesters can edit and resubmit returned requests, while requests in other statuses cannot be edited.
-- Users cannot view or modify requests outside their permissions.
-- The system records review decisions and status changes in request history.
-- Drafts remain private to their Requester, and submitted requests are assigned to one eligible Reviewer.
-- Request history is available in chronological order and includes the actor, action, status change, timestamp, and applicable reason.
-- The workflow is available through the user interface and its data persists in the database.
+- Requesters can create, submit, track, and edit/resubmit returned requests; drafts and request data remain scoped to authorized users.
+- Requests are assigned to an eligible Reviewer, who can review only assigned requests and approve, reject, or return them according to workflow rules.
+- The system prevents self-review, invalid edits/transitions, and unauthorized access.
+- Request history is persisted and displayed chronologically with actors, actions, status changes, timestamps, and reasons.
+- The complete workflow works through the UI and persists in the database.
 
 ---
 
@@ -199,12 +183,8 @@ Implement and run automated tests for authentication/session lifecycle and role-
 
 ### Acceptance criteria
 
-- Tests verify password hashing and password verification for valid and invalid credentials.
-- Tests verify that users can log in, retrieve their authenticated identity, and log out with the session cookie correctly set and cleared.
-- Tests verify that session state can be restored and unauthenticated users are rejected from protected endpoints.
-- Tests verify that permitted roles can access protected operations and disallowed roles are denied by server-side authorization.
-- Component tests verify login form validation, submission behavior, and role-appropriate navigation.
-- The listed tests run successfully, and failures are reported rather than treating unexecuted tests as passed.
+- Tests cover password verification, login/session/logout, unauthenticated access, and server-side role authorization.
+- Component tests cover login form behavior and role-based navigation; test results are reported accurately.
 
 ---
 
@@ -230,14 +210,9 @@ Implement and run tests for purchase request creation, assignment, data isolatio
 
 ### Acceptance criteria
 
-- API tests verify that a Requester can create and submit a purchase request with an eligible assigned Reviewer.
-- API tests verify that Requesters can access only their own requests and Reviewers can access only requests assigned to them.
-- Review tests verify successful approval, rejection, and return, including required reasons for rejection and return.
-- Tests verify that self-review, unauthorized review, invalid status transitions, and edits to non-returned requests are rejected.
-- Tests verify that a Requester can edit and resubmit a returned request.
-- Tests verify that request history persists status changes, decisions, actors, timestamps, and applicable reasons.
-- Successful and unsuccessful cases verify expected responses, persisted data, lifecycle transitions, and history.
-- The listed tests run successfully, and failures are reported rather than treating unexecuted tests as passed.
+- Tests cover request creation, assignment, role-based scoping, review decisions, resubmission, and audit history.
+- Invalid access, self-review, transitions, and edits are rejected; successful operations persist expected data and history.
+- Test results are reported accurately, including failures.
 
 ---
 
@@ -262,11 +237,6 @@ Verify that authentication, authorization, request workflows, database persisten
 
 ### Acceptance criteria
 
-- End-to-end tests verify that users can log in and access role-appropriate features.
-- A Requester can create and submit a request, view its status, and access only their own requests.
-- An assigned Reviewer can view and review the request, while users without permission are denied.
-- A Reviewer can approve a request or reject or return it with a reason.
-- A Requester can edit and resubmit a returned request.
-- The integrated workflow prevents self-review, review of requests assigned to someone else, and other unauthorized access.
-- Request history shows the workflow's decisions and status changes.
-- The listed E2E and applicable Sprint 1 regression tests run successfully; defects found are tracked and resolved or explicitly reported.
+- End-to-end tests verify login, request submission/tracking, assigned review, decisions, and returned-request resubmission.
+- Unauthorized access, self-review, and review of another Reviewer's requests are blocked; history reflects workflow changes.
+- E2E and applicable regression tests pass, and discovered defects are tracked.
