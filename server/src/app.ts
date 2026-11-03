@@ -1,26 +1,13 @@
 import cors from "cors";
-import express, { type Request, type Response } from "express";
-import type { PrismaClient } from "@prisma/client";
+import express from "express";
+import healthRouter from "./routes/health";
 
-export function createApp(prisma: PrismaClient) {
-  const app = express();
+const app = express();
 
-  app.use(
-    cors({
-      origin: "http://localhost:5173",
-    }),
-  );
-  app.use(express.json());
+app.use(cors({ origin: "http://localhost:5173", credentials: true }));
+app.use(express.json());
 
-  app.get("/api/health", async (_request: Request, response: Response) => {
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-      response.json({ status: "ok", database: "connected" });
-    } catch (error) {
-      console.error("Database health check failed:", error);
-      response.status(503).json({ status: "error", database: "disconnected" });
-    }
-  });
+app.use("/api", healthRouter);
 
-  return app;
-}
+export { app };
+export default app;
