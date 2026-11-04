@@ -12,6 +12,8 @@
     "build": "npm run build --workspace server && npm run build --workspace client",
     "test:all": "npm run test && npm run test:e2e",
     "test": "vitest run",
+    "test:client": "vitest run tests/client",
+    "test:server": "vitest run tests/server",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "db:up": "docker compose -f database/docker-compose.yml up -d",
