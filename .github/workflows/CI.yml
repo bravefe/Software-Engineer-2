@@ -42,7 +42,7 @@ jobs:
     name: Server tests
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: postgresql://macau678:macau678_dev@localhost:5433/macau678?schema=public
+      DATABASE_URL: postgresql://macau678:Password123@localhost:5432/macau678?schema=public
 
     steps:
       - name: Checkout repository

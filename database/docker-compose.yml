@@ -5,10 +5,10 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: macau678
-      POSTGRES_PASSWORD: macau678_dev
+      POSTGRES_PASSWORD: Password123
       POSTGRES_DB: macau678
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

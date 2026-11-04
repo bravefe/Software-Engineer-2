@@ -23,4 +23,14 @@ describe("GET /api/health", () => {
     expect(response.body).toEqual({ status: "ok", database: "connected" });
     expect(queryRaw).toHaveBeenCalledOnce();
   });
+
+  it("reports an error when the database query fails", async () => {
+    queryRaw.mockRejectedValueOnce(new Error("Database unavailable"));
+
+    const response = await request(app).get("/api/health");
+
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({ status: "error", database: "disconnected" });
+    expect(queryRaw).toHaveBeenCalledOnce();
+  });
 });
