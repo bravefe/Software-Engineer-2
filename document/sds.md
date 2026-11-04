@@ -12,14 +12,16 @@
 ### 1.1 Frontend Technologies
 * **Framework / Core Library:** React 18 (v18.3.x) with TypeScript 5.x — provides component modularity, strict typing, and high maintainability (NFR-05).
 * **Build Tool & Dev Server:** Vite — enables rapid development cycles with Hot Module Replacement (HMR).
+* **Client-Side Routing:** React Router DOM 6 — maps browser URLs to page components, supports shared layouts and navigation without full-page reloads, and handles unknown routes.
 * **UI & Styling Framework:** Bootstrap 5.3 paired with responsive CSS — provides clean layout grids, accessible form controls, modals, and clear status badges (NFR-02).
 * **State Management:** React Context API (`AuthContext`) combined with React hooks (`useState`, `useEffect`, `useCallback`) for local view and session state management.
 * **HTTP / Client Transport:** Native browser `fetch` API encapsulated in a centralized, typed API client module (`client/src/api.ts`) configured with `credentials: "include"` for HTTP-only cookie session handling.
 
 - Framework: React
 - Build Tool: Vite
+- Routing: React Router DOM
 - Programming Language: TypeScript
-- Styling: Tailwind css
+- Styling: Bootstrap 5.3
 - HTTP Client: Fetch API
 
 ### 1.2 Backend Technologies
@@ -102,6 +104,7 @@ flowchart TD
 ```
 
 ### 2.2 Frontend Architecture
+* **Routing:** `BrowserRouter` provides browser history integration in `client/src/main.tsx`; `client/src/App.tsx` declares routes using `Routes` and `Route`. Page components are organized under `client/src/pages/` and rendered within the shared `AppLayout`. Unknown paths are directed to the not-found page.
 * **View Structure:** Divided by actor roles (`REQUESTER` and `REVIEWER` per AD-02):
   * **Authentication:** `Login.tsx` (FR-01).
   * **Requester Views:**
