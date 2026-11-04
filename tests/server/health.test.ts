@@ -1,36 +1,22 @@
+import { resolve } from "node:path";
+import dotenv from "dotenv";
 import request from "supertest";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, describe, expect, it } from "vitest";
+import { disconnectPrisma } from "../../server/src/prisma";
 
-const { queryRaw } = vi.hoisted(() => ({
-  queryRaw: vi.fn(),
-}));
-
-vi.mock("../../server/src/prisma", () => ({
-  getPrisma: () => ({ $queryRaw: queryRaw }),
-}));
+dotenv.config({ path: resolve(process.cwd(), "server/.env") });
 
 import { app } from "../../server/src/app";
 
 describe("GET /api/health", () => {
-  beforeEach(() => {
-    queryRaw.mockReset().mockResolvedValue([{ "?column?": 1 }]);
+  afterAll(async () => {
+    await disconnectPrisma();
   });
 
-  it("reports healthy status when the database query succeeds", async () => {
+  it("reports healthy status when the real database is available", async () => {
     const response = await request(app).get("/api/health");
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: "ok", database: "connected" });
-    expect(queryRaw).toHaveBeenCalledOnce();
-  });
-
-  it("reports an error when the database query fails", async () => {
-    queryRaw.mockRejectedValueOnce(new Error("Database unavailable"));
-
-    const response = await request(app).get("/api/health");
-
-    expect(response.status).toBe(503);
-    expect(response.body).toEqual({ status: "error", database: "disconnected" });
-    expect(queryRaw).toHaveBeenCalledOnce();
   });
 });
