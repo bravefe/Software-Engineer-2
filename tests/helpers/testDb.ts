@@ -2,22 +2,80 @@ import { prisma } from "../../server/src/prisma";
 import { hashPassword } from "../../server/src/utils/auth";
 
 export interface SeededTestUsers {
-  requester1: { id: number; email: string; name: string; role: "REQUESTER"; password: string };
-  requester2: { id: number; email: string; name: string; role: "REQUESTER"; password: string };
-  reviewer1: { id: number; email: string; name: string; role: "REVIEWER"; password: string };
-  reviewer2: { id: number; email: string; name: string; role: "REVIEWER"; password: string };
-  inactiveUser: { id: number; email: string; name: string; role: "REQUESTER"; password: string };
+  requester1: {
+    id: number;
+    email: string;
+    name: string;
+    role: "REQUESTER";
+    password: string;
+  };
+  requester2: {
+    id: number;
+    email: string;
+    name: string;
+    role: "REQUESTER";
+    password: string;
+  };
+  reviewer1: {
+    id: number;
+    email: string;
+    name: string;
+    role: "REVIEWER";
+    password: string;
+  };
+  reviewer2: {
+    id: number;
+    email: string;
+    name: string;
+    role: "REVIEWER";
+    password: string;
+  };
+  inactiveUser: {
+    id: number;
+    email: string;
+    name: string;
+    role: "REQUESTER";
+    password: string;
+  };
 }
 
 export interface SeededTestRequests {
-  request1: { id: number; requestNumber: string; requesterId: number; reviewerId: number };
-  request2: { id: number; requestNumber: string; requesterId: number; reviewerId: number };
-  selfReviewRequest: { id: number; requestNumber: string; requesterId: number; reviewerId: number };
-  requestForReject: { id: number; requestNumber: string; requesterId: number; reviewerId: number };
-  requestForReturn: { id: number; requestNumber: string; requesterId: number; reviewerId: number };
+  request1: {
+    id: number;
+    requestNumber: string;
+    requesterId: number;
+    reviewerId: number;
+  };
+  request2: {
+    id: number;
+    requestNumber: string;
+    requesterId: number;
+    reviewerId: number;
+  };
+  selfReviewRequest: {
+    id: number;
+    requestNumber: string;
+    requesterId: number;
+    reviewerId: number;
+  };
+  requestForReject: {
+    id: number;
+    requestNumber: string;
+    requesterId: number;
+    reviewerId: number;
+  };
+  requestForReturn: {
+    id: number;
+    requestNumber: string;
+    requesterId: number;
+    reviewerId: number;
+  };
 }
 
-export async function resetAndSeedDatabase(): Promise<{ users: SeededTestUsers; requests: SeededTestRequests }> {
+export async function resetAndSeedDatabase(): Promise<{
+  users: SeededTestUsers;
+  requests: SeededTestRequests;
+}> {
   // Clear existing operational data
   await prisma.requestHistory.deleteMany({});
   await prisma.purchaseRequest.deleteMany({});
@@ -149,14 +207,43 @@ export async function resetAndSeedDatabase(): Promise<{ users: SeededTestUsers; 
       requester2: { ...req2, role: "REQUESTER", password: defaultPassword },
       reviewer1: { ...rev1, role: "REVIEWER", password: defaultPassword },
       reviewer2: { ...rev2, role: "REVIEWER", password: defaultPassword },
-      inactiveUser: { ...inactive, role: "REQUESTER", password: defaultPassword },
+      inactiveUser: {
+        ...inactive,
+        role: "REQUESTER",
+        password: defaultPassword,
+      },
     },
     requests: {
-      request1: { id: r1.id, requestNumber: r1.requestNumber, requesterId: r1.requesterId, reviewerId: r1.reviewerId },
-      request2: { id: r2.id, requestNumber: r2.requestNumber, requesterId: r2.requesterId, reviewerId: r2.reviewerId },
-      selfReviewRequest: { id: rSelf.id, requestNumber: rSelf.requestNumber, requesterId: rSelf.requesterId, reviewerId: rSelf.reviewerId },
-      requestForReject: { id: rReject.id, requestNumber: rReject.requestNumber, requesterId: rReject.requesterId, reviewerId: rReject.reviewerId },
-      requestForReturn: { id: rReturn.id, requestNumber: rReturn.requestNumber, requesterId: rReturn.requesterId, reviewerId: rReturn.reviewerId },
+      request1: {
+        id: r1.id,
+        requestNumber: r1.requestNumber,
+        requesterId: r1.requesterId,
+        reviewerId: r1.reviewerId,
+      },
+      request2: {
+        id: r2.id,
+        requestNumber: r2.requestNumber,
+        requesterId: r2.requesterId,
+        reviewerId: r2.reviewerId,
+      },
+      selfReviewRequest: {
+        id: rSelf.id,
+        requestNumber: rSelf.requestNumber,
+        requesterId: rSelf.requesterId,
+        reviewerId: rSelf.reviewerId,
+      },
+      requestForReject: {
+        id: rReject.id,
+        requestNumber: rReject.requestNumber,
+        requesterId: rReject.requesterId,
+        reviewerId: rReject.reviewerId,
+      },
+      requestForReturn: {
+        id: rReturn.id,
+        requestNumber: rReturn.requestNumber,
+        requesterId: rReturn.requesterId,
+        reviewerId: rReturn.reviewerId,
+      },
     },
   };
 }

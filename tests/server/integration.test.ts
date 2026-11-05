@@ -257,6 +257,8 @@ describe("Integration and API tests: Authentication & Authorization", () => {
     it("rejects unauthenticated requests to protected endpoints with HTTP 401", async () => {
       const endpoints = [
         { method: "get", path: "/api/auth/me" },
+        { method: "get", path: "/api/health/requester" },
+        { method: "get", path: "/api/health/reviewer" },
         { method: "get", path: "/api/requests" },
         { method: "get", path: `/api/requests/${seededRequests.request1.id}` },
         { method: "post", path: `/api/requests/${seededRequests.request1.id}/review` },
@@ -267,6 +269,60 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         expect(res.status, `Expected 401 for ${ep.method.toUpperCase()} ${ep.path}`).toBe(401);
         expect(res.body.code).toBe("AUTH_REQUIRED");
       }
+    });
+
+    it("allows each role to access its health endpoint and denies the other role", async () => {
+      const requesterLogin = await request(app)
+        .post("/api/auth/login")
+        .send({
+          email: seededUsers.requester1.email,
+          password: seededUsers.requester1.password,
+        });
+      const requesterCookie = requesterLogin.headers["set-cookie"][0];
+      const requesterHealth = await request(app)
+        .get("/api/health/requester")
+        .set("Cookie", requesterCookie);
+      const requesterDenied = await request(app)
+        .get("/api/health/reviewer")
+        .set("Cookie", requesterCookie);
+
+      expect(requesterHealth.status).toBe(200);
+      expect(requesterHealth.body).toEqual({
+        role: "REQUESTER",
+        status: "ok",
+        database: "connected",
+      });
+      expect(requesterDenied.status).toBe(403);
+      expect(requesterDenied.body.code).toBe("ACCESS_DENIED");
+      expect(requesterDenied.body.error).toBe(
+        "Reviewer health endpoint is only accessible to users with the REVIEWER role.",
+      );
+
+      const reviewerLogin = await request(app)
+        .post("/api/auth/login")
+        .send({
+          email: seededUsers.reviewer1.email,
+          password: seededUsers.reviewer1.password,
+        });
+      const reviewerCookie = reviewerLogin.headers["set-cookie"][0];
+      const reviewerHealth = await request(app)
+        .get("/api/health/reviewer")
+        .set("Cookie", reviewerCookie);
+      const reviewerDenied = await request(app)
+        .get("/api/health/requester")
+        .set("Cookie", reviewerCookie);
+
+      expect(reviewerHealth.status).toBe(200);
+      expect(reviewerHealth.body).toEqual({
+        role: "REVIEWER",
+        status: "ok",
+        database: "connected",
+      });
+      expect(reviewerDenied.status).toBe(403);
+      expect(reviewerDenied.body.code).toBe("ACCESS_DENIED");
+      expect(reviewerDenied.body.error).toBe(
+        "Requester health endpoint is only accessible to users with the REQUESTER role.",
+      );
     });
   });
 

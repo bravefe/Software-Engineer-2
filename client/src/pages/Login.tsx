@@ -1,7 +1,12 @@
 import React, { useState } from "react";
+import { login as loginWithCredentials } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
 
-export default function LoginPage({ onLoginSuccess }: { onLoginSuccess?: () => void }) {
+export default function LoginPage({
+  onLoginSuccess,
+}: {
+  onLoginSuccess?: () => void;
+}) {
   const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -19,26 +24,15 @@ export default function LoginPage({ onLoginSuccess }: { onLoginSuccess?: () => v
 
     setLoading(true);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email: email.trim(), password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Login failed");
-        setLoading(false);
-        return;
-      }
-
-      login(data.user);
-      if (onLoginSuccess) {
-        onLoginSuccess();
-      }
-    } catch {
-      setError("Unable to connect to authentication server");
+      const user = await loginWithCredentials(email.trim(), password);
+      login(user);
+      onLoginSuccess?.();
+    } catch (cause: unknown) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Unable to connect to authentication server",
+      );
     } finally {
       setLoading(false);
     }
@@ -87,4 +81,3 @@ export default function LoginPage({ onLoginSuccess }: { onLoginSuccess?: () => v
     </main>
   );
 }
-

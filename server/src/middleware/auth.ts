@@ -76,11 +76,14 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
 }
 
-export function requireRole(allowedRoles: Array<"REQUESTER" | "REVIEWER">) {
+export function requireRole(
+  allowedRoles: Array<"REQUESTER" | "REVIEWER">,
+  errorMessage = "Access denied for current role",
+) {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (!req.user || !allowedRoles.includes(req.user.role)) {
       res.status(403).json({
-        error: "Access denied for current role",
+        error: errorMessage,
         code: "ACCESS_DENIED",
       });
       return;
@@ -89,4 +92,3 @@ export function requireRole(allowedRoles: Array<"REQUESTER" | "REVIEWER">) {
     next();
   };
 }
-

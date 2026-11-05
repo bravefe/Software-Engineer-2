@@ -8,7 +8,12 @@ const router = Router();
 router.post("/login", async (req, res): Promise<void> => {
   const { email, password } = req.body || {};
 
-  if (!email || !password || typeof email !== "string" || typeof password !== "string") {
+  if (
+    !email ||
+    !password ||
+    typeof email !== "string" ||
+    typeof password !== "string"
+  ) {
     res.status(400).json({
       error: "Email and password are required",
       code: "VALIDATION_ERROR",
@@ -70,7 +75,7 @@ router.post("/login", async (req, res): Promise<void> => {
   }
 });
 
-router.post("/logout", (_req, res): Promise<void> => {
+router.post("/logout", (_req, res): void => {
   res.clearCookie(COOKIE_NAME, {
     httpOnly: true,
     sameSite: "lax",
@@ -81,7 +86,6 @@ router.post("/logout", (_req, res): Promise<void> => {
   res.status(200).json({
     message: "Logged out successfully",
   });
-  return;
 });
 
 router.get("/me", requireAuth, (req, res): void => {
@@ -91,4 +95,3 @@ router.get("/me", requireAuth, (req, res): void => {
 });
 
 export default router;
-

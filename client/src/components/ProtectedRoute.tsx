@@ -2,6 +2,7 @@ import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
+// I AM Not Using this component yet, but I will use it in the future when I implement role-based access control for certain routes. For now, it is a placeholder to show how to protect routes based on user roles.
 export interface ProtectedRouteProps {
   allowedRoles?: Array<"REQUESTER" | "REVIEWER">;
   redirectUnauthenticatedTo?: string;
@@ -30,4 +31,3 @@ export function ProtectedRoute({
 
   return <Outlet />;
 }
-
