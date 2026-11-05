@@ -47,6 +47,6 @@ The tests corresponding to `document/test.md` are currently registered as TODOs 
 
 ## Project layout
 
-- `client/` — React, TypeScript, Vite, Bootstrap, and client-side routes
-- `server/` — Express API, TypeScript, Prisma schema, and database access
-- `database/docker-compose.yml` — local PostgreSQL service
+- `client/` - React, TypeScript, Vite, Bootstrap, and client-side routes
+- `server/` - Express API, TypeScript, Prisma schema, and database access
+- `database/docker-compose.yml` - local PostgreSQL service
