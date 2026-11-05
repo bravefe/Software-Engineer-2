@@ -12,9 +12,6 @@ export function AppLayout() {
             <Link className="nav-link" to="/">
               Home
             </Link>
-            <Link className="nav-link" to="/health">
-              Health
-            </Link>
           </div>
         </div>
       </nav>
