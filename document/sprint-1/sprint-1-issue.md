@@ -78,7 +78,7 @@ Establish the application structure and configure the client, server, database, 
 # Issue 4: User Authentication & Session Lifecycle
 
 - **Branch:** `feature/authentication`
-- **Feature scope:** `FEAT-01` — User Authentication & Session Lifecycle
+- **Feature scope:** `FEAT-01` - User Authentication & Session Lifecycle
 - **Dependencies:** Issue 3
 - **Test IDs:** `TEST-UNIT-01`, `TEST-INT-01`, `TEST-INT-02`, `TEST-COMP-01`
 
@@ -104,7 +104,7 @@ Implement secure login, logout, session restoration, and authenticated user stat
 # Issue 5: Role-Based Access Control & Route Authorization
 
 - **Branch:** `feature/role-based-access`
-- **Feature scope:** `FEAT-02` — Role-Based Access Control (RBAC) & Route Authorization
+- **Feature scope:** `FEAT-02` - Role-Based Access Control (RBAC) & Route Authorization
 - **Dependencies:** Issue 4
 - **Test IDs:** `TEST-UNIT-02`, `TEST-INT-02`, `TEST-COMP-05`, `TEST-E2E-03`
 
