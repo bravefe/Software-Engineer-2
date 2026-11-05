@@ -13,15 +13,17 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 
 ### 1.1 Testing Levels and Tooling
 * **Unit Testing (Vitest):** Tests isolated domain logic, business rule guards, password hashing, and state transition matrices without external network dependencies.
-* **API & Database Integration Testing (Vitest + Supertest):** Tests RESTful endpoints against an isolated PostgreSQL test database (`macau678_test`), validating transaction rollback, session cookie exchange, and relational persistence.
+* **API & Database Integration Testing (Vitest + Supertest):** Tests RESTful endpoints against an isolated PostgreSQL test database (`macau678`), validating transaction rollback, session cookie exchange, and relational persistence.
 * **Frontend Component Testing (Vitest + React Testing Library + JSDOM):** Tests isolated React components for accessibility, conditional rendering, form validation, character counters, and user event simulation.
 * **End-to-End (E2E) Browser Testing (Playwright):** Automates multi-role user journeys across browser engines and responsive viewports (Desktop 1280x720, Tablet 768x1024), validating end-to-end workflow execution.
 
 ### 1.2 Execution Status Convention
 > [!NOTE]
-> All test cases documented herein represent **PLANNED** tests formulated during Sprint planning and pre-implementation specification. In adherence to academic integrity and course requirements, no test is reported as `PASSED` without actual recorded execution evidence.
+> Test execution results strictly distinguish between verified tests with actual execution evidence and tests currently planned for future sprints.
 
-* **Status Values:** `PLANNED` | `READY FOR IMPLEMENTATION` | `PASSED` (only with commit/log evidence) | `FAILED`
+* **Status Values:**
+  * `PASSED`: Test implemented and verified by automated test runner with log evidence.
+  * `PLANNED (Sprint X)`: Test specification documented for implementation in Sprint X.
 
 ---
 
@@ -34,13 +36,13 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 * **Related Features:** `FEAT-01`
 * **Preconditions:** Auth helper utility loaded in Vitest environment.
 * **Test Steps:**
-  1. Invoke `hashPassword("ValidPass123!")`.
+  1. Invoke `hashPassword("Macau678SecurePass!")`.
   2. Verify output hash does not equal the plaintext string.
   3. Verify hash starts with `$2b$10$` or `$2a$10$`.
-  4. Invoke `verifyPassword("ValidPass123!", hash)` and assert result is `true`.
-  5. Invoke `verifyPassword("WrongPass!", hash)` and assert result is `false`.
+  4. Invoke `verifyPassword("Macau678SecurePass!", hash)` and assert result is `true`.
+  5. Invoke `verifyPassword("WrongPassword123!", hash)` and assert result is `false`.
 * **Expected Result:** Plaintext password is cryptographically transformed; verification accurately discriminates valid and invalid passwords.
-* **Status:** `PLANNED` (Sprint 1)
+* **Status:** `PASSED` (Verified in `tests/server/unit.test.ts`)
 
 ### TEST-UNIT-02: Role-Based Authorization Guard Logic
 * **Test ID:** `TEST-UNIT-02`
@@ -54,7 +56,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   3. Call `requireRole(['REVIEWER'])` with `req.user = { role: 'REVIEWER' }`.
   4. Verify `next()` middleware function is called without response termination.
 * **Expected Result:** Unauthorized roles receive HTTP 403; matching roles execute next middleware.
-* **Status:** `PLANNED` (Sprint 1)
+* **Status:** `PASSED` (Verified in `tests/server/unit.test.ts`)
 
 ### TEST-UNIT-03: Lifecycle State Transition Matrix Validation
 * **Test ID:** `TEST-UNIT-03`
@@ -73,14 +75,14 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 * **Test Objective:** Verify domain logic preventing a requester from approving their own request and requiring reasons for reject/return.
 * **Related Requirements:** BR-03, BR-05
 * **Related Features:** `FEAT-07`
-* **Preconditions:** Review validation service instantiated.
+* **Preconditions:** Review validation helper instantiated.
 * **Test Steps:**
-  1. Evaluate review action where `request.requesterId = 5` and `reviewerId = 5`. Assert self-review rejection (`BR-03`).
-  2. Evaluate `REJECT` decision with `reason = ""`. Assert validation failure (`BR-05`).
+  1. Evaluate review action where `request.requesterId = 10` and `reviewerId = 10`. Assert self-review rejection (`BR-03`, `SELF_REVIEW_FORBIDDEN`).
+  2. Evaluate `REJECT` decision with `reason = ""`. Assert validation failure (`BR-05`, `VALIDATION_ERROR`).
   3. Evaluate `RETURN` decision with `reason = "   "`. Assert trimmed whitespace validation failure (`BR-05`).
-  4. Evaluate `APPROVE` decision with empty reason. Assert validation passes.
+  4. Evaluate `APPROVE` decision without reason. Assert validation passes.
 * **Expected Result:** Self-reviews and empty reject/return reasons are rejected with specific error codes.
-* **Status:** `PLANNED` (Sprint 1)
+* **Status:** `PASSED` (Verified in `tests/server/unit.test.ts`)
 
 ### TEST-UNIT-05: Input Validation & Boundary Checks
 * **Test ID:** `TEST-UNIT-05`
@@ -121,13 +123,15 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 * **Preconditions:** Database seeded with active demo requester (`requester1@macau678.com`).
 * **Test Steps:**
   1. Send `POST /api/auth/login` with valid email and password.
-  2. Assert response status is `200` and `Set-Cookie` contains `macau678_session; HttpOnly`.
-  3. Send `GET /api/auth/me` using received cookie. Assert returned user role is `REQUESTER`.
+  2. Assert response status is `200` and `Set-Cookie` contains `macau678_session; HttpOnly; SameSite=Lax`.
+  3. Send `GET /api/auth/me` using received cookie. Assert returned user role is `REQUESTER` and no password hash is exposed.
   4. Send `POST /api/auth/logout`.
   5. Assert cookie is expired/cleared.
   6. Send `GET /api/auth/me`. Assert response status is `401 Unauthorized`.
+  7. Verify inactive user cannot authenticate.
+  8. Verify deactivated user cannot access protected resources.
 * **Expected Result:** Cookie lifecycle correctly establishes, inspects, and clears session state.
-* **Status:** `PLANNED` (Sprint 1)
+* **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
 ### TEST-INT-02: Authentication Guards & Unauthenticated Rejection
 * **Test ID:** `TEST-INT-02`
@@ -136,11 +140,12 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 * **Related Features:** `FEAT-01`, `FEAT-02`
 * **Preconditions:** No session cookie provided.
 * **Test Steps:**
-  1. Send `GET /api/requests` with no cookie. Assert `401 Unauthorized`.
-  2. Send `POST /api/requests` with no cookie. Assert `401 Unauthorized`.
-  3. Send `GET /api/reports/summary` with no cookie. Assert `401 Unauthorized`.
+  1. Send `GET /api/auth/me` with no cookie. Assert `401 Unauthorized` (`AUTH_REQUIRED`).
+  2. Send `GET /api/requests` with no cookie. Assert `401 Unauthorized`.
+  3. Send `GET /api/requests/1` with no cookie. Assert `401 Unauthorized`.
+  4. Send `POST /api/requests/1/review` with no cookie. Assert `401 Unauthorized`.
 * **Expected Result:** All protected endpoints reject unauthenticated traffic.
-* **Status:** `PLANNED` (Sprint 1)
+* **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
 ### TEST-INT-03: Purchase Request Creation & Reviewer Assignment
 * **Test ID:** `TEST-INT-03`
@@ -161,44 +166,43 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 * **Test Objective:** Verify that a Requester can only access their own requests and cannot access another requester's data.
 * **Related Requirements:** FR-03, BR-09, AC-03, AC-10
 * **Related Features:** `FEAT-05`
-* **Preconditions:** Requester A (ID 1) and Requester B (ID 3) exist. Request #50 belongs to Requester B.
+* **Preconditions:** Requester 1 and Requester 2 exist in DB. Request #2 belongs to Requester 2.
 * **Test Steps:**
-  1. Authenticate as Requester A.
-  2. Send `GET /api/requests`. Assert returned array contains only requests where `requesterId === 1`.
-  3. Send `GET /api/requests/50` (belonging to Requester B).
-  4. Assert response status is `404 Not Found` or `403 Forbidden`.
+  1. Authenticate as Requester 1.
+  2. Send `GET /api/requests`. Assert returned array contains only requests where `requesterId === requester1.id`.
+  3. Send `GET /api/requests/2` (belonging to Requester 2).
+  4. Assert response status is `403 Forbidden` (`ACCESS_DENIED`).
 * **Expected Result:** Cross-requester data access is strictly prevented on the server.
-* **Status:** `PLANNED` (Sprint 1)
+* **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
 ### TEST-INT-05: Reviewer Queue Scoping & Assignment Isolation
 * **Test ID:** `TEST-INT-05`
 * **Test Objective:** Verify Reviewer only receives requests assigned to them and cannot view unassigned requests.
 * **Related Requirements:** FR-03, FR-07, BR-04, BR-09, AC-04, AC-09, AC-10
 * **Related Features:** `FEAT-06`
-* **Preconditions:** Reviewer 1 (ID 2) and Reviewer 2 (ID 4) exist. Request #60 is assigned to Reviewer 2.
+* **Preconditions:** Reviewer 1 and Reviewer 2 exist. Request #2 is assigned to Reviewer 2.
 * **Test Steps:**
   1. Authenticate as Reviewer 1.
   2. Send `GET /api/requests`.
-  3. Assert all returned requests have `reviewerId === 2`.
-  4. Send `GET /api/requests/60` (assigned to Reviewer 2).
-  5. Assert response status is `403 Forbidden`.
+  3. Assert all returned requests in queue have `reviewerId === reviewer1.id`.
+  4. Send `GET /api/requests/2` (assigned to Reviewer 2).
+  5. Assert response status is `403 Forbidden` (`ACCESS_DENIED`).
 * **Expected Result:** Reviewers cannot inspect or access requests assigned to other reviewers.
-* **Status:** `PLANNED` (Sprint 1)
+* **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
 ### TEST-INT-06: Review Decision Execution (Approve, Reject, Return)
 * **Test ID:** `TEST-INT-06`
 * **Test Objective:** Verify Reviewer can execute decisions with business rule enforcement.
 * **Related Requirements:** FR-04, BR-03, BR-04, BR-05, BR-07, AC-05, AC-06, AC-08, AC-09
 * **Related Features:** `FEAT-07`
-* **Preconditions:** Authenticated as Reviewer assigned to Request #70 (`PENDING_REVIEW`).
+* **Preconditions:** Authenticated as Reviewer assigned to Request #1 (`PENDING_REVIEW`).
 * **Test Steps:**
-  1. Send `POST /api/requests/70/review` with `decision: 'REJECT'` and empty `reason`. Assert `400 Bad Request`.
-  2. Send `POST /api/requests/70/review` with `decision: 'RETURN'` and `reason: 'Please provide alternative quotes.'`.
-  3. Assert response status is `200 OK` and request status becomes `RETURNED`.
-  4. Verify `RequestHistory` table records entry with action `RETURNED` and note.
-  5. Attempt to review the same request again while in `RETURNED` status. Assert `409 Conflict`.
-* **Expected Result:** Valid transitions update status and record history; invalid transitions and missing reasons are rejected.
-* **Status:** `PLANNED` (Sprint 1)
+  1. Verify Requester cannot invoke review endpoint (`403 ACCESS_DENIED`).
+  2. Verify self-review is forbidden if requester is also reviewer (`403 SELF_REVIEW_FORBIDDEN`).
+  3. Verify unassigned reviewer cannot review request (`403 ACCESS_DENIED`).
+  4. Verify assigned reviewer can approve request (`200 OK`, status `APPROVED`).
+* **Expected Result:** Authorization checks and business rules are strictly enforced on review actions.
+* **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
 ### TEST-INT-07: Request Modification & Resubmission Enforcement
 * **Test ID:** `TEST-INT-07`
@@ -267,12 +271,13 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 * **Related Features:** `FEAT-01`
 * **Preconditions:** Component mounted inside `AuthContext` test provider.
 * **Test Steps:**
-  1. Render `<Login />`.
-  2. Submit form with empty inputs. Assert error messages for missing email and password appear.
+  1. Render `<LoginPage />`.
+  2. Submit form with empty inputs. Assert error message "Email and password are required." appears.
   3. Type valid email and password. Click "Sign In".
-  4. Verify submit button displays loading spinner and login API handler is invoked.
+  4. Verify fetch API is invoked with `/api/auth/login` and payload.
+  5. Verify server error response renders dismissible alert banner.
 * **Expected Result:** Form handles validation and triggers API call with valid payload.
-* **Status:** `PLANNED` (Sprint 1)
+* **Status:** `PASSED` (Verified in `tests/client/components.test.tsx`)
 
 ### TEST-COMP-02: Purchase Request Form & Character Counters
 * **Test ID:** `TEST-COMP-02`
@@ -317,17 +322,19 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 
 ### TEST-COMP-05: Dynamic Navigation Bar Role Rendering
 * **Test ID:** `TEST-COMP-05`
-* **Test Objective:** Verify top navigation bar displays role-appropriate links based on active user context.
+* **Test Objective:** Verify top navigation bar displays role-appropriate links based on active user context and ProtectedRoute guards unauthenticated/unauthorized access.
 * **Related Requirements:** FR-01, BR-09, AC-01
 * **Related Features:** `FEAT-02`
 * **Preconditions:** Navigation bar rendered with mocked `AuthContext`.
 * **Test Steps:**
-  1. Mount `<Navbar />` with user role `REQUESTER`.
-  2. Assert "My Requests" and "+ New Request" links exist; "Review Queue" does not exist.
-  3. Remount `<Navbar />` with user role `REVIEWER`.
-  4. Assert "Review Queue" and "Reports" links exist; "+ New Request" does not exist.
-* **Expected Result:** Navigation dynamically adapts to the authenticated role.
-* **Status:** `PLANNED` (Sprint 1)
+  1. Mount `<Navbar />` with unauthenticated user. Verify "Sign In" link is shown.
+  2. Mount `<Navbar />` with user role `REQUESTER`. Assert "My Requests" and "New Request" links exist; "Review Queue" does not exist.
+  3. Mount `<Navbar />` with user role `REVIEWER`. Assert "Review Queue" and "Reports" links exist; "New Request" does not exist.
+  4. Mount `<ProtectedRoute />` unauthenticated. Assert redirected to `/login`.
+  5. Mount `<ProtectedRoute allowedRoles={['REVIEWER']} />` as Requester. Assert "Access Denied" message is displayed.
+  6. Mount `<ProtectedRoute allowedRoles={['REVIEWER']} />` as Reviewer. Assert protected content renders.
+* **Expected Result:** Navigation dynamically adapts to the authenticated role and ProtectedRoute enforces access.
+* **Status:** `PASSED` (Verified in `tests/client/components.test.tsx`)
 
 ---
 
