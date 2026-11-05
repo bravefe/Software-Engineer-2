@@ -19,6 +19,7 @@
     "db:up": "docker compose -f database/docker-compose.yml up -d",
     "db:down": "docker compose -f database/docker-compose.yml down",
     "db:generate": "npm run prisma:generate --workspace server",
+    "db:seed": "npm run prisma:seed --workspace server",
     "db:migrate": "npm run prisma:migrate --workspace server",
     "db:deploy": "npm run prisma:deploy --workspace server"
   },
