@@ -12,7 +12,15 @@ export function ProtectedRoute({
   allowedRoles,
   redirectUnauthenticatedTo = "/login",
 }: ProtectedRouteProps) {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <p className="container py-5" role="status">
+        Checking your session…
+      </p>
+    );
+  }
 
   if (!isAuthenticated || !user) {
     return <Navigate to={redirectUnauthenticatedTo} replace />;

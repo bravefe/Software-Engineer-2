@@ -1,5 +1,5 @@
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
 
 export const COOKIE_NAME = "macau678_session";
 export const JWT_SECRET = process.env.JWT_SECRET || "macau678-super-secret-jwt-key-min-32-chars";
@@ -19,7 +19,11 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export function generateToken(payload: TokenPayload, secret = JWT_SECRET, expiresIn = "8h"): string {
+export function generateToken(
+  payload: TokenPayload,
+  secret = JWT_SECRET,
+  expiresIn: SignOptions["expiresIn"] = "8h",
+): string {
   return jwt.sign(payload, secret, { expiresIn });
 }
 
@@ -30,4 +34,3 @@ export function verifyToken(token: string, secret = JWT_SECRET): TokenPayload | 
     return null;
   }
 }
-

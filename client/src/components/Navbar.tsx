@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 export function Navbar() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, authError, logout } = useAuth();
 
   return (
     <nav className="navbar navbar-expand navbar-dark bg-primary">
@@ -43,7 +43,12 @@ export function Navbar() {
         </div>
 
         <div className="navbar-nav">
-          {isAuthenticated && user ? (
+          {authError && (
+            <span className="navbar-text text-warning" role="alert">
+              {authError}
+            </span>
+          )}
+          {isLoading ? null : isAuthenticated && user ? (
             <div className="d-flex align-items-center gap-2">
               <span className="navbar-text text-white">
                 {user.name} ({user.role})
@@ -51,7 +56,9 @@ export function Navbar() {
               <button
                 type="button"
                 className="btn btn-outline-light btn-sm"
-                onClick={logout}
+                onClick={() => {
+                  void logout().catch(() => undefined);
+                }}
               >
                 Sign Out
               </button>

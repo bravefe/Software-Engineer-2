@@ -75,68 +75,67 @@ Establish the application structure and configure the client, server, database, 
 
 ---
 
-# Issue 4: User Authentication & Session Lifecycle
+# Issue 4: Authentication
 
 - **Branch:** `feature/authentication`
-- **Feature scope:** `FEAT-01` - User Authentication & Session Lifecycle
+- **Feature scope:** `FEAT-01` - User Authentication & Session Lifecycle; `FEAT-02` - Role-Based Access Control (RBAC) & Route Authorization
 - **Dependencies:** Issue 3
-- **Test IDs:** `TEST-UNIT-01`, `TEST-INT-01`, `TEST-INT-02`, `TEST-COMP-01`
+- **Test IDs:** `TEST-UNIT-01`, `TEST-UNIT-02`, `TEST-UNIT-04`, `TEST-INT-01`, `TEST-INT-02`, `TEST-INT-04`, `TEST-INT-05`, `TEST-INT-06`, `TEST-COMP-01`, `TEST-COMP-05`
 
 ## Description
 
-Implement secure login, logout, session restoration, and authenticated user state for Requesters and Reviewers.
+Implement secure authentication, logout, session restoration, and role-based access control for Requesters and Reviewers. Enforce authentication and authorization across server endpoints and client-side navigation.
+
+Implement and run automated unit, API integration, and frontend component tests to verify password security, session lifecycle, authorization boundaries, and role-appropriate UI behavior.
 
 ## Tasks
 
 - [ ] Implement login and logout endpoints and credential verification.
+- [ ] Implement secure password hashing using bcrypt and password verification.
 - [ ] Maintain the authenticated session using the specified secure cookie.
 - [ ] Implement current-user retrieval and session restoration.
-- [ ] Integrate authentication with the client, including login UI and loading/error states.
-- [ ] Reject invalid credentials and unauthenticated access to protected endpoints.
-
-## Acceptance criteria
-
-- Users can log in, restore their session, and log out; invalid credentials and unauthenticated access are rejected.
-- The system identifies the user's role and displays login validation, loading, and error feedback.
-
----
-
-# Issue 5: Role-Based Access Control & Route Authorization
-
-- **Branch:** `feature/role-based-access`
-- **Feature scope:** `FEAT-02` - Role-Based Access Control (RBAC) & Route Authorization
-- **Dependencies:** Issue 4
-- **Test IDs:** `TEST-UNIT-02`, `TEST-INT-02`, `TEST-COMP-05`, `TEST-E2E-03`
-
-## Description
-
-Enforce the Requester and Reviewer permission boundaries in server endpoints and client navigation. Unauthenticated users must be rejected; authenticated users must not access routes or operations outside their role.
-
-## Tasks
-
+- [ ] Reject inactive accounts and unauthenticated access to protected endpoints.
 - [ ] Define and enforce the `REQUESTER` and `REVIEWER` roles.
 - [ ] Add server-side role and authorization checks for protected operations.
 - [ ] Protect client routes and show role-appropriate navigation and actions.
 - [ ] Return appropriate unauthorized/forbidden responses and handle them in the UI.
-- [ ] Verify that authorization is enforced by the server, not only hidden in the interface.
+- [ ] Implement the login form, including required field validation, API submission, loading states, and error handling.
+- [ ] Test password hashing and verification using bcrypt.
+- [ ] Test role-based authorization for permitted and unauthorized roles.
+- [ ] Test prevention of self-approval and mandatory reasons for rejection and return decisions.
+- [ ] Test login, session cookie creation, user authentication, logout, and inactive account restrictions.
+- [ ] Test that unauthenticated users cannot access protected API endpoints.
+- [ ] Test that Requesters can only access their own purchase requests.
+- [ ] Test that Reviewers can only access requests assigned to them.
+- [ ] Test review authorization and business rules for approval, rejection, and review decisions.
+- [ ] Test login form rendering, required field validation, API submission, and error handling.
+- [ ] Test role-based navigation and protected route authorization for different user roles.
 
 ## Acceptance criteria
 
-- Server-side authorization blocks unauthenticated users and disallowed roles, including direct requests.
-- Routes, navigation, and actions reflect the authenticated user's role.
+- Users can log in, restore their session, and log out; invalid credentials and inactive accounts are rejected.
+- Passwords are securely hashed using bcrypt and verified correctly.
+- The system identifies the user's role and enforces server-side authorization.
+- Unauthenticated users and users with unauthorized roles cannot access protected operations or routes.
+- Requesters can only access their own purchase requests, and Reviewers can only access requests assigned to them.
+- The system prevents self-approval and requires reasons for rejection and return decisions.
+- Login validation, loading states, and error feedback work correctly.
+- All specified unit, API integration, and frontend component tests pass.
 
 ---
 
-# Issue 6: Purchase Request & Approval Workflow
+# Issue 5: Purchase Request & Approval Workflow
 
 - **Branch:** `feature/domain-workflow`
 - **Feature scope:** `FEAT-03` Purchase Request Creation & Draft Management; `FEAT-04` Reviewer Assignment & Routing; `FEAT-05` Requester Request Tracking & Personal Dashboard; `FEAT-06` Reviewer Queue & Assignment Scope Enforcement; `FEAT-07` Review Decision Processing; `FEAT-08` Request Modification & Resubmission Workflow; `FEAT-09` Request Audit Trail & History Tracking.
-- **Dependencies:** Issue 3; Issues 4 and 5 for authenticated, authorized workflows
-- **Test IDs:** `TEST-UNIT-03`, `TEST-UNIT-04`, `TEST-INT-03`–`TEST-INT-08`, `TEST-COMP-02`–`TEST-COMP-04`, `TEST-E2E-01`, `TEST-E2E-02`
+- **Dependencies:** Issue 3; Issue 4 for authentication and authorization
+- **Test IDs:** `TEST-UNIT-03`, `TEST-INT-03`, `TEST-INT-07`, `TEST-INT-08`, `TEST-COMP-02`–`TEST-COMP-04`
 
 ## Description
 
 Deliver the Sprint 1 purchase approval workflow: a Requester drafts or submits a request assigned to a Reviewer; both roles see only their permitted requests; an assigned Reviewer approves, rejects, or returns a request; the Requester may edit and resubmit only a returned request; and lifecycle changes are recorded in an audit history.
+
+Implement and run automated tests for purchase request creation, assignment, request lifecycle transitions, review decisions, returned-request resubmission, and audit history.
 
 ## Tasks
 
@@ -146,6 +145,12 @@ Deliver the Sprint 1 purchase approval workflow: a Requester drafts or submits a
 - [ ] Allow editing and resubmission only for `RETURNED` requests.
 - [ ] Persist and display chronological history for request creation, submission, edits, resubmission, and review decisions.
 - [ ] Implement the corresponding forms, lists, detail views, navigation, and loading/empty/error states.
+- [ ] Test valid and invalid purchase request lifecycle transitions.
+- [ ] Test request creation, draft saving, submission, reviewer assignment, and request persistence.
+- [ ] Test approval, rejection, and return decisions, including mandatory reasons and invalid transitions.
+- [ ] Test editing and resubmission restrictions for returned requests.
+- [ ] Test audit history persistence and chronological ordering.
+- [ ] Test the corresponding frontend components for request forms, lists, and detail views.
 
 ## Acceptance criteria
 
@@ -154,67 +159,15 @@ Deliver the Sprint 1 purchase approval workflow: a Requester drafts or submits a
 - The system prevents self-review, invalid edits/transitions, and unauthorized access.
 - Request history is persisted and displayed chronologically with actors, actions, status changes, timestamps, and reasons.
 - The complete workflow works through the UI and persists in the database.
+- All specified unit, API integration, and frontend component tests pass.
 
 ---
 
-# Issue 7: Authentication & Authorization Tests
-
-- **Branch:** `test/authentication-tests`
-- **Feature scope:** Verification for `FEAT-01` and `FEAT-02`
-- **Dependencies:** Issues 4 and 5
-- **Test IDs:** `TEST-UNIT-01`, `TEST-UNIT-02`, `TEST-INT-01`, `TEST-INT-02`, `TEST-COMP-01`, `TEST-COMP-05`
-
-## Description
-
-Implement and run automated tests for authentication/session lifecycle and role-based access, including unauthenticated requests and role-appropriate UI behavior.
-
-## Tasks
-
-- [ ] Test password hashing and verification.
-- [ ] Test login, current-user retrieval, logout, and cookie lifecycle.
-- [ ] Test rejection of unauthenticated requests and authorization by role.
-- [ ] Test login form behavior and role-based navigation.
-
-## Acceptance criteria
-
-- Tests cover password verification, login/session/logout, unauthenticated access, and server-side role authorization.
-- Component tests cover login form behavior and role-based navigation; test results are reported accurately.
-
----
-
-# Issue 8: Domain Workflow & API Tests
-
-- **Branch:** `test/domain-workflow-tests`
-- **Feature scope:** Verification for `FEAT-03`–`FEAT-09`
-- **Dependencies:** Issue 6
-- **Test IDs:** `TEST-UNIT-03`, `TEST-UNIT-04`, `TEST-INT-03`–`TEST-INT-08`
-
-## Description
-
-Implement and run tests for purchase request creation, assignment, data isolation, reviewer decisions, returned-request resubmission, and audit history.
-
-## Tasks
-
-- [ ] Test valid and invalid lifecycle transitions and review business rules.
-- [ ] Test request creation, reviewer assignment, and request persistence.
-- [ ] Test Requester isolation and Reviewer assignment scoping.
-- [ ] Test approve/reject/return decisions, mandatory reasons, and invalid transitions.
-- [ ] Test editing and resubmission restrictions and audit history persistence.
-- [ ] Cover successful approval in the review-decision API tests.
-
-## Acceptance criteria
-
-- Tests cover request creation, assignment, role-based scoping, review decisions, resubmission, and audit history.
-- Invalid access, self-review, transitions, and edits are rejected; successful operations persist expected data and history.
-- Test results are reported accurately, including failures.
-
----
-
-# Issue 9: Integration & End-to-End Tests
+# Issue 6: Integration & End-to-End Tests
 
 - **Branch:** `test/integration-tests`
 - **Feature scope:** Integrated verification of `FEAT-01`–`FEAT-09`
-- **Dependencies:** Issues 5 and 6
+- **Dependencies:** Issues 4 and 5
 - **Test IDs:** `TEST-E2E-01`–`TEST-E2E-03`
 
 ## Description
