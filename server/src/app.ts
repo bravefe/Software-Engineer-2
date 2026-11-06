@@ -4,6 +4,7 @@ import express from "express";
 import authRouter from "./routes/auth";
 import healthRouter from "./routes/health";
 import requestsRouter from "./routes/requests";
+import usersRouter from "./routes/users";
 
 const app = express();
 
@@ -14,6 +15,7 @@ app.use(cookieParser());
 app.use("/api", healthRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/requests", requestsRouter);
+app.use("/api/users", usersRouter);
 
 export { app };
 export default app;
