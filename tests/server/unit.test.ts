@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { requireRole } from "../../server/src/middleware/auth";
 import { hashPassword, verifyPassword } from "../../server/src/utils/auth";
+import { isValidTransition } from "../../server/src/utils/workflow";
 
 describe("Unit tests", () => {
   describe("TEST-UNIT-01: password hashing and salt verification", () => {
@@ -134,7 +135,48 @@ describe("Unit tests", () => {
     });
   });
 
-  it.todo("TEST-UNIT-03: lifecycle state transition matrix validation");
+  describe("TEST-UNIT-03: lifecycle state transition matrix validation (BR-07)", () => {
+    it("permits valid lifecycle status transitions", () => {
+      const validTransitions = [
+        { from: "DRAFT", to: "PENDING_REVIEW" },
+        { from: "PENDING_REVIEW", to: "APPROVED" },
+        { from: "PENDING_REVIEW", to: "REJECTED" },
+        { from: "PENDING_REVIEW", to: "RETURNED" },
+        { from: "RETURNED", to: "PENDING_REVIEW" },
+      ];
+
+      for (const { from, to } of validTransitions) {
+        expect(
+          isValidTransition(from, to),
+          `Expected transition ${from} -> ${to} to be valid`,
+        ).toBe(true);
+      }
+    });
+
+    it("rejects invalid, skipped, or backward lifecycle transitions", () => {
+      const invalidTransitions = [
+        { from: "DRAFT", to: "APPROVED" },
+        { from: "DRAFT", to: "RETURNED" },
+        { from: "DRAFT", to: "REJECTED" },
+        { from: "APPROVED", to: "PENDING_REVIEW" },
+        { from: "APPROVED", to: "REJECTED" },
+        { from: "APPROVED", to: "RETURNED" },
+        { from: "REJECTED", to: "RETURNED" },
+        { from: "REJECTED", to: "PENDING_REVIEW" },
+        { from: "RETURNED", to: "APPROVED" },
+        { from: "RETURNED", to: "REJECTED" },
+        { from: "PENDING_REVIEW", to: "DRAFT" },
+      ];
+
+      for (const { from, to } of invalidTransitions) {
+        expect(
+          isValidTransition(from, to),
+          `Expected transition ${from} -> ${to} to be invalid`,
+        ).toBe(false);
+      }
+    });
+  });
+
   it.todo("TEST-UNIT-05: input validation and boundary checks");
   it.todo("TEST-UNIT-06: financial aggregation and status metrics math");
 });

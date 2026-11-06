@@ -30,7 +30,7 @@ npm run dev
 
 Open <http://localhost:5173>. The API listens on port 3000 and the frontend proxies `/api` requests to it. Visit <http://localhost:5173/health> to check that the browser reaches the API and the API can query PostgreSQL. The health endpoint returns HTTP 503 when the database is unavailable.
 
-The local database is exposed on port 5433 to avoid the default PostgreSQL port. Its development-only credentials are configured in `database/docker-compose.yml` and match `server/.env.example`; do not use them outside local development.
+The local database is exposed on port 5432 to avoid the default PostgreSQL port. Its development-only credentials are configured in `database/docker-compose.yml` and match `server/.env.example`; do not use them outside local development.
 
 ## Useful commands
 

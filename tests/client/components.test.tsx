@@ -7,6 +7,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { Navbar } from "../../client/src/components/Navbar";
 import { ProtectedRoute } from "../../client/src/components/ProtectedRoute";
+import { ReviewDecisionModal } from "../../client/src/components/ReviewDecisionModal";
+import { RequestHistoryTimeline } from "../../client/src/components/HistoryTimeline";
+import CreateRequest from "../../client/src/pages/CreateRequest";
 import { AuthProvider } from "../../client/src/context/AuthContext";
 import LoginPage from "../../client/src/pages/Login";
 
@@ -238,7 +241,165 @@ describe("Frontend component tests: Authentication and Authorization", () => {
     });
   });
 
-  it.todo("TEST-COMP-02: purchase request form and character counters");
-  it.todo("TEST-COMP-03: review decision modal and mandatory reason enforcement");
-  it.todo("TEST-COMP-04: history timeline presentation");
+  describe("TEST-COMP-02: Purchase request form and character counters (FEAT-03, FEAT-12, FR-02, NFR-02, AC-02)", () => {
+    const mockReviewers = [
+      { id: 2, name: "Bob Reviewer", email: "bob@macau678.com", role: "REVIEWER" as const },
+    ];
+
+    it("renders character counters and validates minimum title length", () => {
+      render(
+        <MemoryRouter>
+          <CreateRequest initialReviewers={mockReviewers} />
+        </MemoryRouter>,
+      );
+
+      const titleInput = screen.getByLabelText(/request title/i);
+      expect(screen.getByText("0 / 150")).toBeTruthy();
+
+      fireEvent.change(titleInput, { target: { value: "AB" } });
+      expect(screen.getByText("2 / 150")).toBeTruthy();
+      expect(
+        screen.getByText(/title must be at least 3 characters/i),
+      ).toBeTruthy();
+
+      fireEvent.change(titleInput, { target: { value: "Valid Title Here" } });
+      expect(screen.getByText("16 / 150")).toBeTruthy();
+      expect(screen.queryByText(/title must be at least 3 characters/i)).toBeNull();
+    });
+
+    it("validates amount and disables submission until required fields are filled", () => {
+      render(
+        <MemoryRouter>
+          <CreateRequest initialReviewers={mockReviewers} />
+        </MemoryRouter>,
+      );
+
+      const draftButton = screen.getByRole("button", { name: /save as draft/i });
+      const submitButton = screen.getByRole("button", { name: /submit for review/i });
+
+      // Initially disabled
+      expect(draftButton.hasAttribute("disabled")).toBe(true);
+      expect(submitButton.hasAttribute("disabled")).toBe(true);
+
+      // Enter invalid amount (0 or negative)
+      const amountInput = screen.getByLabelText(/estimated amount/i);
+      fireEvent.change(amountInput, { target: { value: "0" } });
+      expect(
+        screen.getByText(/amount must be a positive number greater than 0.00/i),
+      ).toBeTruthy();
+
+      // Enter valid fields
+      fireEvent.change(screen.getByLabelText(/request title/i), {
+        target: { value: "Ergonomic Chairs" },
+      });
+      fireEvent.change(amountInput, { target: { value: "450.00" } });
+      fireEvent.change(screen.getByLabelText(/description/i), {
+        target: { value: "Five adjustable mesh chairs" },
+      });
+      fireEvent.change(screen.getByLabelText(/business justification/i), {
+        target: { value: "Replaces broken lab chairs" },
+      });
+
+      // Buttons now enabled
+      expect(draftButton.hasAttribute("disabled")).toBe(false);
+      expect(submitButton.hasAttribute("disabled")).toBe(false);
+    });
+  });
+
+  describe("TEST-COMP-03: Review decision modal and mandatory reason enforcement (FEAT-07, FR-04, BR-05, AC-06)", () => {
+    it("disables submit button on RETURN decision while reason is empty or whitespace", () => {
+      render(<ReviewDecisionModal decision="RETURN" isOpen={true} />);
+
+      const submitButton = screen.getByRole("button", { name: /confirm return/i });
+      const reasonInput = screen.getByLabelText(/reason/i);
+
+      expect(submitButton.hasAttribute("disabled")).toBe(true);
+
+      // Typing whitespace keeps it disabled
+      fireEvent.change(reasonInput, { target: { value: "    " } });
+      expect(submitButton.hasAttribute("disabled")).toBe(true);
+
+      // Providing valid reason enables submit
+      fireEvent.change(reasonInput, {
+        target: { value: "Item specification requires clarification." },
+      });
+      expect(submitButton.hasAttribute("disabled")).toBe(false);
+    });
+
+    it("disables submit button on REJECT decision while reason is empty", () => {
+      render(<ReviewDecisionModal decision="REJECT" isOpen={true} />);
+
+      const submitButton = screen.getByRole("button", { name: /confirm rejection/i });
+      const reasonInput = screen.getByLabelText(/reason/i);
+
+      expect(submitButton.hasAttribute("disabled")).toBe(true);
+
+      fireEvent.change(reasonInput, {
+        target: { value: "Budget exhausted for current fiscal quarter." },
+      });
+      expect(submitButton.hasAttribute("disabled")).toBe(false);
+    });
+
+    it("allows APPROVE decision without requiring a reason", () => {
+      render(<ReviewDecisionModal decision="APPROVE" isOpen={true} />);
+
+      const submitButton = screen.getByRole("button", { name: /confirm approval/i });
+      expect(submitButton.hasAttribute("disabled")).toBe(false);
+    });
+  });
+
+  describe("TEST-COMP-04: History timeline presentation (FEAT-09, FR-06, BR-08, AC-11)", () => {
+    it("renders chronological entries with status badges, actor info, and decision notes", () => {
+      const mockHistory = [
+        {
+          id: 1,
+          requestId: 10,
+          actorId: 1,
+          action: "SUBMITTED" as const,
+          fromStatus: null,
+          toStatus: "PENDING_REVIEW",
+          reason: "Initial submission",
+          createdAt: "2026-11-06T10:00:00.000Z",
+          actor: { id: 1, name: "Alice Requester", email: "alice@macau678.com", role: "REQUESTER" as const },
+        },
+        {
+          id: 2,
+          requestId: 10,
+          actorId: 2,
+          action: "RETURNED" as const,
+          fromStatus: "PENDING_REVIEW",
+          toStatus: "RETURNED",
+          reason: "Please upload official vendor quotations.",
+          createdAt: "2026-11-06T11:00:00.000Z",
+          actor: { id: 2, name: "Bob Reviewer", email: "bob@macau678.com", role: "REVIEWER" as const },
+        },
+        {
+          id: 3,
+          requestId: 10,
+          actorId: 2,
+          action: "APPROVED" as const,
+          fromStatus: "PENDING_REVIEW",
+          toStatus: "APPROVED",
+          reason: null,
+          createdAt: "2026-11-06T12:00:00.000Z",
+          actor: { id: 2, name: "Bob Reviewer", email: "bob@macau678.com", role: "REVIEWER" as const },
+        },
+      ];
+
+      render(<RequestHistoryTimeline history={mockHistory} />);
+
+      expect(screen.getByText("Alice Requester")).toBeTruthy();
+      expect(screen.getByText("SUBMITTED")).toBeTruthy();
+      expect(screen.getByText("RETURNED")).toBeTruthy();
+      expect(screen.getByText("APPROVED")).toBeTruthy();
+      expect(
+        screen.getByText("Please upload official vendor quotations."),
+      ).toBeTruthy();
+    });
+
+    it("renders empty state message when history array is empty", () => {
+      render(<RequestHistoryTimeline history={[]} />);
+      expect(screen.getByText(/no history entries recorded yet/i)).toBeTruthy();
+    });
+  });
 });

@@ -547,10 +547,304 @@ describe("Integration and API tests: Authentication & Authorization", () => {
     });
   });
 
-  // Remaining domain workflow tests preserved as todo for Issue #8 / Issue #9
-  it.todo("TEST-INT-03: purchase request creation and reviewer assignment");
-  it.todo("TEST-INT-07: request modification and resubmission enforcement");
-  it.todo("TEST-INT-08: complete audit history persistence");
+  describe("TEST-INT-03: Purchase request creation and reviewer assignment (FEAT-03, FEAT-04, FR-02, FR-07, BR-01, BR-02, BR-10, AC-02)", () => {
+    it("allows authenticated requester to create and submit purchase request with reviewer assignment", async () => {
+      const loginRes = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const cookie = loginRes.headers["set-cookie"][0];
+
+      const res = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Lab Equipment Renewal",
+          description: "Precision multimeter and signal generator for lab benches",
+          amount: 450.0,
+          justification: "Existing equipment damaged and out of calibration",
+          reviewerId: seededUsers.reviewer1.id,
+          status: "PENDING_REVIEW",
+        });
+
+      expect(res.status).toBe(201);
+      const reqData = res.body.request || res.body;
+      expect(reqData.id).toBeDefined();
+      expect(reqData.requestNumber).toMatch(/^PR-\d{4}-\d{5}$/);
+      expect(reqData.status).toBe("PENDING_REVIEW");
+      expect(reqData.requesterId).toBe(seededUsers.requester1.id);
+      expect(reqData.reviewerId).toBe(seededUsers.reviewer1.id);
+
+      const dbRecord = await prisma.purchaseRequest.findUnique({
+        where: { id: reqData.id },
+      });
+      expect(dbRecord).toBeDefined();
+      expect(dbRecord?.title).toBe("Lab Equipment Renewal");
+      expect(dbRecord?.status).toBe("PENDING_REVIEW");
+
+      const history = await prisma.requestHistory.findFirst({
+        where: { requestId: reqData.id, action: "SUBMITTED" },
+      });
+      expect(history).toBeDefined();
+      expect(history?.actorId).toBe(seededUsers.requester1.id);
+      expect(history?.toStatus).toBe("PENDING_REVIEW");
+    });
+
+    it("allows saving a request as DRAFT without immediate submission", async () => {
+      const loginRes = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const cookie = loginRes.headers["set-cookie"][0];
+
+      const res = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Draft Stationeries",
+          description: "Notebooks and dry erase markers",
+          amount: 75.5,
+          justification: "Classroom lecture tools",
+          reviewerId: seededUsers.reviewer1.id,
+          status: "DRAFT",
+        });
+
+      expect(res.status).toBe(201);
+      const reqData = res.body.request || res.body;
+      expect(reqData.status).toBe("DRAFT");
+      expect(reqData.submittedAt).toBeNull();
+
+      const history = await prisma.requestHistory.findFirst({
+        where: { requestId: reqData.id, action: "CREATED" },
+      });
+      expect(history).toBeDefined();
+      expect(history?.toStatus).toBe("DRAFT");
+    });
+
+    it("retrieves active reviewers list via GET /api/users/reviewers", async () => {
+      const loginRes = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const cookie = loginRes.headers["set-cookie"][0];
+
+      const res = await request(app).get("/api/users/reviewers").set("Cookie", cookie);
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.reviewers)).toBe(true);
+      expect(res.body.reviewers.length).toBeGreaterThanOrEqual(2);
+      for (const rev of res.body.reviewers) {
+        expect(rev.role).toBe("REVIEWER");
+      }
+    });
+
+    it("rejects creation when assigned reviewer is invalid or inactive", async () => {
+      const loginRes = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const cookie = loginRes.headers["set-cookie"][0];
+
+      const res = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Invalid Reviewer Request",
+          description: "Testing invalid reviewer",
+          amount: 100.0,
+          justification: "Testing",
+          reviewerId: 999999,
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe("VALIDATION_ERROR");
+    });
+
+    it("rejects creation when required fields fail boundary validations", async () => {
+      const loginRes = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const cookie = loginRes.headers["set-cookie"][0];
+
+      // Missing/short title (< 3 chars)
+      const resShortTitle = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "AB",
+          description: "Valid description",
+          amount: 100.0,
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resShortTitle.status).toBe(400);
+
+      // Non-positive amount
+      const resZeroAmount = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "Valid description",
+          amount: 0,
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resZeroAmount.status).toBe(400);
+    });
+  });
+
+  describe("TEST-INT-07: Request modification and resubmission enforcement (FEAT-08, FR-05, BR-06, BR-07, AC-07)", () => {
+    it("blocks editing requests that are currently in PENDING_REVIEW status (BR-06)", async () => {
+      const loginRes = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const cookie = loginRes.headers["set-cookie"][0];
+
+      const res = await request(app)
+        .patch(`/api/requests/${seededRequests.request1.id}`)
+        .set("Cookie", cookie)
+        .send({ amount: 999.0 });
+
+      expect(res.status).toBe(409);
+      expect(res.body.code).toBe("INVALID_STATE_TRANSITION");
+    });
+
+    it("permits editing and resubmitting a RETURNED request", async () => {
+      // 1. Create a request and submit it
+      const requesterLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const requesterCookie = requesterLogin.headers["set-cookie"][0];
+
+      const createRes = await request(app)
+        .post("/api/requests")
+        .set("Cookie", requesterCookie)
+        .send({
+          title: "Request for Quotation Edit",
+          description: "Initial description",
+          amount: 500.0,
+          justification: "Initial justification",
+          reviewerId: seededUsers.reviewer1.id,
+          status: "PENDING_REVIEW",
+        });
+      expect(createRes.status).toBe(201);
+      const targetReqId = (createRes.body.request || createRes.body).id;
+
+      // 2. Reviewer returns the request
+      const reviewerLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
+      const reviewerCookie = reviewerLogin.headers["set-cookie"][0];
+
+      const returnRes = await request(app)
+        .post(`/api/requests/${targetReqId}/review`)
+        .set("Cookie", reviewerCookie)
+        .send({ decision: "RETURN", reason: "Please upload vendor quotes" });
+      expect(returnRes.status).toBe(200);
+      expect(returnRes.body.request.status).toBe("RETURNED");
+
+      // 3. Requester edits the RETURNED request
+      const editRes = await request(app)
+        .patch(`/api/requests/${targetReqId}`)
+        .set("Cookie", requesterCookie)
+        .send({
+          amount: 550.0,
+          justification: "Vendor quotation attached: $550",
+          reason: "Updated amount based on revised quote",
+        });
+
+      expect(editRes.status).toBe(200);
+      expect(editRes.body.request.status).toBe("RETURNED");
+
+      // 4. Requester resubmits the request
+      const submitRes = await request(app)
+        .post(`/api/requests/${targetReqId}/submit`)
+        .set("Cookie", requesterCookie)
+        .send({ reason: "Resubmitting with attached quotation" });
+
+      expect(submitRes.status).toBe(200);
+      expect(submitRes.body.request.status).toBe("PENDING_REVIEW");
+
+      // 5. Verify RequestHistory contains EDITED and RESUBMITTED
+      const editHistory = await prisma.requestHistory.findFirst({
+        where: { requestId: targetReqId, action: "EDITED" },
+      });
+      expect(editHistory).toBeDefined();
+
+      const resubmitHistory = await prisma.requestHistory.findFirst({
+        where: { requestId: targetReqId, action: "RESUBMITTED" },
+      });
+      expect(resubmitHistory).toBeDefined();
+      expect(resubmitHistory?.toStatus).toBe("PENDING_REVIEW");
+    });
+  });
+
+  describe("TEST-INT-08: Complete audit history persistence (FEAT-09, FR-06, BR-08, AC-11, NFR-04)", () => {
+    it("retrieves full chronological audit history for an authorized user", async () => {
+      const requesterLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const requesterCookie = requesterLogin.headers["set-cookie"][0];
+
+      // Create a request with multiple lifecycle steps to verify history
+      const createRes = await request(app)
+        .post("/api/requests")
+        .set("Cookie", requesterCookie)
+        .send({
+          title: "History Audit Test Request",
+          description: "Full lifecycle tracking test",
+          amount: 120.0,
+          justification: "Audit verification",
+          reviewerId: seededUsers.reviewer1.id,
+          status: "PENDING_REVIEW",
+        });
+      const reqId = (createRes.body.request || createRes.body).id;
+
+      // Reviewer approves request
+      const reviewerLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
+      const reviewerCookie = reviewerLogin.headers["set-cookie"][0];
+
+      await request(app)
+        .post(`/api/requests/${reqId}/review`)
+        .set("Cookie", reviewerCookie)
+        .send({ decision: "APPROVE" });
+
+      const res = await request(app)
+        .get(`/api/requests/${reqId}/history`)
+        .set("Cookie", requesterCookie);
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.history)).toBe(true);
+      expect(res.body.history.length).toBeGreaterThanOrEqual(2);
+
+      for (let i = 0; i < res.body.history.length; i++) {
+        const item = res.body.history[i];
+        expect(item.action).toBeDefined();
+        expect(item.actorId).toBeDefined();
+        expect(item.createdAt).toBeDefined();
+        if (i > 0) {
+          const prevTime = new Date(res.body.history[i - 1].createdAt).getTime();
+          const currTime = new Date(item.createdAt).getTime();
+          expect(currTime).toBeGreaterThanOrEqual(prevTime);
+        }
+      }
+    });
+
+    it("blocks unauthorized users from viewing audit history (BR-09, AC-10)", async () => {
+      // Requester 2 attempting to view history of Request 1 (owned by Requester 1)
+      const loginRes = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester2.email, password: seededUsers.requester2.password });
+      const cookie = loginRes.headers["set-cookie"][0];
+
+      const res = await request(app)
+        .get(`/api/requests/${seededRequests.request1.id}/history`)
+        .set("Cookie", cookie);
+
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe("ACCESS_DENIED");
+    });
+  });
+
+  // Sprint 2/3 reporting tests preserved as todo
   it.todo("TEST-INT-09: request filtering by status and date range");
   it.todo("TEST-INT-10: reporting summary aggregation endpoint");
 });

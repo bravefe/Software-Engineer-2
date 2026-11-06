@@ -73,7 +73,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   1. Test valid transitions: `DRAFT -> PENDING_REVIEW`, `PENDING_REVIEW -> APPROVED`, `PENDING_REVIEW -> REJECTED`, `PENDING_REVIEW -> RETURNED`, `RETURNED -> PENDING_REVIEW`.
   2. Test invalid transitions: `DRAFT -> APPROVED`, `DRAFT -> RETURNED`, `APPROVED -> PENDING_REVIEW`, `REJECTED -> RETURNED`, `APPROVED -> REJECTED`.
 - **Expected Result:** Valid transitions return `true`; all invalid or terminal transitions return `false`.
-- **Status:** `PLANNED` (Sprint 1)
+- **Status:** `PASSED` (Verified in `tests/server/unit.test.ts`)
 
 ### TEST-UNIT-04: Non-Self-Approval & Mandatory Reason Rules
 
@@ -170,7 +170,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   3. Assert returned entity contains valid `requestNumber` (`PR-2026-XXXXX`) and `status === 'PENDING_REVIEW'`.
   4. Verify record in PostgreSQL database matches submitted payload and foreign keys.
 - **Expected Result:** Request is persistently saved in database and linked to submitting requester and assigned reviewer.
-- **Status:** `PLANNED` (Sprint 1)
+- **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
 ### TEST-INT-04: Requester Data Isolation & Cross-Access Blocking
 
@@ -232,7 +232,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   4. Assert status transitions from `RETURNED` to `PENDING_REVIEW`.
   5. Verify `RequestHistory` records `RESUBMITTED` action.
 - **Expected Result:** Only `RETURNED` requests can be edited and resubmitted.
-- **Status:** `PLANNED` (Sprint 1)
+- **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
 ### TEST-INT-08: Complete Audit History Persistence
 
@@ -247,7 +247,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   3. Assert response contains array of chronological history objects.
   4. Verify each object contains `action`, `actorId`, `fromStatus`, `toStatus`, `reason`, and `createdAt` timestamp.
 - **Expected Result:** Full historical progression is accurately retrieved in chronological order.
-- **Status:** `PLANNED` (Sprint 1)
+- **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
 ### TEST-INT-09: Request Filtering by Status and Date Range
 
@@ -311,7 +311,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   3. Enter 0 or negative amount. Verify error indicator for positive amount.
   4. Fill valid fields. Verify "Save as Draft" and "Submit for Review" buttons become enabled.
 - **Expected Result:** Live validation counters guide user input and prevent invalid submissions.
-- **Status:** `PLANNED` (Sprint 1)
+- **Status:** `PASSED` (Verified in `tests/client/components.test.tsx`)
 
 ### TEST-COMP-03: Review Decision Action Modal & Mandatory Reason Enforcement
 
@@ -326,7 +326,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   3. Type whitespace only (`"   "`). Assert submit button remains disabled.
   4. Type `"Item specification requires clarification."`. Assert submit button becomes enabled.
 - **Expected Result:** Modal enforces reason requirement prior to submission.
-- **Status:** `PLANNED` (Sprint 1)
+- **Status:** `PASSED` (Verified in `tests/client/components.test.tsx`)
 
 ### TEST-COMP-04: History Timeline Presentation
 
@@ -340,7 +340,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   2. Verify all actions (e.g. `CREATED`, `RETURNED`, `APPROVED`) render with corresponding status badge colors.
   3. Verify rejection/return reason text is visible inside the card.
 - **Expected Result:** Timeline clearly displays historical milestones and notes.
-- **Status:** `PLANNED` (Sprint 1)
+- **Status:** `PASSED` (Verified in `tests/client/components.test.tsx`)
 
 ### TEST-COMP-05: Dynamic Navigation Bar Role Rendering
 
