@@ -28,12 +28,12 @@ $$\text{SRS Requirement} \iff \text{Feature ID} \iff \text{Sprint Plan} \iff \te
 | Requirement ID | Requirement Summary                                               | Feature ID(s)                   |   Sprint    | Primary Test ID(s)                                                                          | Verification Level                |                        Verification Status                        |
 | :------------- | :---------------------------------------------------------------- | :------------------------------ | :---------: | :------------------------------------------------------------------------------------------ | :-------------------------------- | :---------------------------------------------------------------: |
 | **FR-01**      | User login, logout, and role identification                       | `FEAT-01`, `FEAT-02`            |  Sprint 1   | `TEST-UNIT-01`, `TEST-INT-01`, `TEST-INT-02`, `TEST-COMP-01`, `TEST-COMP-05`                | Unit, Integration, Component      |                             `PASSED`                              |
-| **FR-02**      | Create and submit purchase requests with required details         | `FEAT-03`, `FEAT-04`, `FEAT-12` | Sprint 1, 2 | `TEST-UNIT-05`, `TEST-INT-03`, `TEST-COMP-02`, `TEST-E2E-01`                                | Unit, Integration, Component, E2E | `PARTIALLY VERIFIED`<br>(API & Component PASSED; E2E PLANNED)     |
-| **FR-03**      | View submitted requests and assigned requests                     | `FEAT-05`, `FEAT-06`            |  Sprint 1   | `TEST-INT-04`, `TEST-INT-05`, `TEST-E2E-01`                                                 | Integration, E2E                  |     `PARTIALLY VERIFIED`<br>(API Scoping passed; E2E PLANNED)     |
-| **FR-04**      | Review requests (approve, reject with reason, return with reason) | `FEAT-07`, `FEAT-12`            | Sprint 1, 2 | `TEST-UNIT-03`, `TEST-UNIT-04`, `TEST-INT-06`, `TEST-COMP-03`, `TEST-E2E-01`, `TEST-E2E-02` | Unit, Integration, Component, E2E | `PARTIALLY VERIFIED`<br>(Unit, API, Component PASSED; E2E PLANNED)|
-| **FR-05**      | Edit returned requests; prevent editing on other statuses         | `FEAT-08`                       |  Sprint 1   | `TEST-UNIT-03`, `TEST-INT-07`, `TEST-E2E-01`                                                | Unit, Integration, E2E            |  `PARTIALLY VERIFIED`<br>(Unit & API PASSED; E2E PLANNED)         |
-| **FR-06**      | Record and view chronological request audit history               | `FEAT-09`                       |  Sprint 1   | `TEST-INT-08`, `TEST-COMP-04`, `TEST-E2E-01`, `TEST-E2E-02`                                 | Integration, Component, E2E       |  `PARTIALLY VERIFIED`<br>(API & Component PASSED; E2E PLANNED)    |
-| **FR-07**      | Reviewer assignment and assigned-only review enforcement          | `FEAT-04`, `FEAT-06`, `FEAT-07` |  Sprint 1   | `TEST-INT-03`, `TEST-INT-05`, `TEST-INT-06`, `TEST-E2E-01`                                  | Integration, E2E                  |     `PARTIALLY VERIFIED`<br>(API Workflow passed; E2E PLANNED)    |
+| **FR-02**      | Create and submit purchase requests with required details         | `FEAT-03`, `FEAT-04`, `FEAT-12` | Sprint 1, 2 | `TEST-UNIT-05`, `TEST-INT-03`, `TEST-COMP-02`, `TEST-E2E-01`                                | Unit, Integration, Component, E2E | `PARTIALLY VERIFIED`<br>(Happy-path E2E passed; boundary validation remains planned) |
+| **FR-03**      | View submitted requests and assigned requests                     | `FEAT-05`, `FEAT-06`            |  Sprint 1   | `TEST-INT-04`, `TEST-INT-05`, `TEST-E2E-01`, `TEST-E2E-03`                                 | Integration, E2E                  | `PARTIALLY VERIFIED`<br>(API scoping and E2E journeys passed) |
+| **FR-04**      | Review requests (approve, reject with reason, return with reason) | `FEAT-07`, `FEAT-12`            | Sprint 1, 2 | `TEST-UNIT-03`, `TEST-UNIT-04`, `TEST-INT-06`, `TEST-COMP-03`, `TEST-E2E-01`, `TEST-E2E-02`, `TEST-E2E-03` | Unit, Integration, Component, E2E | `PASSED` |
+| **FR-05**      | Edit returned requests; prevent editing on other statuses         | `FEAT-08`                       |  Sprint 1   | `TEST-UNIT-03`, `TEST-INT-07`, `TEST-E2E-01`, `TEST-E2E-02`                                | Unit, Integration, E2E            | `PARTIALLY VERIFIED`<br>(Returned edit/resubmit and rejected-state UI verified) |
+| **FR-06**      | Record and view chronological request audit history               | `FEAT-09`                       |  Sprint 1   | `TEST-INT-08`, `TEST-COMP-04`, `TEST-E2E-01`, `TEST-E2E-02`                                | Integration, Component, E2E       | `PASSED` |
+| **FR-07**      | Reviewer assignment and assigned-only review enforcement          | `FEAT-04`, `FEAT-06`, `FEAT-07` |  Sprint 1   | `TEST-INT-03`, `TEST-INT-05`, `TEST-INT-06`, `TEST-E2E-01`, `TEST-E2E-03`                 | Integration, E2E                  | `PASSED` |
 | **FR-08**      | Request overview, filtering by status and date                    | `FEAT-10`, `FEAT-11`            |  Sprint 2   | `TEST-UNIT-06`, `TEST-INT-09`, `TEST-INT-10`, `TEST-E2E-04`                                 | Unit, Integration, E2E            |                             `PLANNED`                             |
 
 ---
@@ -72,24 +72,43 @@ $$\text{SRS Requirement} \iff \text{Feature ID} \iff \text{Sprint Plan} \iff \te
 | Acceptance Criteria ID | Description                                             | Implementing Feature(s)         | Primary Test ID(s)                                            |                 Verification Status                  |
 | :--------------------- | :------------------------------------------------------ | :------------------------------ | :------------------------------------------------------------ | :--------------------------------------------------: |
 | **AC-01**              | User logs in and accesses features according to role    | `FEAT-01`, `FEAT-02`            | `TEST-UNIT-01`, `TEST-INT-01`, `TEST-COMP-01`, `TEST-COMP-05` |                       `PASSED`                       |
-| **AC-02**              | Requester creates and submits purchase request          | `FEAT-03`, `FEAT-04`            | `TEST-INT-03`, `TEST-COMP-02`, `TEST-E2E-01`                  | `PARTIALLY VERIFIED`<br>(API & Component PASSED)     |
-| **AC-03**              | Requester views own requests and statuses               | `FEAT-05`                       | `TEST-INT-04`, `TEST-E2E-01`                                  | `PARTIALLY VERIFIED`<br>(API Scoping PASSED)         |
-| **AC-04**              | Assigned Reviewer views assigned requests               | `FEAT-06`                       | `TEST-INT-05`, `TEST-E2E-01`                                  | `PARTIALLY VERIFIED`<br>(API Scoping PASSED)         |
-| **AC-05**              | Reviewer approves request                               | `FEAT-07`                       | `TEST-INT-06`, `TEST-COMP-03`, `TEST-E2E-01`                  | `PARTIALLY VERIFIED`<br>(API & Component PASSED)     |
-| **AC-06**              | Reviewer must provide reason to reject or return        | `FEAT-07`                       | `TEST-UNIT-04`, `TEST-INT-06`, `TEST-COMP-03`                 |                       `PASSED`                       |
-| **AC-07**              | Requester edits and resubmits returned request          | `FEAT-08`                       | `TEST-UNIT-03`, `TEST-INT-07`, `TEST-E2E-01`                  | `PARTIALLY VERIFIED`<br>(Unit & API PASSED)          |
-| **AC-08**              | Requester cannot approve own request                    | `FEAT-07`                       | `TEST-UNIT-04`, `TEST-INT-06`                                 |                       `PASSED`                       |
-| **AC-09**              | Reviewer cannot review request assigned to another      | `FEAT-06`, `FEAT-07`            | `TEST-INT-05`, `TEST-INT-06`                                  |                       `PASSED`                       |
-| **AC-10**              | Users cannot access requests not authorized to view     | `FEAT-02`, `FEAT-05`, `FEAT-06` | `TEST-INT-02`, `TEST-INT-04`, `TEST-INT-05`                   |                       `PASSED`                       |
-| **AC-11**              | Review decisions and status changes recorded in history | `FEAT-09`                       | `TEST-INT-06`, `TEST-INT-08`, `TEST-COMP-04`                  |                       `PASSED`                       |
+| **AC-02**              | Requester creates and submits purchase request          | `FEAT-03`, `FEAT-04`            | `TEST-INT-03`, `TEST-COMP-02`, `TEST-E2E-01`                  | `PARTIALLY VERIFIED`<br>(Happy-path E2E passed; boundary validation remains planned) |
+| **AC-03**              | Requester views own requests and statuses               | `FEAT-05`                       | `TEST-INT-04`, `TEST-E2E-01`, `TEST-E2E-03`                   |                       `PASSED`                       |
+| **AC-04**              | Assigned Reviewer views assigned requests               | `FEAT-06`                       | `TEST-INT-05`, `TEST-E2E-01`, `TEST-E2E-03`                   |                       `PASSED`                       |
+| **AC-05**              | Reviewer approves request                               | `FEAT-07`                       | `TEST-INT-06`, `TEST-COMP-03`, `TEST-E2E-01`                  |                       `PASSED`                       |
+| **AC-06**              | Reviewer must provide reason to reject or return        | `FEAT-07`                       | `TEST-UNIT-04`, `TEST-INT-06`, `TEST-COMP-03`, `TEST-E2E-01`, `TEST-E2E-02` | `PASSED` |
+| **AC-07**              | Requester edits and resubmits returned request          | `FEAT-08`                       | `TEST-UNIT-03`, `TEST-INT-07`, `TEST-E2E-01`                  |                       `PASSED`                       |
+| **AC-08**              | Requester cannot approve own request                    | `FEAT-07`                       | `TEST-UNIT-04`, `TEST-INT-06`, `TEST-E2E-03`                  |                       `PASSED`                       |
+| **AC-09**              | Reviewer cannot review request assigned to another      | `FEAT-06`, `FEAT-07`            | `TEST-INT-05`, `TEST-INT-06`, `TEST-E2E-03`                  |                       `PASSED`                       |
+| **AC-10**              | Users cannot access requests not authorized to view     | `FEAT-02`, `FEAT-05`, `FEAT-06` | `TEST-INT-02`, `TEST-INT-04`, `TEST-INT-05`, `TEST-E2E-03`   |                       `PASSED`                       |
+| **AC-11**              | Review decisions and status changes recorded in history | `FEAT-09`                       | `TEST-INT-06`, `TEST-INT-08`, `TEST-COMP-04`, `TEST-E2E-01`, `TEST-E2E-02` | `PASSED` |
 | **AC-12**              | Filter requests and view basic request summaries        | `FEAT-10`, `FEAT-11`            | `TEST-UNIT-06`, `TEST-INT-09`, `TEST-INT-10`, `TEST-E2E-04`   |                      `PLANNED`                       |
 
 ---
 
-## 6. Coverage Analysis Summary
+## 6. Feature-to-Test Traceability
 
-- **Functional Requirement Coverage:** 8 / 8 requirements mapped. FR-01 fully verified; FR-03, FR-04, FR-07 partially verified on API authorization levels.
+| Feature ID | Feature Name | Test ID(s) |
+| :--- | :--- | :--- |
+| `FEAT-01` | User Authentication & Session Lifecycle | `TEST-UNIT-01`, `TEST-INT-01`, `TEST-COMP-01`, `TEST-E2E-01`, `TEST-E2E-02`, `TEST-E2E-03` |
+| `FEAT-02` | Role-Based Access Control (RBAC) & Route Authorization | `TEST-UNIT-02`, `TEST-INT-02`, `TEST-COMP-05`, `TEST-E2E-03` |
+| `FEAT-03` | Purchase Request Creation & Draft Management | `TEST-UNIT-03`, `TEST-UNIT-05`, `TEST-INT-03`, `TEST-COMP-02`, `TEST-E2E-01` |
+| `FEAT-04` | Reviewer Assignment & Routing | `TEST-INT-03`, `TEST-INT-05`, `TEST-E2E-01` |
+| `FEAT-05` | Requester Request Tracking & Personal Dashboard | `TEST-INT-04`, `TEST-E2E-01`, `TEST-E2E-03` |
+| `FEAT-06` | Reviewer Queue & Assignment Scope Enforcement | `TEST-INT-05`, `TEST-E2E-01`, `TEST-E2E-03` |
+| `FEAT-07` | Review Decision Processing (Approve, Reject, Return) | `TEST-UNIT-03`, `TEST-UNIT-04`, `TEST-INT-06`, `TEST-COMP-03`, `TEST-E2E-01`, `TEST-E2E-02`, `TEST-E2E-03` |
+| `FEAT-08` | Request Modification & Resubmission Workflow | `TEST-UNIT-03`, `TEST-INT-07`, `TEST-E2E-01` |
+| `FEAT-09` | Request Audit Trail & History Tracking | `TEST-INT-08`, `TEST-COMP-04`, `TEST-E2E-01`, `TEST-E2E-02` |
+| `FEAT-10` | Multi-Criteria Request Filtering & Search | `TEST-INT-09`, `TEST-E2E-04` |
+| `FEAT-11` | Status Breakdown & Financial Metrics Reporting | `TEST-UNIT-06`, `TEST-INT-10`, `TEST-E2E-04` |
+| `FEAT-12` | Enhanced Form Validation & Numeric Boundary Checking | `TEST-UNIT-05`, `TEST-COMP-02`, `TEST-COMP-03` |
+| `FEAT-13` | System Performance & Security Hardening | `TEST-UNIT-01`, `TEST-INT-01`, `TEST-INT-02`, `TEST-E2E-03`; no dedicated performance benchmark is specified |
+| `FEAT-14` | End-to-End System Verification & Release Packaging | `TEST-UNIT-01`–`TEST-UNIT-06`, `TEST-INT-01`–`TEST-INT-10`, `TEST-COMP-01`–`TEST-COMP-05`, `TEST-E2E-01`–`TEST-E2E-05`; no dedicated packaging/deployment test is specified |
+
+## 7. Coverage Analysis Summary
+
+- **Functional Requirement Coverage:** 8 / 8 requirements mapped. E2E-01 through E2E-03 now verify the core request, review, history, and authorization journeys; FR-02/AC-02 boundary validation and some FR-05 edit-state combinations remain partially verified.
 - **Business Rule Coverage:** BR-01, BR-03, BR-04, BR-05, BR-09, BR-10 fully verified with automated test suites.
 - **Non-Functional Requirement Coverage:** NFR-01 (Security) verified with bcrypt and JWT tests. NFR-02, NFR-03, NFR-04, and NFR-05 remain planned or partially verified until full application delivery.
-- **Acceptance Criteria Coverage:** AC-01, AC-03, AC-04, AC-05, AC-06, AC-08, AC-09, AC-10 verified by passing tests. AC-02, AC-07, AC-12 remain planned.
-- **End-to-End (Playwright) Coverage:** 0 E2E tests executed in this unit/API testing issue; all 5 Playwright journeys (`TEST-E2E-01` through `TEST-E2E-05`) remain explicitly marked as `PLANNED` / `FIXME`.
+- **Acceptance Criteria Coverage:** AC-01, AC-03 through AC-11 are verified by passing tests; AC-02 is partially verified pending boundary validation, and AC-12 remains planned.
+- **End-to-End (Playwright) Coverage:** `TEST-E2E-01` through `TEST-E2E-03` passed. `TEST-E2E-04` and `TEST-E2E-05` remain planned / FIXME and are outside Issue 6's FEAT-01–FEAT-09 scope.
