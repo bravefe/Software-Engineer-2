@@ -369,24 +369,16 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 - **Test Objective:** Validate the complete end-to-end purchase request lifecycle across multiple user roles in a real browser.
 - **Related Requirements:** FR-01, FR-02, FR-03, FR-04, FR-05, FR-06, FR-07, BR-01 through BR-08, AC-01 through AC-07, AC-11
 - **Related Features:** `FEAT-01` through `FEAT-09`
-- **Preconditions:** PostgreSQL test container running; seed accounts available.
+- **Preconditions:** PostgreSQL test database is available. The Playwright setup creates unique test accounts and removes only its own fixtures.
 - **Test Steps:**
-  1. Open browser at `/login`. Log in as Requester (`requester1@macau678.com`).
-  2. Navigate to `/requests/new`. Fill form (Title: "Lab Equipment Renewal", Amount: "1500.00", Reviewer: "Reviewer One").
-  3. Click "Submit for Review". Verify redirected to request detail page showing status badge `Pending Review`.
-  4. Click "Sign Out".
-  5. Log in as Reviewer (`reviewer1@macau678.com`).
-  6. Navigate to `/reviewer/queue`. Locate "Lab Equipment Renewal". Click "Review".
-  7. In review modal, select "Return", enter reason: "Please upload official quote before approval", and submit.
-  8. Verify status updates to `Returned`. Sign out.
-  9. Log back in as Requester. Open request detail. Verify "Edit Request" button is visible and reason is shown.
-  10. Click "Edit Request". Update amount to "1450.00". Click "Resubmit for Review".
-  11. Verify status transitions back to `Pending Review`. Sign out.
-  12. Log back in as Reviewer. Open request. Click "Approve".
-  13. Verify status updates to `Approved` (terminal).
-  14. Inspect History Timeline tab; verify entries exist for `SUBMITTED`, `RETURNED`, `RESUBMITTED`, and `APPROVED`.
-- **Expected Result:** Entire multi-user approval lifecycle completes successfully and persists across browser sessions.
-- **Status:** `PLANNED` (Sprint 1)
+  1. Log in as the test Requester and create a request as a draft.
+  2. Verify `DRAFT`, then submit it and verify `PENDING_REVIEW`.
+  3. Sign in as the assigned Reviewer, return the request with a reason, and verify `RETURNED`.
+  4. Sign in as the Requester, update the amount, and resubmit; verify `PENDING_REVIEW`.
+  5. Sign in as the Reviewer and approve the request; verify `APPROVED`.
+  6. Verify the timeline contains `CREATED`, `SUBMITTED`, `RETURNED`, `EDITED`, `RESUBMITTED`, and `APPROVED`, and confirm the final status, amount, and history in the database.
+- **Expected Result:** The complete draft-to-return-to-resubmit-to-approve journey and its audit history persist across role changes and browser sessions.
+- **Status:** `PASSED` (Verified in `tests/e2e/purchase-approval.spec.ts`)
 
 ### TEST-E2E-02: Purchase Rejection Journey with Mandatory Reason
 
@@ -394,16 +386,15 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 - **Test Objective:** Validate rejection workflow, ensuring rejection requires a reason and moves request to terminal `Rejected` state.
 - **Related Requirements:** FR-04, BR-05, BR-07, AC-05, AC-06
 - **Related Features:** `FEAT-07`, `FEAT-09`
-- **Preconditions:** Seeded pending request assigned to Reviewer.
+- **Preconditions:** A test Requester, assigned Reviewer, and test database are available.
 - **Test Steps:**
-  1. Log in as Reviewer.
-  2. Open pending request. Click "Review".
-  3. Select "Reject". Attempt to click "Confirm Rejection" without typing reason. Verify modal prevents submission.
-  4. Enter reason: "Budget exhausted for current fiscal year." Submit.
-  5. Verify badge updates to `Rejected` (red).
-  6. Log in as Requester. Open request. Verify "Edit Request" button is NOT displayed.
-- **Expected Result:** Rejection strictly requires reason and transitions request to immutable terminal state.
-- **Status:** `PLANNED` (Sprint 1)
+  1. Log in as the Requester and submit a request to the Reviewer.
+  2. Log in as the Reviewer, select "Reject", and verify confirmation is disabled for an empty or whitespace-only reason.
+  3. Enter a reason and confirm rejection; verify `REJECTED` and the reason in history.
+  4. Attempt a second review decision through the API and verify the terminal-state transition is rejected.
+  5. Log in as the Requester and verify editing is unavailable, including on the direct edit route.
+- **Expected Result:** Rejection requires a non-empty reason, is recorded in history, and cannot be changed by a subsequent review decision.
+- **Status:** `PASSED` (Verified in `tests/e2e/purchase-approval.spec.ts`)
 
 ### TEST-E2E-03: Security & Authorization Boundary Checks
 
@@ -411,15 +402,14 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 - **Test Objective:** Validate client and server access restrictions, direct URL protection, and prevention of self-approval.
 - **Related Requirements:** BR-03, BR-04, BR-09, NFR-01, AC-08, AC-09, AC-10
 - **Related Features:** `FEAT-01`, `FEAT-02`, `FEAT-06`, `FEAT-07`
-- **Preconditions:** Two distinct requesters and two distinct reviewers exist in database.
+- **Preconditions:** The Playwright setup creates two Requesters, two Reviewers, a cross-assigned request, and a self-review fixture.
 - **Test Steps:**
-  1. Without logging in, navigate directly to `/requester/dashboard`. Verify redirected to `/login`.
-  2. Log in as Requester A. Navigate directly to `/requests/999` (belonging to Requester B).
-  3. Verify access is denied with a `404 Not Found` or `403 Forbidden` error screen.
-  4. Log in as Reviewer A. Navigate to a request assigned to Reviewer B.
-  5. Verify review action buttons are disabled or hidden, and manual API review triggers return `403`.
-- **Expected Result:** All unauthorized access attempts are blocked at both UI and server boundary levels.
-- **Status:** `PLANNED` (Sprint 1)
+  1. Without a session, navigate to `/requester/dashboard` and verify redirect to `/login`.
+  2. Log in as Requester A and navigate directly to a request owned by Requester B; verify an access-denied message.
+  3. Log in as Reviewer A and navigate to a request assigned to Reviewer B; verify access is denied and a review API request returns `403`.
+  4. Attempt to approve a request for which Reviewer A is also the requester; verify the UI shows the server denial and the request remains pending.
+- **Expected Result:** Unauthenticated, cross-owner, cross-reviewer, and self-review attempts are blocked without changing request state.
+- **Status:** `PASSED` (Verified in `tests/e2e/purchase-approval.spec.ts`)
 
 ### TEST-E2E-04: Multi-Criteria Filter & Reports Journey
 
