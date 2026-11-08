@@ -1,4 +1,4 @@
-# Software Test Specification (STS) & Test Strategy
+﻿# Software Test Specification (STS) & Test Strategy
 
 **Project Name:** Macau678 University Purchase Approval System  
 **Course:** CPE 334 - Introduction to Software Engineering in the Age of AI Agents (Semester 1/2026)  
@@ -442,3 +442,38 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   5. Fill and submit a purchase request on tablet viewport to confirm touch accessibility.
 - **Expected Result:** Application renders cleanly across target viewports meeting usability requirements (NFR-02).
 - **Status:** `PLANNED` (Sprint 3)
+
+---
+
+## 6. Test Coverage Matrix
+
+Each row maps one test case to the requirements and features it covers. Execution status reflects the individual test case specification above.
+
+| Test ID | Requirement Coverage | Feature Coverage | Execution Status |
+| :--- | :--- | :--- | :--- |
+| `TEST-UNIT-01` | NFR-01, FR-01 | `FEAT-01` | `PASSED` |
+| `TEST-UNIT-02` | FR-01, BR-09, NFR-01 | `FEAT-02` | `PASSED` |
+| `TEST-UNIT-03` | BR-07, NFR-04 | `FEAT-03`, `FEAT-07`, `FEAT-08` | `PASSED` |
+| `TEST-UNIT-04` | BR-03, BR-05 | `FEAT-07` | `PASSED` |
+| `TEST-UNIT-05` | FR-02, NFR-02, NFR-04 | `FEAT-03`, `FEAT-12` | `PLANNED` (Sprint 2) |
+| `TEST-UNIT-06` | FR-08, AC-12 | `FEAT-11` | `PLANNED` (Sprint 2) |
+| `TEST-INT-01` | FR-01, NFR-01, AC-01 | `FEAT-01` | `PASSED` |
+| `TEST-INT-02` | FR-01, BR-01, NFR-01, AC-10 | `FEAT-01`, `FEAT-02` | `PASSED` |
+| `TEST-INT-03` | FR-02, FR-07, BR-01, BR-02, BR-10, AC-02 | `FEAT-03`, `FEAT-04` | `PASSED` |
+| `TEST-INT-04` | FR-03, BR-09, AC-03, AC-10 | `FEAT-05` | `PASSED` |
+| `TEST-INT-05` | FR-03, FR-07, BR-04, BR-09, AC-04, AC-09, AC-10 | `FEAT-06` | `PASSED` |
+| `TEST-INT-06` | FR-04, BR-03, BR-04, BR-05, BR-07, AC-05, AC-06, AC-08 | `FEAT-07` | `PASSED` |
+| `TEST-INT-07` | FR-05, BR-06, BR-07, AC-07 | `FEAT-08` | `PASSED` |
+| `TEST-INT-08` | FR-06, BR-08, AC-11 | `FEAT-09` | `PASSED` |
+| `TEST-INT-09` | FR-08, AC-12 | `FEAT-10` | `PLANNED` (Sprint 2) |
+| `TEST-INT-10` | FR-08, AC-12 | `FEAT-11` | `PLANNED` (Sprint 2) |
+| `TEST-COMP-01` | FR-01, AC-01 | `FEAT-01` | `PASSED` |
+| `TEST-COMP-02` | FR-02, AC-02 | `FEAT-03` | `PASSED` |
+| `TEST-COMP-03` | FR-04, BR-05, AC-06 | `FEAT-07` | `PASSED` |
+| `TEST-COMP-04` | FR-06, BR-08, AC-11 | `FEAT-09` | `PASSED` |
+| `TEST-COMP-05` | FR-01, BR-09 | `FEAT-02` | `PASSED` |
+| `TEST-E2E-01` | FR-02, FR-04, FR-05, BR-06, BR-07, AC-02, AC-05, AC-07 | `FEAT-03`, `FEAT-07`, `FEAT-08` | `PASSED` |
+| `TEST-E2E-02` | FR-04, BR-05, AC-06 | `FEAT-07` | `PASSED` |
+| `TEST-E2E-03` | FR-03, BR-03, BR-04, BR-09, AC-08, AC-09, AC-10 | `FEAT-05`, `FEAT-06`, `FEAT-07` | `PASSED` |
+| `TEST-E2E-04` | FR-08, AC-12 | `FEAT-10`, `FEAT-11` | `PLANNED` (Sprint 2) |
+| `TEST-E2E-05` | NFR-02 | `FEAT-13`, `FEAT-14` | `PLANNED` (Sprint 3) |

@@ -1,5 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import dotenv from "dotenv";
+import { mkdir } from "node:fs/promises";
+import { dirname } from "node:path";
 import { resolve } from "node:path";
 
 dotenv.config({ path: resolve(process.cwd(), "server/.env") });
@@ -18,6 +20,22 @@ let users: {
   reviewer2: { id: number; email: string; name: string; role: "REVIEWER" };
 };
 let selfReviewRequestId: number;
+let screenshotIndex = 0;
+
+async function workflowStep<T>(page: Page, name: string, action: () => Promise<T>): Promise<T> {
+  return test.step(name, async () => {
+    const result = await action();
+    const screenshotPath = test.info().outputPath(
+      "step-screenshots",
+      `${String(++screenshotIndex).padStart(3, "0")}-${name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")}.png`,
+    );
+    await mkdir(dirname(screenshotPath), { recursive: true });
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    return result;
+  });
+}
 
 test.beforeAll(async () => {
   const passwordHash = await hashPassword(password);
@@ -128,16 +146,20 @@ async function signIn(
   page: Page,
   user: { email: string; name: string; role: "REQUESTER" | "REVIEWER" },
 ) {
-  await page.goto("/login");
-  await page.getByLabel("Email address").fill(user.email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign In" }).click();
-  await expect(page.getByText(`${user.name} (${user.role})`, { exact: true })).toBeVisible();
+  await workflowStep(page, `Sign in as ${user.role}`, async () => {
+    await page.goto("/login");
+    await page.getByLabel("Email address").fill(user.email);
+    await page.getByLabel("Password").fill(password);
+    await page.getByRole("button", { name: "Sign In" }).click();
+    await expect(page.getByText(`${user.name} (${user.role})`, { exact: true })).toBeVisible();
+  });
 }
 
 async function signOut(page: Page) {
-  await page.getByRole("button", { name: "Sign Out" }).click();
-  await expect(page.getByRole("link", { name: "Sign In" })).toBeVisible();
+  await workflowStep(page, "Sign out", async () => {
+    await page.getByRole("button", { name: "Sign Out" }).click();
+    await expect(page.getByRole("link", { name: "Sign In" })).toBeVisible();
+  });
 }
 
 async function createRequest(
@@ -146,19 +168,21 @@ async function createRequest(
   reviewerId: number,
   submitImmediately: boolean,
 ) {
-  await page.goto("/requests/new");
-  await page.locator("#request-title").fill(title);
-  await page.locator("#request-amount").fill("1500.00");
-  await page.locator("#request-reviewer").selectOption(String(reviewerId));
-  await page.locator("#request-description").fill("Issue 6 end-to-end integration test request.");
-  await page.locator("#request-justification").fill("Verify the purchase approval workflow.");
-  await page
-    .getByRole("button", {
-      name: submitImmediately ? "Submit for Review" : "Save as Draft",
-    })
-    .click();
-  await expect(page.getByRole("heading", { name: title })).toBeVisible();
-  return readRequestId(page);
+  return workflowStep(page, "Create purchase request", async () => {
+    await page.getByRole("link", { name: "New Request" }).click();
+    await page.locator("#request-title").fill(title);
+    await page.locator("#request-amount").fill("1500.00");
+    await page.locator("#request-reviewer").selectOption(String(reviewerId));
+    await page.locator("#request-description").fill("Issue 6 end-to-end integration test request.");
+    await page.locator("#request-justification").fill("Verify the purchase approval workflow.");
+    await page
+      .getByRole("button", {
+        name: submitImmediately ? "Submit for Review" : "Save as Draft",
+      })
+      .click();
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    return readRequestId(page);
+  });
 }
 
 function readRequestId(page: Page): number {
@@ -170,11 +194,13 @@ function readRequestId(page: Page): number {
 }
 
 async function openQueueRequest(page: Page, title: string) {
-  await page.goto("/reviewer/queue");
-  const row = page.getByRole("row").filter({ hasText: title });
-  await expect(row).toBeVisible();
-  await row.getByRole("link", { name: "Review Request" }).click();
-  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await workflowStep(page, "Open request from reviewer queue", async () => {
+    await page.getByRole("link", { name: "Review Queue" }).click();
+    const row = page.getByRole("row").filter({ hasText: title });
+    await expect(row).toBeVisible();
+    await row.getByRole("link", { name: "Review Request" }).click();
+    await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  });
 }
 
 async function expectStatus(page: Page, status: string) {
@@ -188,45 +214,53 @@ test("TEST-E2E-01: draft to return to resubmit to approval, with persisted histo
 
   await signIn(page, users.requester1);
   const requestId = await createRequest(page, title, users.reviewer1.id, false);
-  await expectStatus(page, "draft");
-  await page.getByRole("button", { name: "Submit for Review" }).click();
-  await expectStatus(page, "pending_review");
+  await workflowStep(page, "Submit draft for review", async () => {
+    await expectStatus(page, "draft");
+    await page.getByRole("button", { name: "Submit for Review" }).click();
+    await expectStatus(page, "pending_review");
+  });
   await signOut(page);
 
   await signIn(page, users.reviewer1);
   await openQueueRequest(page, title);
-  await page.getByRole("button", { name: "Return", exact: true }).click();
-  const returnDialog = page.getByRole("dialog");
-  await returnDialog
-    .getByLabel("Reason")
-    .fill("Please attach the official quote before approval.");
-  await returnDialog.getByRole("button", { name: "Confirm Return" }).click();
-  await expectStatus(page, "returned");
-  await expect(page.getByText("Please attach the official quote before approval.")).toBeVisible();
+  await workflowStep(page, "Return request with reason", async () => {
+    await page.getByRole("button", { name: "Return", exact: true }).click();
+    const returnDialog = page.getByRole("dialog");
+    await returnDialog
+      .getByLabel("Reason")
+      .fill("Please attach the official quote before approval.");
+    await returnDialog.getByRole("button", { name: "Confirm Return" }).click();
+    await expectStatus(page, "returned");
+    await expect(page.getByText("Please attach the official quote before approval.")).toBeVisible();
+  });
   await signOut(page);
 
   await signIn(page, users.requester1);
-  await page.goto(`/requests/${requestId}`);
-  await page.getByRole("link", { name: "Edit & Resubmit" }).click();
-  await page.locator("#edit-amount").fill("1450.00");
-  await page.locator("#edit-notes").fill("Updated quote amount.");
-  await page.getByRole("button", { name: "Save & Resubmit for Review" }).click();
-  await expectStatus(page, "pending_review");
-  await expect(page.getByTestId("action-badge-RESUBMITTED")).toBeVisible();
+  await workflowStep(page, "Edit and resubmit returned request", async () => {
+    await page.goto(`/requests/${requestId}`);
+    await page.getByRole("link", { name: "Edit & Resubmit" }).click();
+    await page.locator("#edit-amount").fill("1450.00");
+    await page.locator("#edit-notes").fill("Updated quote amount.");
+    await page.getByRole("button", { name: "Save & Resubmit for Review" }).click();
+    await expectStatus(page, "pending_review");
+    await expect(page.getByTestId("action-badge-RESUBMITTED")).toBeVisible();
+  });
   await signOut(page);
 
   await signIn(page, users.reviewer1);
   await openQueueRequest(page, title);
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Confirm Approval" })
-    .click();
-  await expectStatus(page, "approved");
-  await expect(page.getByTestId("action-badge-SUBMITTED")).toBeVisible();
-  await expect(page.getByTestId("action-badge-RETURNED")).toBeVisible();
-  await expect(page.getByTestId("action-badge-RESUBMITTED")).toBeVisible();
-  await expect(page.getByTestId("action-badge-APPROVED")).toBeVisible();
+  await workflowStep(page, "Approve resubmitted request", async () => {
+    await page.getByRole("button", { name: "Approve", exact: true }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Confirm Approval" })
+      .click();
+    await expectStatus(page, "approved");
+    await expect(page.getByTestId("action-badge-SUBMITTED")).toBeVisible();
+    await expect(page.getByTestId("action-badge-RETURNED")).toBeVisible();
+    await expect(page.getByTestId("action-badge-RESUBMITTED")).toBeVisible();
+    await expect(page.getByTestId("action-badge-APPROVED")).toBeVisible();
+  });
 
   const persistedRequest = await prisma.purchaseRequest.findUnique({
     where: { id: requestId },
@@ -253,16 +287,18 @@ test("TEST-E2E-02: rejection requires a reason and remains terminal", async ({ p
 
   await signIn(page, users.reviewer1);
   await openQueueRequest(page, title);
-  await page.getByRole("button", { name: "Reject", exact: true }).click();
-  const rejectDialog = page.getByRole("dialog");
-  const confirmRejection = rejectDialog.getByRole("button", { name: "Confirm Rejection" });
-  await expect(confirmRejection).toBeDisabled();
-  await rejectDialog.getByLabel("Reason").fill("   ");
-  await expect(confirmRejection).toBeDisabled();
-  await rejectDialog.getByLabel("Reason").fill("Budget is unavailable this fiscal year.");
-  await confirmRejection.click();
-  await expectStatus(page, "rejected");
-  await expect(page.getByText("Budget is unavailable this fiscal year.")).toBeVisible();
+  await workflowStep(page, "Reject request with required reason", async () => {
+    await page.getByRole("button", { name: "Reject", exact: true }).click();
+    const rejectDialog = page.getByRole("dialog");
+    const confirmRejection = rejectDialog.getByRole("button", { name: "Confirm Rejection" });
+    await expect(confirmRejection).toBeDisabled();
+    await rejectDialog.getByLabel("Reason").fill("   ");
+    await expect(confirmRejection).toBeDisabled();
+    await rejectDialog.getByLabel("Reason").fill("Budget is unavailable this fiscal year.");
+    await confirmRejection.click();
+    await expectStatus(page, "rejected");
+    await expect(page.getByText("Budget is unavailable this fiscal year.")).toBeVisible();
+  });
 
   const secondDecision = await page.context().request.post(
     new URL(`/api/requests/${requestId}/review`, page.url()).toString(),
@@ -273,18 +309,22 @@ test("TEST-E2E-02: rejection requires a reason and remains terminal", async ({ p
   await signOut(page);
 
   await signIn(page, users.requester1);
-  await page.goto(`/requests/${requestId}`);
-  await expectStatus(page, "rejected");
-  await expect(page.getByRole("link", { name: "Edit & Resubmit" })).toHaveCount(0);
-  await page.goto(`/requests/${requestId}/edit`);
-  await expect(page.getByRole("heading", { name: "Editing Not Allowed" })).toBeVisible();
+  await workflowStep(page, "Verify rejected request cannot be edited", async () => {
+    await page.goto(`/requests/${requestId}`);
+    await expectStatus(page, "rejected");
+    await expect(page.getByRole("link", { name: "Edit & Resubmit" })).toHaveCount(0);
+    await page.goto(`/requests/${requestId}/edit`);
+    await expect(page.getByRole("heading", { name: "Editing Not Allowed" })).toBeVisible();
+  });
 });
 
 test("TEST-E2E-03: direct routes, ownership, assignment, and self-review are blocked", async ({
   page,
 }) => {
-  await page.goto("/requester/dashboard");
-  await expect(page).toHaveURL(/\/login$/);
+  await workflowStep(page, "Block unauthenticated direct route", async () => {
+    await page.goto("/requester/dashboard");
+    await expect(page).toHaveURL(/\/login$/);
+  });
 
   await signIn(page, users.requester2);
   const title = `Issue 6 Authorization Boundary ${runId}`;
@@ -292,30 +332,36 @@ test("TEST-E2E-03: direct routes, ownership, assignment, and self-review are blo
   await signOut(page);
 
   await signIn(page, users.requester1);
-  await page.goto(`/requests/${requestId}`);
-  await expect(page.getByRole("alert")).toContainText("Access denied");
+  await workflowStep(page, "Block request access for another requester", async () => {
+    await page.goto(`/requests/${requestId}`);
+    await expect(page.getByRole("alert")).toContainText("Access denied");
+  });
   await signOut(page);
 
   await signIn(page, users.reviewer1);
-  await page.goto(`/requests/${requestId}`);
-  await expect(page.getByRole("alert")).toContainText("Access denied");
+  await workflowStep(page, "Block access for unassigned reviewer", async () => {
+    await page.goto(`/requests/${requestId}`);
+    await expect(page.getByRole("alert")).toContainText("Access denied");
 
-  const deniedReview = await page.context().request.post(
-    new URL(`/api/requests/${requestId}/review`, page.url()).toString(),
-    { data: { decision: "APPROVE" } },
-  );
-  expect(deniedReview.status()).toBe(403);
-  expect((await deniedReview.json()).code).toBe("ACCESS_DENIED");
+    const deniedReview = await page.context().request.post(
+      new URL(`/api/requests/${requestId}/review`, page.url()).toString(),
+      { data: { decision: "APPROVE" } },
+    );
+    expect(deniedReview.status()).toBe(403);
+    expect((await deniedReview.json()).code).toBe("ACCESS_DENIED");
+  });
 
-  await page.goto(`/requests/${selfReviewRequestId}`);
-  await expectStatus(page, "pending_review");
-  await page.getByRole("button", { name: "Approve", exact: true }).click();
-  await page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Confirm Approval" })
-    .click();
-  await expect(page.getByRole("alert")).toContainText("Cannot review or approve your own");
-  await expectStatus(page, "pending_review");
+  await workflowStep(page, "Block reviewer from approving own request", async () => {
+    await page.goto(`/requests/${selfReviewRequestId}`);
+    await expectStatus(page, "pending_review");
+    await page.getByRole("button", { name: "Approve", exact: true }).click();
+    await page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Confirm Approval" })
+      .click();
+    await expect(page.getByRole("alert")).toContainText("Cannot review or approve your own");
+    await expectStatus(page, "pending_review");
+  });
 });
 
 test.fixme(

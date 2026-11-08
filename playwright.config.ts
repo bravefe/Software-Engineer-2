@@ -4,10 +4,14 @@ export default defineConfig({
   testDir: "./tests/e2e",
   fullyParallel: false,
   workers: 1,
-  reporter: "list",
+  reporter: [["list"], ["html", { outputFolder: "playwright-report", open: "never" }]],
   use: {
     baseURL: "http://localhost:5173",
-    trace: "on-first-retry",
+    // Record each test's browser actions, DOM snapshots, and network activity.
+    trace: "on",
+    // Keep a replayable recording and a screenshot for every test.
+    video: "on",
+    screenshot: "on",
   },
   webServer: [
     {
