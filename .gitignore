@@ -15,3 +15,5 @@ server/prisma/*.db
 temp/
 .vscode/
 uploads/
+test-results/
+playwright-report/
