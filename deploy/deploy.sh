@@ -2,10 +2,10 @@
 set -euo pipefail
 
 # ==============================================================================
-# TokTickIT — Idempotent Google Cloud Run Deployment Script
+# Macau678 Purchase Approval System — idempotent Cloud Run deployment
 # ==============================================================================
 # Usage:
-#   ./deploy/deploy.sh [--demo]
+#   ./deploy/deploy.sh
 #
 # Environment Variables (Optional):
 #   PROJECT_ID   GCP Project ID (defaults to active gcloud config project)
@@ -15,15 +15,16 @@ set -euo pipefail
 # WHAT THIS SCRIPT DOES  (one-time / manual first setup; safe to re-run)
 #   Creates every cloud resource the app needs and does the first deployment:
 #   1 enable APIs     2 Artifact Registry  3 Cloud SQL instance  4 database
-#   5 runtime SA+IAM  6 DB user + secret   7 admin password      8 demo password
-#   (secret access)   9 build image        10 migrate+seed job   11 Cloud Run service
+#   5 runtime SA+IAM  6 DB user + secret   7 seeded-user secret
+#   8 secret access  9 build image        10 migrate+seed job   11 Cloud Run service
 #   After this, routine releases are done by GitHub Actions (deploy.yml ->
 #   deploy/release.sh), which only UPDATES these resources.
 #
 # ⭐ IMPORTANT
 #   - Idempotent: existing resources/secrets are reused, never overwritten
 #     (a re-run does not replace credentials).
-#   - Passwords are generated with openssl and live only in Secret Manager;
+#   - Database and seeded-user passwords are generated with openssl and live
+#     only in Secret Manager;
 #     they are never printed (run_cmd redacts --password=...).
 #   - Preview first with:  DRY_RUN=1 ./deploy/deploy.sh   (no gcloud calls)
 #   - Run from the REPO ROOT (step 9 builds the root Dockerfile).
@@ -49,20 +50,10 @@ set -euo pipefail
 DRY_RUN="${DRY_RUN:-0}"
 # CHANGE ME: default region if your group uses another one.
 REGION="${REGION:-asia-southeast1}"
-SEED_DEMO_DATA="false"
-
-for arg in "$@"; do
-  case "$arg" in
-    --demo)
-      SEED_DEMO_DATA="true"
-      ;;
-    *)
-      echo "Unknown argument: $arg" >&2
-      echo "Usage: $0 [--demo]" >&2
-      exit 1
-      ;;
-  esac
-done
+if [ "$#" -ne 0 ]; then
+  echo "Usage: $0" >&2
+  exit 1
+fi
 
 # Helper: prints the command (DRY_RUN=1) or prints then executes it.
 # ⭐ IMPORTANT: --password=... is redacted in the log; keep this behaviour.
@@ -100,36 +91,32 @@ fi
 
 # ------------------------------------------------------------------------------
 # Resource names
-# ⚠️ The lab guide refers to these names (toktickit, toktickit-pg,
-#    toktickit-runner, ...) and deploy.yml / release.sh / teardown.sh use the
-#    same ones. Keep them unless the guide says otherwise.
+# ⚠️ These Macau678 resource names must match deploy.yml, release.sh,
+#    teardown.sh, and the offline deployment tests.
 # CHANGE ME: rename only if your group uses its own naming (then rename it in
 #            deploy.yml, release.sh, teardown.sh and the tests too).
 # ------------------------------------------------------------------------------
-REPO_NAME="toktickit"
-SQL_INSTANCE="toktickit-pg"
-DB_NAME="toktickit"
-DB_USER="toktickit"
-SERVICE_NAME="toktickit"
-MIGRATE_JOB_NAME="toktickit-migrate"
-SA_NAME="toktickit-runner"
+REPO_NAME="macau678"
+SQL_INSTANCE="macau678-pg"
+DB_NAME="macau678"
+DB_USER="macau678"
+SERVICE_NAME="macau678-purchase-approval"
+MIGRATE_JOB_NAME="macau678-migrate"
+SA_NAME="macau678-runner"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 SQL_CONN_NAME="${PROJECT_ID}:${REGION}:${SQL_INSTANCE}"
 IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${SERVICE_NAME}:latest"
 
 # Secret Manager secret names (values are never stored in this repo).
-SECRET_DB_URL="toktickit-database-url"
-SECRET_ADMIN_PASS="toktickit-admin-password"
-SECRET_DEMO_PASS="toktickit-demo-password"
+SECRET_DB_URL="macau678-database-url"
+SECRET_SEED_USER_PASS="macau678-seed-user-password"
 
-GENERATED_ADMIN_PASSWORD=""
-GENERATED_DEMO_PASSWORD=""
+GENERATED_SEED_USER_PASSWORD=""
 
 echo "=================================================================="
-echo "TokTickIT Cloud Run Deployment"
+echo "Macau678 Purchase Approval System Cloud Run Deployment"
 echo "Project : ${PROJECT_ID}"
 echo "Region  : ${REGION}"
-echo "Demo    : ${SEED_DEMO_DATA}"
 echo "Dry Run : ${DRY_RUN}"
 echo "=================================================================="
 
@@ -151,13 +138,13 @@ run_cmd gcloud services enable \
 # ==============================================================================
 if [ "$DRY_RUN" = "1" ]; then
   run_cmd gcloud artifacts repositories describe "$REPO_NAME" --location "$REGION" --project "$PROJECT_ID"
-  run_cmd gcloud artifacts repositories create "$REPO_NAME" --repository-format=docker --location "$REGION" --description="TokTickIT container repository" --project "$PROJECT_ID"
+  run_cmd gcloud artifacts repositories create "$REPO_NAME" --repository-format=docker --location "$REGION" --description="Macau678 Purchase Approval container repository" --project "$PROJECT_ID"
 else
   if ! gcloud artifacts repositories describe "$REPO_NAME" --location "$REGION" --project "$PROJECT_ID" >/dev/null 2>&1; then
     run_cmd gcloud artifacts repositories create "$REPO_NAME" \
       --repository-format=docker \
       --location "$REGION" \
-      --description="TokTickIT container repository" \
+      --description="Macau678 Purchase Approval container repository" \
       --project "$PROJECT_ID"
   fi
 fi
@@ -207,11 +194,11 @@ fi
 # ==============================================================================
 if [ "$DRY_RUN" = "1" ]; then
   run_cmd gcloud iam service-accounts describe "$SA_EMAIL" --project "$PROJECT_ID"
-  run_cmd gcloud iam service-accounts create "$SA_NAME" --display-name="TokTickIT Cloud Run Service Account" --project "$PROJECT_ID"
+  run_cmd gcloud iam service-accounts create "$SA_NAME" --display-name="Macau678 Cloud Run Service Account" --project "$PROJECT_ID"
 else
   if ! gcloud iam service-accounts describe "$SA_EMAIL" --project "$PROJECT_ID" >/dev/null 2>&1; then
     run_cmd gcloud iam service-accounts create "$SA_NAME" \
-      --display-name="TokTickIT Cloud Run Service Account" \
+      --display-name="Macau678 Cloud Run Service Account" \
       --project "$PROJECT_ID"
   fi
 fi
@@ -250,40 +237,25 @@ else
 fi
 
 # ==============================================================================
-# 7. Create ADMIN_PASSWORD in Secret Manager (only if secret does not exist yet)
-#    Read it later with: gcloud secrets versions access latest --secret=<name>
+# 7. Create the shared seed-user password in Secret Manager if absent.
+#    It is used by the app's two seeded accounts: requester1 and reviewer1.
 # ==============================================================================
 if [ "$DRY_RUN" = "1" ]; then
-  run_cmd gcloud secrets describe "$SECRET_ADMIN_PASS" --project "$PROJECT_ID"
-  run_cmd gcloud secrets create "$SECRET_ADMIN_PASS" --replication-policy="automatic" --project "$PROJECT_ID"
-  run_cmd gcloud secrets versions add "$SECRET_ADMIN_PASS" --data-file=- --project "$PROJECT_ID"
+  run_cmd gcloud secrets describe "$SECRET_SEED_USER_PASS" --project "$PROJECT_ID"
+  run_cmd gcloud secrets create "$SECRET_SEED_USER_PASS" --replication-policy="automatic" --project "$PROJECT_ID"
+  run_cmd gcloud secrets versions add "$SECRET_SEED_USER_PASS" --data-file=- --project "$PROJECT_ID"
 else
-  if ! gcloud secrets describe "$SECRET_ADMIN_PASS" --project "$PROJECT_ID" >/dev/null 2>&1; then
-    GENERATED_ADMIN_PASSWORD="$(openssl rand -base64 16 | tr -d '/+=' | cut -c1-14)Aa1!"
-    run_cmd gcloud secrets create "$SECRET_ADMIN_PASS" --replication-policy="automatic" --project "$PROJECT_ID"
-    printf "%s" "$GENERATED_ADMIN_PASSWORD" | gcloud secrets versions add "$SECRET_ADMIN_PASS" --data-file=- --project "$PROJECT_ID"
+  if ! gcloud secrets describe "$SECRET_SEED_USER_PASS" --project "$PROJECT_ID" >/dev/null 2>&1; then
+    GENERATED_SEED_USER_PASSWORD="$(openssl rand -base64 16 | tr -d '/+=' | cut -c1-14)Aa1!"
+    run_cmd gcloud secrets create "$SECRET_SEED_USER_PASS" --replication-policy="automatic" --project "$PROJECT_ID"
+    printf "%s" "$GENERATED_SEED_USER_PASSWORD" | gcloud secrets versions add "$SECRET_SEED_USER_PASS" --data-file=- --project "$PROJECT_ID"
   fi
 fi
 
 # ==============================================================================
-# 8. Optional Demo Password in Secret Manager when --demo is passed
-#    Only used to seed demo users (./deploy/deploy.sh --demo).
+# 8. Make the database URL and seeded-user password available to the job.
 # ==============================================================================
-JOB_SECRETS="DATABASE_URL=${SECRET_DB_URL}:latest,ADMIN_PASSWORD=${SECRET_ADMIN_PASS}:latest"
-if [ "$SEED_DEMO_DATA" = "true" ]; then
-  if [ "$DRY_RUN" = "1" ]; then
-    run_cmd gcloud secrets describe "$SECRET_DEMO_PASS" --project "$PROJECT_ID"
-    run_cmd gcloud secrets create "$SECRET_DEMO_PASS" --replication-policy="automatic" --project "$PROJECT_ID"
-    run_cmd gcloud secrets versions add "$SECRET_DEMO_PASS" --data-file=- --project "$PROJECT_ID"
-  else
-    if ! gcloud secrets describe "$SECRET_DEMO_PASS" --project "$PROJECT_ID" >/dev/null 2>&1; then
-      GENERATED_DEMO_PASSWORD="$(openssl rand -base64 16 | tr -d '/+=' | cut -c1-14)Dd1!"
-      run_cmd gcloud secrets create "$SECRET_DEMO_PASS" --replication-policy="automatic" --project "$PROJECT_ID"
-      printf "%s" "$GENERATED_DEMO_PASSWORD" | gcloud secrets versions add "$SECRET_DEMO_PASS" --data-file=- --project "$PROJECT_ID"
-    fi
-  fi
-  JOB_SECRETS="${JOB_SECRETS},DEMO_USER_PASSWORD=${SECRET_DEMO_PASS}:latest"
-fi
+JOB_SECRETS="DATABASE_URL=${SECRET_DB_URL}:latest,SEED_USER_PASSWORD=${SECRET_SEED_USER_PASS}:latest"
 
 # ------------------------------------------------------------------------------
 # Secret access (per secret, NOT project-wide)
@@ -291,10 +263,7 @@ fi
 #    binding is added — keep access limited to this app's own secrets.
 # ------------------------------------------------------------------------------
 # Grant access only to this app's secrets, after they exist.
-RUNTIME_SECRETS=("$SECRET_DB_URL" "$SECRET_ADMIN_PASS")
-if [ "$SEED_DEMO_DATA" = "true" ]; then
-  RUNTIME_SECRETS+=("$SECRET_DEMO_PASS")
-fi
+RUNTIME_SECRETS=("$SECRET_DB_URL" "$SECRET_SEED_USER_PASS")
 for secret in "${RUNTIME_SECRETS[@]}"; do
   run_cmd gcloud secrets add-iam-policy-binding "$secret" \
     --member="serviceAccount:${SA_EMAIL}" \
@@ -317,7 +286,7 @@ run_cmd gcloud builds submit \
 #        service, so a broken migration never reaches users.
 #     CHANGE ME: `--args` (prisma migrate deploy && npm run prisma:seed) is
 #        Prisma/npm specific — use your stack's migrate/seed command.
-#     deploy.yml / release.sh later re-run this same job (name: toktickit-migrate).
+#     deploy.yml / release.sh later re-run this same job.
 # ==============================================================================
 run_cmd gcloud run jobs deploy "$MIGRATE_JOB_NAME" \
   --image "$IMAGE_URI" \
@@ -325,7 +294,7 @@ run_cmd gcloud run jobs deploy "$MIGRATE_JOB_NAME" \
   --service-account "$SA_EMAIL" \
   --set-cloudsql-instances "$SQL_CONN_NAME" \
   --set-secrets "$JOB_SECRETS" \
-  --set-env-vars "NODE_ENV=production,TZ=Asia/Bangkok,SEED_DEMO_DATA=${SEED_DEMO_DATA}" \
+  --set-env-vars "NODE_ENV=production,TZ=Asia/Bangkok" \
   --command "sh" \
   --args "-c,npx prisma migrate deploy && npm run prisma:seed" \
   --max-retries 1 \
@@ -378,10 +347,6 @@ printf '%s\n' "=================================================================
 printf '%s\n' "Deployment Completed!"
 printf '%s\n' "Service URL    : ${SERVICE_URL}"
 printf '%s\n' "Health Check   : ${SERVICE_URL}/api/health"
-printf '%s\n' "Readiness Check: ${SERVICE_URL}/api/ready"
-printf '%s\n' "Admin Email    : john.smith@example.com (mustChangePassword: true)"
-printf '%s\n' "Admin Password : Stored in Secret Manager: ${SECRET_ADMIN_PASS} (not printed)."
-if [ "$SEED_DEMO_DATA" = "true" ]; then
-  printf '%s\n' "Demo Password  : Stored in Secret Manager: ${SECRET_DEMO_PASS} (not printed)."
-fi
+printf '%s\n' "Seeded accounts: requester1@macau678.com and reviewer1@macau678.com"
+printf '%s\n' "Seeded account password: stored in Secret Manager as ${SECRET_SEED_USER_PASS} (not printed)."
 printf '%s\n' "=================================================================="

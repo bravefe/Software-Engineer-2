@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # ==============================================================================
-# TokTickIT — Google Cloud Run & Cloud SQL Teardown Script
+# Macau678 Purchase Approval System — Google Cloud teardown
 # ==============================================================================
 # Usage:
 #   ./deploy/teardown.sh
@@ -54,19 +54,18 @@ fi
 # ------------------------------------------------------------------------------
 # Resource names (CHANGE ME: must match deploy/deploy.sh)
 # ------------------------------------------------------------------------------
-REPO_NAME="toktickit"
-SQL_INSTANCE="toktickit-pg"
-SERVICE_NAME="toktickit"
-MIGRATE_JOB_NAME="toktickit-migrate"
-SA_NAME="toktickit-runner"
+REPO_NAME="macau678"
+SQL_INSTANCE="macau678-pg"
+SERVICE_NAME="macau678-purchase-approval"
+MIGRATE_JOB_NAME="macau678-migrate"
+SA_NAME="macau678-runner"
 SA_EMAIL="${SA_NAME}@${PROJECT_ID}.iam.gserviceaccount.com"
 
-SECRET_DB_URL="toktickit-database-url"
-SECRET_ADMIN_PASS="toktickit-admin-password"
-SECRET_DEMO_PASS="toktickit-demo-password"
+SECRET_DB_URL="macau678-database-url"
+SECRET_SEED_USER_PASS="macau678-seed-user-password"
 
 echo "=================================================================="
-echo "WARNING: This will permanently delete TokTickIT resources in:"
+echo "WARNING: This will permanently delete Macau678 resources in:"
 echo "  Project : ${PROJECT_ID}"
 echo "  Region  : ${REGION}"
 echo "Resources to be deleted:"
@@ -74,7 +73,7 @@ echo "  - Cloud Run Service : ${SERVICE_NAME}"
 echo "  - Cloud Run Job     : ${MIGRATE_JOB_NAME}"
 echo "  - Cloud SQL Instance: ${SQL_INSTANCE} (ALL DATABASE DATA WILL BE LOST)"
 echo "  - Artifact Registry : ${REPO_NAME}"
-echo "  - Secrets           : ${SECRET_DB_URL}, ${SECRET_ADMIN_PASS}, ${SECRET_DEMO_PASS}"
+echo "  - Secrets           : ${SECRET_DB_URL}, ${SECRET_SEED_USER_PASS}"
 echo "  - Service Account   : ${SA_EMAIL}"
 echo "=================================================================="
 
@@ -97,8 +96,7 @@ run_cmd gcloud run jobs delete "$MIGRATE_JOB_NAME" --region "$REGION" --project 
 run_cmd gcloud sql instances delete "$SQL_INSTANCE" --project "$PROJECT_ID" --quiet || true
 run_cmd gcloud artifacts repositories delete "$REPO_NAME" --location "$REGION" --project "$PROJECT_ID" --quiet || true
 run_cmd gcloud secrets delete "$SECRET_DB_URL" --project "$PROJECT_ID" --quiet || true
-run_cmd gcloud secrets delete "$SECRET_ADMIN_PASS" --project "$PROJECT_ID" --quiet || true
-run_cmd gcloud secrets delete "$SECRET_DEMO_PASS" --project "$PROJECT_ID" --quiet || true
+run_cmd gcloud secrets delete "$SECRET_SEED_USER_PASS" --project "$PROJECT_ID" --quiet || true
 run_cmd gcloud iam service-accounts delete "$SA_EMAIL" --project "$PROJECT_ID" --quiet || true
 
 echo "Teardown completed."

@@ -6,8 +6,8 @@
 #     1) directly on every pull request to `main` (and manually), and
 #     2) as a REUSABLE workflow called by deploy.yml (`workflow_call`) so the
 #        deploy only starts after these checks pass.
-#   Steps: offline deploy-script tests -> backend tests (real PostgreSQL service)
-#          -> frontend tests + build -> verify the production Dockerfile builds.
+#   Steps: offline deploy-script tests -> workspace install -> backend tests
+#          (real PostgreSQL service) -> frontend tests + build -> Docker build.
 #   It does NOT deploy anything.
 #
 # ⚠️ DO NOT RENAME (the lab guide refers to these names):
@@ -40,7 +40,12 @@ name: CI & Docker Build
 on:
   workflow_call:
   pull_request:
-    branches: [main]
+    branches:
+      - main
+      - sprint-1
+      - sprint-2
+      - sprint-3
+      - lab-5
   workflow_dispatch:
 
 # Least privilege: this workflow only needs to read the repository.
@@ -66,14 +71,14 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: toktickit
-          POSTGRES_PASSWORD: toktickit
-          POSTGRES_DB: toktickit
+          POSTGRES_USER: macau678
+          POSTGRES_PASSWORD: Password123
+          POSTGRES_DB: macau678
         ports:
           - 5432:5432
         # Wait until the DB is healthy before the steps start.
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U macau678 -d macau678"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -118,30 +123,27 @@ jobs:
           python3 -m unittest discover -s deploy/tests -p 'test_smoke.py'
 
       # ------------------------------------------------------------------------
-      # 4. Backend: install -> migrate -> seed -> test
+      # 4. Backend: install workspaces -> migrate -> seed -> test
       #    ⭐ IMPORTANT: a failing test fails the job (and therefore the deploy).
       #    CHANGE ME: working-directory, DATABASE_URL and every command in `run:`.
       # ------------------------------------------------------------------------
-      - name: Install & Test Backend (Prisma Migrate + Seed + Vitest)
-        working-directory: ./server
+      - name: Install & Test Backend (npm workspaces + Prisma + Vitest)
         env:
-          DATABASE_URL: postgresql://toktickit:toktickit@localhost:5432/toktickit?schema=public
+          DATABASE_URL: postgresql://macau678:Password123@localhost:5432/macau678?schema=public
         run: |
           npm ci
-          npx prisma migrate deploy
-          npm run prisma:seed
-          npm test
+          npm run db:deploy
+          npm run db:seed
+          npm run test:server
 
       # ------------------------------------------------------------------------
-      # 5. Frontend: install -> test -> production build
+      # 5. Frontend: test -> production build
       #    CHANGE ME: remove or replace if there is no separate frontend.
       # ------------------------------------------------------------------------
-      - name: Install, Test & Build Frontend (Vitest + Production Build)
-        working-directory: ./client
+      - name: Test & Build Frontend (Vitest + Production Build)
         run: |
-          npm ci
-          npm test
-          npm run build
+          npm run test:client
+          npm run build --workspace client
 
       # ------------------------------------------------------------------------
       # 6. Make sure the production image still builds (image is not pushed here)
@@ -149,4 +151,4 @@ jobs:
       # ------------------------------------------------------------------------
       - name: Verify Unified Production Dockerfile Build
         run: |
-          docker build -t toktickit-lab4:latest .
+          docker build -t macau678-purchase-approval:latest .
