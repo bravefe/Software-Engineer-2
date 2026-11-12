@@ -1,6 +1,6 @@
-# GCP and CI/CD Guide for TokTickIT
+# GCP and CI/CD Guide for Macau678 Purchase Approval
 
-This guide explains how the TokTickIT reference is deployed to Google Cloud and released through GitHub Actions. The TA team verified it on 21 October 2026 (Asia/Bangkok). For a short hands-on version, start with [First Practice](gcp-first-lab.md). Automatic deployment and rollback are in [Auto Deploy](auto-deploy.md).
+This guide explains how the Macau678 Purchase Approval System is deployed to Google Cloud and released through GitHub Actions. For a short hands-on version, start with [First Practice](gcp-first-lab.md). Automatic deployment and rollback are in [Auto Deploy](auto-deploy.md).
 
 Account, billing, and credit status change over time. Check your own account and project before you use any value from this guide.
 
@@ -16,7 +16,7 @@ Account, billing, and credit status change over time. Check your own account and
 | Cloud setup | `deploy/deploy.sh`: Cloud Run, Cloud SQL for PostgreSQL 16, Artifact Registry, Cloud Build, Secret Manager, runtime service account |
 | CI | `.github/workflows/ci-docker.yml` |
 | CD | `.github/workflows/deploy.yml` and `deploy/release.sh` |
-| Health and readiness | `/api/health` and `/api/ready` |
+| Health and database connectivity | `/api/health` |
 
 `deploy.sh` runs in this order: enable APIs, prepare the registry, database, secrets, and IAM, build the image, run the migration job, then deploy the service once the job succeeds.
 
@@ -38,34 +38,24 @@ The script's defaults are region `asia-southeast1`, Cloud SQL `db-f1-micro` with
 docker compose up --build -d
 docker compose ps
 curl --fail http://localhost:3000/api/health
-curl --fail http://localhost:3000/api/ready
 ```
 
 Open the UI at `http://localhost:5173` and sign in with the seed accounts for this environment.
 
-Compose has fallback passwords and turns on the demo seed for practice on localhost. Never use this file to run a public service. Compose stores data in a Docker volume. Do not delete the volume if you want to keep your practice data.
+Compose has development-only credentials and seeds the requester/reviewer accounts on localhost. Never use these credentials for a public service. Compose stores data in a Docker volume. Do not delete the volume if you want to keep your practice data.
 
 ### Option B: Node.js with the UI and API separate
 
-Prepare a PostgreSQL database and set `DATABASE_URL` in `server/.env` to match it. Then use two terminals:
+Prepare a PostgreSQL database and set `DATABASE_URL` in the server environment. From the repository root, install once and apply the migration and seed:
 
 ```bash
-cd server
-cp .env.example .env
 npm ci
-npx prisma migrate deploy
-npm run prisma:seed
+npm run db:deploy
+npm run db:seed
 npm run dev
 ```
 
-```bash
-cd client
-cp .env.example .env
-npm ci
-npm run dev
-```
-
-Always edit `.env` before you migrate or seed, and never share a real database with the test suite. Do not commit `.env` or any credential.
+Set the client Vite proxy target in `client/.env` if the API is not at `http://localhost:3000`. Never share a production database with the test suite. Do not commit `.env` or any credential.
 
 ## 4. What CI does
 
@@ -73,8 +63,8 @@ A Pull Request into `main` runs CI directly. A push to `main` runs the same CI f
 
 1. starts a PostgreSQL 16 service on the GitHub runner;
 2. uses Node.js 24 and Python 3.14, and tests the deploy scripts offline, without reaching GCP;
-3. backend: `npm ci`, migrate, seed, and `npm test`;
-4. frontend: `npm ci`, `npm test`, and `npm run build`; and
+3. runs `npm ci` once from the repository root, then migrates, seeds, and runs `npm run test:server`;
+4. runs `npm run test:client` and builds the client workspace; and
 5. builds the Dockerfile with the UI and API together.
 
 After CI passes on `main`, a separate CD job pushes the image, runs the migration, deploys, and runs the public smoke test. See [Auto Deploy](auto-deploy.md). The Playwright end-to-end tests have not been run against the cloud.
@@ -93,11 +83,11 @@ A dry run prints both the check commands and the create commands so you can foll
 
 Points to know about the script before you run it for real:
 
-- It hides `--password` arguments and does not print the initial administrator or demo passwords. Use a version that has this fix.
+- It does not print the database or seeded-user passwords; both are stored in Secret Manager.
 - The first deploy from `deploy.sh` tags the image `latest`. Releases from `deploy.yml` tag it with the commit SHA, so roll back only to SHA tags.
 - The runtime service account gets Secret Manager Secret Accessor only on this app's secrets, not on the whole project. Keep it that way when you add secrets.
 - `--allow-unauthenticated` makes the HTTP endpoint public. Check the app's own authentication and your organization's policy first.
-- The demo seed is off by default. `--demo` loads sample data only when the database is empty, with a generated password stored in Secret Manager. Demo accounts are allowed in your project because Lab 6 UAT needs them, but their passwords must never be in code or shown on screen.
+- The migration job runs the project seed, which upserts the requester and reviewer accounts with `SEED_USER_PASSWORD`. That value is generated once and stored in Secret Manager; the seed does not create an administrator.
 - Cloud SQL costs money for as long as it exists. Check the price for your configuration and region.
 
 Once these are clear, run the deploy and record who ran it, the time, the commit, the image digest, the migration execution, and the revision you got.
@@ -142,7 +132,7 @@ PROJECT_ID=YOUR_PROJECT_ID bash deploy/deploy.sh
 
 This creates paid resources, stores passwords in Secret Manager, and opens a public HTTP endpoint. Do not run it while the Free Trial is still pending.
 
-Open the URL you get, check health and readiness, open Secret Manager on your own to see the initial password, sign in and change it, test the main flow with your team, and record the real results.
+Open the URL you get, check `/api/health`, open the deployed SPA, retrieve the seeded-user password from Secret Manager when needed, sign in as a requester or reviewer, and test the purchase-approval workflow with your team.
 
 ### Part C: add CD once Part B works
 
@@ -150,17 +140,17 @@ Automate the same build, migration, and deploy sequence in the pipeline. Set up 
 
 ## 7. Acceptance checklist used by the TA team
 
-- Health passes and readiness connects to the database, on both the authenticated and the public URL.
+- `/api/health` reports a connected database and the SPA loads from the Cloud Run URL.
 - The UI loads and the API works from the public Cloud Run URL without localhost.
-- Each role can sign in through the browser, and a forced password change works.
-- A requester can create a ticket and open My Tickets and the ticket details, and ticket ownership is enforced by the API.
-- IT staff can choose an owner, record actions taken, and resolve and close a ticket.
-- Dashboard counts and permission boundaries are correct for every role.
-- Existing sessions and attachments (same bytes and hash) are still there after a rollback and after the current image is restored, and a signed-in user stays signed in after a reload.
+- Requester and reviewer roles can sign in and see their corresponding views.
+- A requester can create and submit a purchase request and view its history.
+- A reviewer can approve, reject, or return an assigned request with a reason.
+- Request ownership, reviewer assignment, and role boundaries are enforced by the API.
+- Request status and history persist across deploys and page reloads.
 - A new commit is deployed through the pipeline, and the revision receiving traffic uses the image from that commit.
 - A rollback has been practised, with the migration limitation stated (the schema and data are not rolled back).
 
-End-to-end specs exist in `e2e/`, but there is no root package manifest or Playwright config, and the specs contain localhost URLs and fixed test passwords. Before they can verify the cloud deployment, they need a runner, test accounts, and a base URL.
+The Playwright tests under `tests/e2e/` use local test setup. They do not automatically verify the cloud deployment; use a dedicated test account and a configured base URL before treating them as cloud acceptance tests.
 
 ## 8. Troubleshooting and shutting down
 
@@ -168,10 +158,10 @@ End-to-end specs exist in `e2e/`, but there is no root package manifest or Playw
 |---|---|
 | Account sign-up stuck at step 2 | Read the browser message and check free disk space. The first attempt showed FILE_ERROR_NO_SPACE, though that was not proven to be the only cause. |
 | Free Trial pending | Read the billing message. Activation can place a small authorization hold on the card, which is released later. A prepayment request is a separate account requirement. Do not pay again before you know the result of the first payment, and do not keep signing up with other accounts or cards. Follow the instructor's access plan or contact Google Cloud Billing support. |
-| Health passes but readiness fails | Check database connectivity, the secret mapping, and the migration logs. Do not copy secret values. |
+| `/api/health` fails | Check database connectivity, the `DATABASE_URL` secret mapping, and migration logs. Do not copy secret values. |
 | The migration job fails | Check the job execution and its logs. The script stops with an error before it deploys the service. |
 | The deploy is refused | Read the IAM, quota, or organization policy error first. Do not add broad permissions to experiment. |
-| End-to-end login fails | Check the seed mode, the test account, and mustChangePassword. Passwords in the specs do not work in the cloud. |
+| Login smoke test fails | Check the seeded account and `SEED_USER_PASSWORD` Secret Manager value. The seed contains requester and reviewer accounts; it does not create an administrator. |
 
 `deploy/teardown.sh` deletes the database and the other resources. Before you run it, check the project and the list of resources, back up anything you must keep, and confirm the deletion. The script's "Teardown completed" message does not prove everything was deleted, because each command is allowed to fail. Check the remaining resources and billing afterwards.
 
