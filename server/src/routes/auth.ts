@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/auth";
 import { prisma } from "../prisma";
-import { COOKIE_NAME, generateToken, verifyPassword } from "../utils/auth";
+import { COOKIE_NAME, createSessionToken, hashSessionToken, SESSION_DURATION_MS, verifyPassword } from "../utils/auth";
 
 const router = Router();
 
@@ -45,17 +45,21 @@ router.post("/login", async (req, res): Promise<void> => {
       return;
     }
 
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
+    const token = createSessionToken();
+    const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
+    await prisma.session.create({
+      data: {
+        id: hashSessionToken(token),
+        userId: user.id,
+        expiresAt,
+      },
     });
 
     res.cookie(COOKIE_NAME, token, {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
-      maxAge: 8 * 60 * 60 * 1000,
+      maxAge: SESSION_DURATION_MS,
       path: "/",
     });
 
@@ -75,7 +79,11 @@ router.post("/login", async (req, res): Promise<void> => {
   }
 });
 
-router.post("/logout", (_req, res): void => {
+router.post("/logout", async (req, res): Promise<void> => {
+  const token = req.cookies?.[COOKIE_NAME];
+  if (typeof token === "string") {
+    await prisma.session.deleteMany({ where: { id: hashSessionToken(token) } });
+  }
   res.clearCookie(COOKIE_NAME, {
     httpOnly: true,
     sameSite: "lax",

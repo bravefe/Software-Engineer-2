@@ -1,13 +1,15 @@
 import bcrypt from "bcrypt";
-import jwt, { type SignOptions } from "jsonwebtoken";
+import { createHash, randomBytes } from "node:crypto";
 
 export const COOKIE_NAME = "macau678_session";
-export const JWT_SECRET = process.env.JWT_SECRET || "macau678-super-secret-jwt-key-min-32-chars";
+export const SESSION_DURATION_MS = 8 * 60 * 60 * 1000;
 
-export interface TokenPayload {
-  userId: number;
-  email: string;
-  role: string;
+export function createSessionToken(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+export function hashSessionToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -17,20 +19,4 @@ export async function hashPassword(password: string): Promise<string> {
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
   return bcrypt.compare(password, hash);
-}
-
-export function generateToken(
-  payload: TokenPayload,
-  secret = JWT_SECRET,
-  expiresIn: SignOptions["expiresIn"] = "8h",
-): string {
-  return jwt.sign(payload, secret, { expiresIn });
-}
-
-export function verifyToken(token: string, secret = JWT_SECRET): TokenPayload | null {
-  try {
-    return jwt.verify(token, secret) as TokenPayload;
-  } catch {
-    return null;
-  }
 }

@@ -8,13 +8,13 @@ dotenv.config({ path: resolve(process.cwd(), "server/.env") });
 
 import { app } from "../../server/src/app";
 
-describe("GET /api/health", () => {
+describe("GET /api/ready", () => {
   afterAll(async () => {
     await disconnectPrisma();
   });
 
   it("reports healthy status when the real database is available", async () => {
-    const response = await request(app).get("/api/health");
+    const response = await request(app).get("/api/ready");
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: "ok", database: "connected" });
