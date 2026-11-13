@@ -1,13 +1,3 @@
-# ==============================================================================
-# Macau678 Purchase Approval System — frontend Dockerfile for Compose
-# ==============================================================================
-# Used by docker-compose.yml (`client` service on http://localhost:5173).
-# Cloud Run does NOT use this file — Cloud Run serves the built SPA from the
-# root `Dockerfile`.
-# Ref: https://docs.docker.com/build/building/multi-stage/
-#
-# ==============================================================================
-
 # --- Stage 1: Build static frontend files -------------------------------------
 FROM node:24-alpine AS build
 WORKDIR /app

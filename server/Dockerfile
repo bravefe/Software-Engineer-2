@@ -1,12 +1,3 @@
-# ==============================================================================
-# Macau678 Purchase Approval System — backend Dockerfile for Compose
-# ==============================================================================
-# Used by docker-compose.yml (`server` and `migrate` services).
-# Cloud Run does NOT use this file — Cloud Run uses the root `Dockerfile`.
-# Ref: https://docs.docker.com/reference/dockerfile/
-#
-# ==============================================================================
-
 FROM node:24-alpine AS build
 WORKDIR /app
 # Prisma requires openssl on alpine.
