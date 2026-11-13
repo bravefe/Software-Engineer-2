@@ -42,6 +42,18 @@ model User {
   submittedRequests  PurchaseRequest[] @relation("Requester")
   assignedRequests   PurchaseRequest[] @relation("Reviewer")
   historyEntries     RequestHistory[]  @relation("HistoryActor")
+  sessions           Session[]
+}
+
+model Session {
+  id        String   @id
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model PurchaseRequest {
