@@ -92,6 +92,7 @@ jobs:
           DATABASE_URL: postgresql://macau678:Password123@localhost:5432/macau678?schema=public
         run: |
           npm ci
+          npm run db:generate
           npm run db:deploy
           npm run db:seed
           npm run test:server
