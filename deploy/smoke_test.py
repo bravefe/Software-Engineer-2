@@ -9,8 +9,9 @@ WHAT THIS SCRIPT DOES
 
     Checks (in order)
       1. GET /api/health -> {"status": "ok", "database": "connected"}
-      2. GET /           -> HTML page (the built React app is served)
-      3. OPTIONAL login test -> login, /api/auth/me, logout. Runs only if BOTH
+      2. GET /api/ready  -> {"status": "ok", "database": "connected"}
+      3. GET /           -> HTML page (the built React app is served)
+      4. OPTIONAL login test -> login, /api/auth/me, logout. Runs only if BOTH
          env vars SMOKE_EMAIL and SMOKE_PASSWORD are set (set both or neither).
          The session cookie is always cleared, even if a check fails.
 
@@ -47,7 +48,8 @@ def request(base, path, data=None, opener=None):
 
 
 def check(base):
-    # /api/health queries PostgreSQL, so it is also the database readiness check.
+    # Both endpoints report database connectivity; readiness is checked
+    # explicitly so deploys verify the endpoint used by platform probes.
     def database_is_healthy(body):
         health = json.loads(body)
         return (
@@ -58,6 +60,7 @@ def check(base):
 
     for path, predicate in (
         ('/api/health', database_is_healthy),
+        ('/api/ready', database_is_healthy),
         ('/', lambda b: b'<html' in b.lower()),
     ):
         # Retry: a cold Cloud Run instance may need a few seconds to start.

@@ -21,6 +21,7 @@ class SmokeTests(unittest.TestCase):
     def response(self, base, path, data=None, opener=None):
         return {
             '/api/health': b'{"status":"ok","database":"connected"}',
+            '/api/ready': b'{"status":"ok","database":"connected"}',
             '/': b'<html></html>',
             '/api/auth/login': b'{"user":{"email":"smoke@example.test"}}',
             '/api/auth/me': b'{"user":{"email":"smoke@example.test"}}',
@@ -31,14 +32,17 @@ class SmokeTests(unittest.TestCase):
     def test_public_checks_pass_and_skip_optional_login(self):
         with patch.object(smoke, 'request', side_effect=self.response) as req:
             smoke.check('https://demo.test')
-            self.assertEqual(req.call_count, 2)
+            self.assertEqual(
+                [call.args[1] for call in req.call_args_list],
+                ['/api/health', '/api/ready', '/'],
+            )
 
     @patch.dict('os.environ', {'SMOKE_EMAIL': 'smoke@example.test', 'SMOKE_PASSWORD': 'test-only'}, clear=True)
     def test_optional_login_reuses_cookie_session(self):
         with patch.object(smoke, 'request', side_effect=self.response) as req:
             smoke.check('https://demo.test')
 
-        calls = req.call_args_list[2:]
+        calls = req.call_args_list[3:]
         self.assertEqual(
             [call.args[1] for call in calls],
             ['/api/auth/login', '/api/auth/me', '/api/auth/logout'],
@@ -57,6 +61,19 @@ class SmokeTests(unittest.TestCase):
             )
         with patch.object(smoke, 'request', side_effect=disconnected), patch.object(smoke.time, 'sleep'):
             with self.assertRaisesRegex(RuntimeError, '/api/health'):
+                smoke.check('https://demo.test')
+
+    @patch.dict('os.environ', {}, clear=True)
+    def test_readiness_fails_when_database_is_disconnected(self):
+        def disconnected(base, path, **kwargs):
+            return (
+                b'{"status":"error","database":"disconnected"}'
+                if path == '/api/ready'
+                else self.response(base, path)
+            )
+
+        with patch.object(smoke, 'request', side_effect=disconnected), patch.object(smoke.time, 'sleep'):
+            with self.assertRaisesRegex(RuntimeError, '/api/ready'):
                 smoke.check('https://demo.test')
 
     @patch.dict('os.environ', {'SMOKE_EMAIL': 'smoke@example.test', 'SMOKE_PASSWORD': 'test-only'}, clear=True)
