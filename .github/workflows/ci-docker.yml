@@ -1,42 +1,5 @@
-# ##############################################################################
-# CI — "CI & Docker Build"
-# ##############################################################################
-# WHAT THIS WORKFLOW DOES
-#   Runs the project's checks and is used in two ways:
-#     1) directly on every pull request to `main` (and manually), and
-#     2) as a REUSABLE workflow called by deploy.yml (`workflow_call`) so the
-#        deploy only starts after these checks pass.
-#   Steps: offline deploy-script tests -> workspace install -> backend tests
-#          (real PostgreSQL service) -> frontend tests + build -> Docker build.
-#   It does NOT deploy anything.
-#
-# ⚠️ DO NOT RENAME (the lab guide refers to these names):
-#   - job id : test-and-docker
-#   - deploy.yml uses `environment: demo` and the 4 variables GCP_PROJECT_ID,
-#     GCP_REGION, WIF_PROVIDER, WIF_SERVICE_ACCOUNT — keep those names too.
-#
-# REFERENCES
-#   - Workflow syntax      : https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions
-#   - Reusable workflows   : https://docs.github.com/en/actions/sharing-automations/reusing-workflows
-#   - Service containers   : https://docs.github.com/en/actions/using-containerized-services/about-service-containers
-#   - Concurrency          : https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/control-the-concurrency-of-workflows-and-jobs
-#   - Pin actions to a SHA : https://docs.github.com/en/actions/security-for-github-actions/security-guides/security-hardening-for-github-actions#using-third-party-actions
-#
-# ⭐ CHANGE ME — groups using another tech stack must edit (marked below):
-#   # CHANGE ME: database service image / credentials
-#   # CHANGE ME: language setup steps (Node.js 24, Python 3.14)
-#   # CHANGE ME: install / migrate / seed / test commands, working-directory
-#   # CHANGE ME: docker image tag
-# ##############################################################################
-
 name: CI & Docker Build
 
-# ------------------------------------------------------------------------------
-# Triggers
-#   workflow_call     : lets deploy.yml reuse this workflow (do not remove).
-#   pull_request/main : checks every PR before merge.
-#   workflow_dispatch : manual "Run workflow" button.
-# ------------------------------------------------------------------------------
 on:
   workflow_call:
   pull_request:

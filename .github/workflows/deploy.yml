@@ -1,71 +1,15 @@
-# ##############################################################################
-# Macau678 Purchase Approval — automatic deployment to Google Cloud Run
-# ##############################################################################
-# WHAT THIS WORKFLOW DOES
-#   On every push to `main` (or a manual run) it:
-#     1) runs the CI workflow (ci-docker.yml, job `test-and-docker`) first,
-#     2) authenticates to Google Cloud WITHOUT a key file (Workload Identity
-#        Federation),
-#     3) builds + pushes the image tagged with the commit SHA,
-#     4) runs deploy/release.sh (verify image -> migrate -> update service),
-#     5) smoke-tests the public URL (deploy/smoke_test.py),
-#     6) writes a deployment summary.
-#   MANUAL ROLLBACK: run the workflow by hand and enter `image_tag` = the full
-#   40-character commit SHA of an image that already exists. Tests, build and
-#   migration are skipped; only the service is pointed back to that image.
-#
-# ⚠️ DO NOT RENAME (the lab guide refers to these names):
-#   - job `test-and-docker` (defined in ci-docker.yml, called by `test` below)
-#   - environment : demo
-#   - repository/environment variables: GCP_PROJECT_ID, GCP_REGION,
-#     WIF_PROVIDER, WIF_SERVICE_ACCOUNT
-#
-# ⭐ IMPORTANT
-#   - Nothing secret lives in this file. Values come from GitHub
-#     Settings -> Environments -> demo (variables) and secrets.
-#   - Optional login smoke test: variable SMOKE_EMAIL + secret SMOKE_PASSWORD
-#     (set both or neither).
-#   - The cloud resources (Cloud SQL, secrets, service account, Artifact
-#     Registry, Cloud Run service/job) must already exist: create them once with
-#     deploy/deploy.sh. This workflow only UPDATES them.
-#
-# REFERENCES
-#   - Workflow syntax / reusable workflows:
-#       https://docs.github.com/en/actions/sharing-automations/reusing-workflows
-#   - Environments (demo): https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-deployments/managing-environments-for-deployment
-#   - Variables: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/store-information-in-variables
-#   - Keyless auth to GCP (Workload Identity Federation):
-#       https://github.com/google-github-actions/auth
-#       https://cloud.google.com/iam/docs/workload-identity-federation
-#   - setup-gcloud : https://github.com/google-github-actions/setup-gcloud
-#   - Cloud Run deploy / rollback:
-#       https://cloud.google.com/run/docs/deploying
-#       https://cloud.google.com/run/docs/rollouts-rollbacks-traffic-migration
-#   - Concurrency: https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/control-the-concurrency-of-workflows-and-jobs
-#
-# ⭐ CHANGE ME — groups using another tech stack must edit (marked below):
-#   # CHANGE ME: SERVICE_NAME / MIGRATE_JOB_NAME / image path (Macau678 defaults)
-#   # CHANGE ME: build step if your image is not built from the root Dockerfile
-#   # CHANGE ME: Python setup + smoke test if you use another smoke test
-# ##############################################################################
-
 name: Deploy demo
 
-# ------------------------------------------------------------------------------
-# Triggers
-#   push to main      : automatic deploy
-#   workflow_dispatch : manual run; `image_tag` = rollback target (optional)
-# ------------------------------------------------------------------------------
 on:
   push:
     branches: [main]
   workflow_dispatch:
     inputs:
       image_tag:
-        description: 'Rollback: full commit SHA of an existing image. Empty = test, build and deploy current main.'
+        description: "Rollback: full commit SHA of an existing image. Empty = test, build and deploy current main."
         type: string
         required: false
-        default: ''
+        default: ""
 
 # Least privilege by default; the deploy job adds `id-token: write` below.
 permissions:
