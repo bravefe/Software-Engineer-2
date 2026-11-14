@@ -90,6 +90,7 @@ jobs:
       - name: Install & Test Backend (npm workspaces + Prisma + Vitest)
         env:
           DATABASE_URL: postgresql://macau678:Password123@localhost:5432/macau678?schema=public
+          SEED_USER_PASSWORD: ci-seed-password
         run: |
           npm ci
           npm run db:generate
