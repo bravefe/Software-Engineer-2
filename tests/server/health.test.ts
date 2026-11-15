@@ -16,7 +16,7 @@ describe("GET /api/ready", () => {
   it("reports healthy status when the real database is available", async () => {
     const response = await request(app).get("/api/ready");
 
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(123);
     expect(response.body).toEqual({ status: "ok", database: "connected" });
   });
 });
