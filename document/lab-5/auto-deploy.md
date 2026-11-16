@@ -47,9 +47,9 @@ The image is built on the GitHub runner and pushed straight to Artifact Registry
 
 ## Smoke test
 
-`python3 deploy/smoke_test.py SERVICE_URL` checks `/api/health` and the HTML at `/`. This app's health handler queries PostgreSQL and returns `{"status":"ok","database":"connected"}` only when the database is reachable; it does not expose `/api/ready` or `/api/categories`.
+`python3 deploy/smoke_test.py SERVICE_URL` checks `/api/health`, `/api/ready`, and the HTML at `/`. Both health endpoints query PostgreSQL and return `{"status":"ok","database":"connected"}` only when the database is reachable. This app does not expose `/api/categories`.
 
-Sign-in is optional. Set `SMOKE_EMAIL` as an environment variable and `SMOKE_PASSWORD` as an environment secret for a dedicated seeded requester or reviewer account. The script follows the app's HTTP-only session cookie through login, `/api/auth/me`, and logout. Without them it prints `SKIP login`. A passing smoke test does not verify purchase-request workflows.
+Sign-in is optional. Set both `SMOKE_EMAIL` and `SMOKE_PASSWORD` as environment secrets for a dedicated seeded requester or reviewer account. The script follows the app's HTTP-only session cookie through login, `/api/auth/me`, and logout. Without them it prints `SKIP login`. A passing smoke test does not verify purchase-request workflows.
 
 ## Merge gate
 
