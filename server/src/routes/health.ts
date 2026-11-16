@@ -26,6 +26,10 @@ async function respondWithHealth(
   }
 }
 
+router.get("/ready", async (_request: Request, response: Response) => {
+  await respondWithHealth(response);
+});
+
 router.get("/health", async (_request: Request, response: Response) => {
   await respondWithHealth(response);
 });

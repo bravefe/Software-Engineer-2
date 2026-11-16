@@ -77,6 +77,7 @@ export async function resetAndSeedDatabase(): Promise<{
   requests: SeededTestRequests;
 }> {
   // Clear existing operational data
+  await prisma.session.deleteMany({});
   await prisma.requestHistory.deleteMany({});
   await prisma.purchaseRequest.deleteMany({});
   await prisma.user.deleteMany({});

@@ -7,7 +7,7 @@ dotenv.config({ path: resolve(process.cwd(), "server/.env") });
 
 import { app } from "../../server/src/app";
 import { disconnectPrisma, prisma } from "../../server/src/prisma";
-import { COOKIE_NAME, generateToken } from "../../server/src/utils/auth";
+import { COOKIE_NAME, createSessionToken, hashSessionToken } from "../../server/src/utils/auth";
 import { resetAndSeedDatabase, type SeededTestRequests, type SeededTestUsers } from "../helpers/testDb";
 
 describe("Integration and API tests: Authentication & Authorization", () => {
@@ -211,12 +211,8 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         expect(res.body.code).toBe("INVALID_AUTH");
       });
 
-      it("rejects tokens signed with an unrecognized secret", async () => {
-        const forgedToken = generateToken(
-          { userId: seededUsers.requester1.id, email: seededUsers.requester1.email, role: "REQUESTER" },
-          "wrong-unauthorized-secret-key-12345",
-        );
-
+      it("rejects session tokens that are not stored in the database", async () => {
+        const forgedToken = createSessionToken();
         const res = await request(app)
           .get("/api/auth/me")
           .set("Cookie", `${COOKIE_NAME}=${forgedToken}; Path=/`);
@@ -236,7 +232,10 @@ describe("Integration and API tests: Authentication & Authorization", () => {
           },
         });
 
-        const token = generateToken({ userId: tempUser.id, email: tempUser.email, role: tempUser.role });
+        const token = createSessionToken();
+        await prisma.session.create({
+          data: { id: hashSessionToken(token), userId: tempUser.id, expiresAt: new Date(Date.now() + 60_000) },
+        });
 
         await prisma.user.update({
           where: { id: tempUser.id },

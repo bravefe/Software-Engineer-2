@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { prisma } from "../prisma";
-import { COOKIE_NAME, verifyToken } from "../utils/auth";
+import { COOKIE_NAME, hashSessionToken } from "../utils/auth";
 
 export interface AuthenticatedUser {
   id: number;
@@ -31,8 +31,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     return;
   }
 
-  const payload = verifyToken(token);
-  if (!payload) {
+  if (typeof token !== "string") {
     res.status(401).json({
       error: "Invalid or expired authentication session",
       code: "INVALID_AUTH",
@@ -41,18 +40,34 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
 
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        isActive: true,
+    const session = await prisma.session.findUnique({
+      where: { id: hashSessionToken(token) },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            isActive: true,
+          },
+        },
       },
     });
+    const user = session?.user;
 
-    if (!user || !user.isActive) {
+    if (!session) {
+      res.status(401).json({
+        error: "Invalid or expired authentication session",
+        code: "INVALID_AUTH",
+      });
+      return;
+    }
+
+    if (session.expiresAt <= new Date() || !user || !user.isActive) {
+      if (session && session.expiresAt <= new Date()) {
+        await prisma.session.deleteMany({ where: { id: session.id } });
+      }
       res.status(401).json({
         error: "User is inactive or not found",
         code: "AUTH_REQUIRED",

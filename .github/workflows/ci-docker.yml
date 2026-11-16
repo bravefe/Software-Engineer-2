@@ -1,0 +1,116 @@
+name: CI & Docker Build
+
+on:
+  workflow_call:
+  pull_request:
+    branches:
+      - main
+      - lab-5
+  workflow_dispatch:
+
+# Least privilege: this workflow only needs to read the repository.
+permissions:
+  contents: read
+
+# A newer run on the same ref cancels the older one (saves minutes).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ⚠️ Job id must stay `test-and-docker`.
+  test-and-docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # --------------------------------------------------------------------------
+    # Temporary PostgreSQL used only by the tests. Throw-away CI values, not
+    # real secrets. CHANGE ME: use the database your project needs.
+    # --------------------------------------------------------------------------
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: macau678
+          POSTGRES_PASSWORD: Password123
+          POSTGRES_DB: macau678
+        ports:
+          - 5432:5432
+        # Wait until the DB is healthy before the steps start.
+        options: >-
+          --health-cmd "pg_isready -U macau678 -d macau678"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      # ------------------------------------------------------------------------
+      # 1. Get the source code
+      #    (third-party actions are pinned to a commit SHA; the comment shows the
+      #     version. Dependabot keeps them updated — see .github/dependabot.yml)
+      # ------------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # ------------------------------------------------------------------------
+      # 2. Language runtimes
+      #    CHANGE ME: replace with the runtime(s) your stack needs.
+      # ------------------------------------------------------------------------
+      - name: Setup Node.js 24
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
+      # Python is only needed for the deploy smoke-test unit tests below.
+      - name: Setup Python 3.14
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.14"
+
+      # ------------------------------------------------------------------------
+      # 3. Deploy scripts: syntax check + offline tests (NO access to GCP)
+      #    ⭐ IMPORTANT: guards deploy.sh / release.sh / smoke_test.py so a broken
+      #    script is caught before it can break a deployment.
+      #    CHANGE ME: keep only the checks for scripts your group actually uses.
+      # ------------------------------------------------------------------------
+      - name: Check deployment scripts without accessing GCP
+        run: |
+          bash -n deploy/deploy.sh deploy/teardown.sh deploy/release.sh
+          bash deploy/tests/test_deploy_stub.sh
+          bash deploy/tests/test_release_stub.sh
+          python3 -m unittest discover -s deploy/tests -p 'test_smoke.py'
+
+      # ------------------------------------------------------------------------
+      # 4. Backend: install workspaces -> migrate -> seed -> test
+      #    ⭐ IMPORTANT: a failing test fails the job (and therefore the deploy).
+      #    CHANGE ME: working-directory, DATABASE_URL and every command in `run:`.
+      # ------------------------------------------------------------------------
+      - name: Install & Test Backend (npm workspaces + Prisma + Vitest)
+        env:
+          DATABASE_URL: postgresql://macau678:Password123@localhost:5432/macau678?schema=public
+          SEED_USER_PASSWORD: ci-seed-password
+        run: |
+          npm ci
+          npm run db:generate
+          npm run db:deploy
+          npm run db:seed
+          npm run test:server
+
+      # ------------------------------------------------------------------------
+      # 5. Frontend: test -> production build
+      #    CHANGE ME: remove or replace if there is no separate frontend.
+      # ------------------------------------------------------------------------
+      - name: Test & Build Frontend (Vitest + Production Build)
+        run: |
+          npm run test:client
+          npm run build --workspace client
+
+      # ------------------------------------------------------------------------
+      # 6. Make sure the production image still builds (image is not pushed here)
+      #    CHANGE ME: image tag.
+      # ------------------------------------------------------------------------
+      - name: Verify Unified Production Dockerfile Build
+        run: |
+          docker build -t macau678-purchase-approval:latest .

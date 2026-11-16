@@ -1,11 +1,15 @@
+import "dotenv/config";
 import bcrypt from "bcrypt";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
-const password = process.env.SEED_USER_PASSWORD || "Password123!";
+const password = process.env.SEED_USER_PASSWORD;
 
 async function main(): Promise<void> {
   try {
+    if (!password) {
+      throw new Error("SEED_USER_PASSWORD must be set before running the seed.");
+    }
     const passwordHash = await bcrypt.hash(password, 10);
     const users = [
       {
