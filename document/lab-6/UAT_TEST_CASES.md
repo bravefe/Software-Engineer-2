@@ -415,3 +415,89 @@ The following items are delivered to the partner UAT team:
 ---
 
 *End of Sprint 1 UAT Test Cases Document*
+
+
+---
+
+## 10. UAT Reviewer Checklist
+
+Use this checklist while executing the test cases above. Check off each item as you confirm it in the live application.
+
+### 🔐 Authentication & Access
+
+- [ ] Sign-in page loads at the app URL without being logged in
+- [ ] `requester1@macau678.com` can log in → lands on the **Requester** dashboard
+- [ ] `reviewer1@macau678.com` can log in → lands on the **Reviewer** queue
+- [ ] Dashboard header shows the logged-in user's name and their role label (`REQUESTER` / `REVIEWER`)
+- [ ] Clicking **Sign Out** ends the session and redirects to the login page
+- [ ] After signing out, pressing the browser Back button does **not** return to the dashboard
+- [ ] Navigating directly to a protected URL (e.g. `/requests`) while logged out redirects to login
+
+---
+
+### 📋 Requester — Create & Submit
+
+- [ ] **"New Request"** button is visible on the Requester dashboard
+- [ ] The request form has all four required fields: Item Name, Quantity, Estimated Cost, Justification
+- [ ] Submitting with all fields filled → request status becomes **SUBMITTED**
+- [ ] The new request appears on the Requester dashboard immediately after submission
+- [ ] The status badge on the dashboard card reads **SUBMITTED** (not DRAFT or PENDING)
+
+---
+
+### 🔍 Reviewer — Queue & Decision
+
+- [ ] After the Requester submits, the Reviewer's dashboard shows that request
+- [ ] The Reviewer can open the request detail page and see all submitted field values
+- [ ] The detail page shows **Approve**, **Return**, and **Reject** action buttons for SUBMITTED requests
+- [ ] Clicking **Approve** → status changes to **APPROVED**
+- [ ] Clicking **Reject** without entering a reason → action is **blocked** (button disabled or error shown)
+- [ ] Clicking **Return** without entering a reason → action is **blocked**
+- [ ] Entering whitespace-only in the reason field → action is still **blocked**
+- [ ] Entering a valid reason and clicking **Reject** → status changes to **REJECTED**
+- [ ] Entering a valid reason and clicking **Return** → status changes to **RETURNED**
+
+---
+
+### ✏️ Requester — Edit & Resubmit
+
+- [ ] A **RETURNED** request shows the reviewer's return reason on the detail page
+- [ ] An **Edit** button is visible for RETURNED requests
+- [ ] The edit form opens pre-populated with the original field values (not blank)
+- [ ] The Requester can update the fields and click **Resubmit**
+- [ ] After resubmit → status changes back to **SUBMITTED**
+- [ ] No **Edit** button is visible for **SUBMITTED**, **APPROVED**, or **REJECTED** requests
+- [ ] Navigating directly to the edit URL for a REJECTED request (e.g. `/requests/<id>/edit`) → blocked with an error or redirect (edit form is NOT shown)
+
+---
+
+### 📜 Audit History / Timeline
+
+- [ ] The request detail page has an audit history / timeline section
+- [ ] After the full return → edit → resubmit → approve cycle, the timeline shows entries in order:
+  - `CREATED`
+  - `SUBMITTED`
+  - `RETURNED` (with return reason visible)
+  - `RESUBMITTED` (or `EDITED` + `RESUBMITTED`)
+  - `APPROVED`
+- [ ] Each timeline entry shows the actor's name and a timestamp
+- [ ] History entries cannot be deleted or modified by either role
+
+---
+
+### 🔒 Access Control & Security
+
+- [ ] The Requester's dashboard shows **only their own requests** — not other users' requests
+- [ ] The Reviewer's queue shows **only requests assigned to them**
+- [ ] Navigating directly to another user's request URL → access denied or redirect (not the request detail)
+- [ ] No **Approve / Reject / Return** buttons are visible to the Requester on any request
+- [ ] No **New Request** or **Edit** button is visible to the Reviewer
+
+---
+
+### 🧾 General Quality Checks
+
+- [ ] All status badges display the correct label for each state (SUBMITTED, APPROVED, RETURNED, REJECTED)
+- [ ] No console errors or broken UI elements during normal use
+- [ ] Switching roles (sign out as Requester, sign in as Reviewer) works cleanly without session bleed-over
+- [ ] The application version displayed on the home page matches the documented release (Version 0.2)
