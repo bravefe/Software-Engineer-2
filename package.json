@@ -16,6 +16,7 @@
     "test:server": "vitest run tests/server",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:video": "playwright test tests/e2e/sprint1-demo.video.spec.ts",
     "db:up": "docker compose -f database/docker-compose.yml up -d",
     "db:down": "docker compose -f database/docker-compose.yml down",
     "db:generate": "npm run prisma:generate --workspace server",
