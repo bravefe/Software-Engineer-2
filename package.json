@@ -1,5 +1,6 @@
 {
   "name": "macau678-purchase-approval-system",
+  "version": "0.2.1",
   "private": true,
   "workspaces": [
     "client",
