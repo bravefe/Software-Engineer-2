@@ -1,5 +1,7 @@
 # Macau678 Purchase Approval System
 
+**Version:** 0.2.1
+
 ## Prerequisites
 
 - Node.js 20 LTS or newer and npm
