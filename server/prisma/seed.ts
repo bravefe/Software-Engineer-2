@@ -18,8 +18,18 @@ async function main(): Promise<void> {
         role: "REQUESTER" as const,
       },
       {
+        email: "requester2@macau678.com",
+        name: "Bob Requester",
+        role: "REQUESTER" as const,
+      },
+      {
         email: "reviewer1@macau678.com",
         name: "Carol Reviewer",
+        role: "REVIEWER" as const,
+      },
+      {
+        email: "reviewer2@macau678.com",
+        name: "Dave Reviewer",
         role: "REVIEWER" as const,
       },
     ];
