@@ -226,9 +226,9 @@ Before executing any test case, verify the following:
 | **Test Case ID**   | UAT-TC-03                                                                                                                                              |
 | **Category**       | Forbidden Role / Ownership Case                                                                                                                        |
 | **Purpose**        | Verify that users cannot access requests that do not belong to them or that they are not authorized to review. Direct URL manipulation must be denied. |
-| **User Roles**     | REQUESTER (UAT-REQUESTER-01), REVIEWER (UAT-REVIEWER-01)                                                                                               |
+| **User Roles**     | REQUESTER 01/02 (`requester1@macau678.com`, `requester2@macau678.com`), REVIEWER 01/02 (`reviewer1@macau678.com`, `reviewer2@macau678.com`) |
 | **SRS References** | BR-09, AC-10, FR-02                                                                                                                                    |
-| **Preconditions**  | At least one request created by UAT-REQUESTER-01 exists (from UAT-TC-01). Note the Request ID (from the URL, e.g. `/requests/abc123`).                 |
+| **Preconditions**  | One request owned by UAT-REQUESTER-01 and two requester accounts plus two reviewer accounts must exist. Seed credentials are `requester1@`, `requester2@`, `reviewer1@`, and `reviewer2@` with the `@macau678.com` domain. Note the Request ID (from the URL, e.g. `/requests/abc123`). |
 
 **Synthetic Inputs:**
 
@@ -238,16 +238,16 @@ Before executing any test case, verify the following:
 
 **Steps — Part A: Reviewer accessing Requester's draft/returned request**
 
-1. Sign in as **UAT-REVIEWER-01** in an Incognito window.
-2. Note the URL of a request created by UAT-REQUESTER-01 (use a **DRAFT** or **RETURNED** status request if available, as these are owned exclusively by the Requester).
+1. Sign in as **UAT-REVIEWER-02** (`reviewer2@macau678.com`) in an Incognito window.
+2. Note the URL of a request created by UAT-REQUESTER-01 (`requester1@macau678.com`; use a **DRAFT** or **RETURNED** status request if available).
 3. Navigate directly to that URL (paste it in the address bar).
 4. Verify the page shows an **access denied / unauthorized** message, or redirects to the dashboard.
 
 **Steps — Part B: Requester attempting to access another user's request**
 
-5. Sign out from UAT-REVIEWER-01.
-6. Sign in as **UAT-REQUESTER-01** in a new Incognito window.
-7. Manually construct a URL for a request ID that does **not** belong to UAT-REQUESTER-01 (e.g., one created in a different test run by another user, if any exist — otherwise note the result).
+5. Sign out from UAT-REVIEWER-02.
+6. Sign in as **UAT-REQUESTER-02** (`requester2@macau678.com`) in a new Incognito window.
+7. Manually construct a URL for the request ID owned by UAT-REQUESTER-01 (`requester1@macau678.com`).
 8. Navigate to that URL directly.
 9. Verify an **access denied** message or redirect occurs.
 

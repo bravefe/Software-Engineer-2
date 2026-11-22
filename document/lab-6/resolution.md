@@ -9,7 +9,7 @@ Test Date: 21 November 2026
 | --------- | ----------------------------- | ---------------------------------------------------------------------------- |
 | UAT-TC-01 | Normal domain journey         | [PASS]                                                                       |
 | UAT-TC-02 | Business rule / boundary      | [PASS]                                                                       |
-| UAT-TC-03 | Forbidden role / ownership    | [FAIL (Low) - initially unable to complete cross-user checks on Version 0.2] |
+| UAT-TC-03 | Forbidden role / ownership    | [FAIL (Low) - could not complete cross-user checks on Version 0.2] |
 | UAT-TC-04 | State / history / persistence | [PASS]                                                                       |
 | UAT-TC-05 | Terminal state immutability   | [PASS]                                                                       |
 
@@ -21,11 +21,11 @@ Test Date: 21 November 2026
 
 | Field                | Details                                                                                                                                                                                                                                                                      |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Issue ID**         | UAT6-03 / [#49](https://github.com/bravefe/Software-Engineer-2/issues/49)                                                                                                                                                                                                    |
+| **Issue ID**         | UAT-TC-03 / [#49](https://github.com/bravefe/Software-Engineer-2/issues/49)                                                                                                                                                                                                  |
 | **Linked case / AC** | UAT-TC-03 / AC-10, BR-09                                                                                                                                                                                                                                                     |
 | **Classification**   | Test setup defect                                                                                                                                                                                                                                                            |
 | **Severity**         | Low                                                                                                                                                                                                                                                                          |
-| **Reason**           | Version 0.2 had only `requester1` and `reviewer1`, so cross-requester ownership could not be tested. Version 0.2.1 adds `requester2` and `reviewer2`. The observed 404 instead of 403 also needs Product Team confirmation because the access restriction remained enforced. |
+| **Reason**           | Version 0.2 had only `requester1` and `reviewer1`, so cross-requester ownership could not be tested. Version 0.2.1 adds `requester2` and `reviewer2`. |
 
 | **Fix status** | Fixed for testability, retest pending |
 | **Disposition** | Retest UAT-TC-03 on Version 0.2.1 |
@@ -56,12 +56,12 @@ UAT-TC-03 is the received finding. Version 0.2 could not perform the cross-reque
 
 | Field                        | Value                                                                                                                                                           |
 | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Decision**                 | Accepted                                                                                                                                                        |
+| **Decision**                 | Accepted with condition                                                                                                                                         |
 | **Tested release**           | `f9d653882a40278394a1b007f98fdc5b7955ad34`, Version 0.2; retest target `c7504ea5bedea81ce9d7ecf100e15933c918698b`, Version 0.2.1                                |
 | **Sprint 1 scope**           | FEAT-01 to FEAT-09, AC-01 to AC-11                                                                                                                              |
 | **Out of scope**             | FR-08 / AC-12 (email), FEAT-10, FEAT-11                                                                                                                         |
 | **Decision date**            | 21 November 2026                                                                                                                                                |
-| **Conditions / limitations** | UAT-TC-03 must be rerun on Version 0.2.1. The 404-versus-403 result is low priority and no unauthorized access was observed.                                    |
+| **Conditions / limitations** | UAT-TC-03 must be rerun independently on Version 0.2.1 before the final retest status can be closed.                                                          |
 | **Reasons**                  | Four of five original UAT cases passed; UAT-TC-03 could not be completed as originally seeded. Version 0.2.1 adds the required accounts for cross-user testing. |
 
 ---

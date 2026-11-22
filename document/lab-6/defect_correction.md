@@ -86,5 +86,5 @@ Evidence: [https://github.com/bravefe/Software-Engineer-2/actions/runs/449219005
 | Corrected version given to UAT team | 0.2.1, merge commit `c7504ea5bedea81ce9d7ecf100e15933c918698b` |
 | Original case / steps re-run        | UAT-TC-03, Part B                                              |
 | Actual result                       | Awaiting independent retest                                    |
-| PASS / FAIL                         | Pending                                                        |
+| PASS / FAIL                         | Pending independent retest                                     |
 | Affected cases re-run               | -                                                              |
