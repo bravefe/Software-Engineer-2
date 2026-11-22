@@ -32,15 +32,94 @@ async function generateUniqueRequestNumber(): Promise<string> {
   return requestNumber;
 }
 
-// GET /api/requests - scoped to role and ownership
+// GET /api/requests - scoped to role and ownership, supports filtering (FEAT-10)
+// Query parameters: status, startDate (ISO date), endDate (ISO date), search (keyword)
 router.get("/", async (req, res): Promise<void> => {
   const currentUser = req.user!;
+  const { status, startDate, endDate, search } = req.query as {
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    search?: string;
+  };
+
+  // Validate status filter if provided
+  const validStatuses = ["DRAFT", "PENDING_REVIEW", "APPROVED", "REJECTED", "RETURNED"];
+  if (status && !validStatuses.includes(status)) {
+    res.status(400).json({
+      error: `Invalid status filter. Valid values: ${validStatuses.join(", ")}`,
+      code: "VALIDATION_ERROR",
+    });
+    return;
+  }
+
+  // Validate date filters if provided
+  let parsedStartDate: Date | undefined;
+  let parsedEndDate: Date | undefined;
+
+  if (startDate) {
+    parsedStartDate = new Date(startDate);
+    if (Number.isNaN(parsedStartDate.getTime())) {
+      res.status(400).json({
+        error: "Invalid startDate format. Use ISO date format (YYYY-MM-DD).",
+        code: "VALIDATION_ERROR",
+      });
+      return;
+    }
+    // Set to start of day UTC
+    parsedStartDate.setUTCHours(0, 0, 0, 0);
+  }
+
+  if (endDate) {
+    parsedEndDate = new Date(endDate);
+    if (Number.isNaN(parsedEndDate.getTime())) {
+      res.status(400).json({
+        error: "Invalid endDate format. Use ISO date format (YYYY-MM-DD).",
+        code: "VALIDATION_ERROR",
+      });
+      return;
+    }
+    // Set to end of day UTC
+    parsedEndDate.setUTCHours(23, 59, 59, 999);
+  }
+
+  // Validate date range: startDate must not be after endDate
+  if (parsedStartDate && parsedEndDate && parsedStartDate > parsedEndDate) {
+    res.status(400).json({
+      error: "startDate must not be after endDate.",
+      code: "VALIDATION_ERROR",
+    });
+    return;
+  }
 
   try {
-    const whereClause =
+    // Authorization scope: Requesters see own, Reviewers see assigned (never bypassed by filters)
+    const ownershipClause =
       currentUser.role === "REQUESTER"
         ? { requesterId: currentUser.id }
         : { reviewerId: currentUser.id };
+
+    // Build dynamic filter predicates on top of mandatory authorization scope
+    const whereClause: Record<string, unknown> = { ...ownershipClause };
+
+    if (status) {
+      whereClause.status = status;
+    }
+
+    if (parsedStartDate || parsedEndDate) {
+      const dateFilter: Record<string, Date> = {};
+      if (parsedStartDate) dateFilter.gte = parsedStartDate;
+      if (parsedEndDate) dateFilter.lte = parsedEndDate;
+      whereClause.createdAt = dateFilter;
+    }
+
+    if (search && search.trim()) {
+      const keyword = search.trim();
+      whereClause.OR = [
+        { title: { contains: keyword, mode: "insensitive" } },
+        { requestNumber: { contains: keyword, mode: "insensitive" } },
+      ];
+    }
 
     const requests = await prisma.purchaseRequest.findMany({
       where: whereClause,

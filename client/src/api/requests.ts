@@ -46,8 +46,24 @@ export async function fetchReviewers(): Promise<UserSummary[]> {
   return data.reviewers || [];
 }
 
-export async function fetchRequests(): Promise<PurchaseRequest[]> {
-  const res = await fetch("/api/requests", {
+export interface RequestFilters {
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  search?: string;
+}
+
+export async function fetchRequests(filters?: RequestFilters): Promise<PurchaseRequest[]> {
+  const params = new URLSearchParams();
+  if (filters?.status) params.set("status", filters.status);
+  if (filters?.startDate) params.set("startDate", filters.startDate);
+  if (filters?.endDate) params.set("endDate", filters.endDate);
+  if (filters?.search) params.set("search", filters.search);
+
+  const queryString = params.toString();
+  const url = queryString ? `/api/requests?${queryString}` : "/api/requests";
+
+  const res = await fetch(url, {
     credentials: "include",
   });
   if (!res.ok) {

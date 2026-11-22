@@ -257,11 +257,11 @@ erDiagram
 ### 4.1 Screen and Page Overview
 
 - **Login (`/login`):** Authentication form supporting email and password inputs with immediate error feedback on invalid attempts (FR-01, AC-01).
-- **Requester Dashboard (`/requester/dashboard`):** Displays status summary metric cards (Drafts, Pending Review, Returned, Approved, Rejected) and a table of recent requests (FR-03, FR-08).
+- **Requester Dashboard (`/requester/dashboard`):** Displays request overview and interactive filter controls (status dropdown, start date, end date, keyword search, and clear filters button) over the requester's own requests table (FR-03, FR-08, FEAT-10).
 - **Create Request (`/requests/new`):** Input form for title, description, amount, justification, and reviewer assignment dropdown with "Save as Draft" and "Submit for Review" options (FR-02, BR-02, AC-02).
 - **Edit Returned Request (`/requests/:id/edit`):** Edit form for modifying title, description, amount, and justification. Strictly accessible only when status is `RETURNED` (FR-05, BR-06, AC-07).
 - **Request Detail View (`/requests/:id`):** Displays comprehensive request details, current status badge, and the chronological `RequestHistory` timeline with review reasons (FR-03, FR-06).
-- **Reviewer Queue (`/reviewer/queue`):** Table showing all requests currently assigned to the logged-in Reviewer, filterable by status (`Pending Review`, `Approved`, `Rejected`, `Returned`) (FR-03, BR-04, AC-04).
+- **Reviewer Queue (`/reviewer/queue`):** Queue displaying requests assigned to the logged-in Reviewer, equipped with multi-criteria filter controls (status, start date, end date, keyword search, clear filters) across pending and past decisions (FR-03, BR-04, FR-08, AC-04, FEAT-10).
 - **Reviewer Decision Modal / Action (`/requests/:id/review`):** Interface for assigned Reviewer to inspect request details and select action:
   - **Approve:** Updates status to `APPROVED` (FR-04, AC-05).
   - **Reject:** Prompts for mandatory reason and updates status to `REJECTED` (FR-04, BR-05, AC-06).
@@ -356,9 +356,16 @@ graph TD
 #### Purchase Requests (`/api/requests`)
 
 - `POST /api/requests`: Create a new purchase request as `DRAFT` or `PENDING_REVIEW` (FR-02, AC-02).
-- `GET /api/requests`: List requests for the logged-in user:
-  - For `REQUESTER`: Returns own requests (`requesterId === currentUser.id`) (FR-03, AC-03).
-  - For `REVIEWER`: Returns requests assigned to current reviewer (`reviewerId === currentUser.id`) (FR-03, BR-04, AC-04).
+- `GET /api/requests`: List requests for the logged-in user with dynamic multi-criteria filtering (FR-03, FR-08, AC-12, FEAT-10):
+  - **Query Parameters:**
+    - `status`: Optional filter by request status (`DRAFT`, `PENDING_REVIEW`, `APPROVED`, `REJECTED`, `RETURNED`). Validated with 400 on invalid input.
+    - `startDate`: Optional filter for requests created on or after date (`YYYY-MM-DD`).
+    - `endDate`: Optional filter for requests created on or before date (`YYYY-MM-DD`). Validated such that `startDate <= endDate`.
+    - `search`: Optional case-insensitive keyword search against `title` and `requestNumber`.
+  - **Authorization Scoping (Enforced Server-Side):**
+    - For `REQUESTER`: Returns exclusively own requests (`requesterId === currentUser.id`) (FR-03, AC-03, BR-09, AC-10).
+    - For `REVIEWER`: Returns exclusively requests assigned to current reviewer (`reviewerId === currentUser.id`) (FR-03, BR-04, AC-04, AC-09).
+    - Filters can never bypass ownership or assignment boundaries; clearing filters restores the full authorized list.
 - `GET /api/requests/:id`: Retrieve detailed purchase request by ID, verifying access permission (FR-03, BR-09, AC-10).
 - `PATCH /api/requests/:id`: Update request details. Permitted strictly if `status === RETURNED` and user is the requester (FR-05, BR-06, AC-07).
 - `POST /api/requests/:id/submit`: Submit a `DRAFT` or resubmit a `RETURNED` request to `PENDING_REVIEW` (FR-02, BR-07, AC-07).

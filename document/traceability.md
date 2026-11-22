@@ -34,7 +34,7 @@ $$\text{SRS Requirement} \iff \text{Feature ID} \iff \text{Sprint Plan} \iff \te
 | **FR-05**      | Edit returned requests; prevent editing on other statuses         | `FEAT-08`                       |  Sprint 1   | `TEST-UNIT-03`, `TEST-INT-07`, `TEST-E2E-01`, `TEST-E2E-02`                                | Unit, Integration, E2E            | `PARTIALLY VERIFIED`<br>(Returned edit/resubmit and rejected-state UI verified) |
 | **FR-06**      | Record and view chronological request audit history               | `FEAT-09`                       |  Sprint 1   | `TEST-INT-08`, `TEST-COMP-04`, `TEST-E2E-01`, `TEST-E2E-02`                                | Integration, Component, E2E       | `PASSED` |
 | **FR-07**      | Reviewer assignment and assigned-only review enforcement          | `FEAT-04`, `FEAT-06`, `FEAT-07` |  Sprint 1   | `TEST-INT-03`, `TEST-INT-05`, `TEST-INT-06`, `TEST-E2E-01`, `TEST-E2E-03`                 | Integration, E2E                  | `PASSED` |
-| **FR-08**      | Request overview, filtering by status and date                    | `FEAT-10`, `FEAT-11`            |  Sprint 2   | `TEST-UNIT-06`, `TEST-INT-09`, `TEST-INT-10`, `TEST-E2E-04`                                 | Unit, Integration, E2E            |                             `PLANNED`                             |
+| **FR-08**      | Request overview, filtering by status and date                    | `FEAT-10`, `FEAT-11`            |  Sprint 2   | `TEST-INT-09`, `TEST-E2E-04`, `TEST-UNIT-06`, `TEST-INT-10`                                 | Integration, E2E                  | `PARTIALLY VERIFIED`<br>(Filtering verified via TEST-INT-09 and TEST-E2E-04; reporting metrics TEST-INT-10 remains planned) |
 
 ---
 
@@ -82,7 +82,7 @@ $$\text{SRS Requirement} \iff \text{Feature ID} \iff \text{Sprint Plan} \iff \te
 | **AC-09**              | Reviewer cannot review request assigned to another      | `FEAT-06`, `FEAT-07`            | `TEST-INT-05`, `TEST-INT-06`, `TEST-E2E-03`                  |                       `PASSED`                       |
 | **AC-10**              | Users cannot access requests not authorized to view     | `FEAT-02`, `FEAT-05`, `FEAT-06` | `TEST-INT-02`, `TEST-INT-04`, `TEST-INT-05`, `TEST-E2E-03`   |                       `PASSED`                       |
 | **AC-11**              | Review decisions and status changes recorded in history | `FEAT-09`                       | `TEST-INT-06`, `TEST-INT-08`, `TEST-COMP-04`, `TEST-E2E-01`, `TEST-E2E-02` | `PASSED` |
-| **AC-12**              | Filter requests and view basic request summaries        | `FEAT-10`, `FEAT-11`            | `TEST-UNIT-06`, `TEST-INT-09`, `TEST-INT-10`, `TEST-E2E-04`   |                      `PLANNED`                       |
+| **AC-12**              | Filter requests and view basic request summaries        | `FEAT-10`, `FEAT-11`            | `TEST-INT-09`, `TEST-E2E-04`, `TEST-UNIT-06`, `TEST-INT-10`   | `PARTIALLY VERIFIED`<br>(Filtering verified via TEST-INT-09 and TEST-E2E-04; reporting summaries TEST-INT-10 remains planned) |
 
 ---
 
@@ -110,5 +110,5 @@ $$\text{SRS Requirement} \iff \text{Feature ID} \iff \text{Sprint Plan} \iff \te
 - **Functional Requirement Coverage:** 8 / 8 requirements mapped. E2E-01 through E2E-03 now verify the core request, review, history, and authorization journeys; FR-02/AC-02 boundary validation and some FR-05 edit-state combinations remain partially verified.
 - **Business Rule Coverage:** BR-01, BR-03, BR-04, BR-05, BR-09, BR-10 fully verified with automated test suites.
 - **Non-Functional Requirement Coverage:** NFR-01 (Security) verified with bcrypt and JWT tests. NFR-02, NFR-03, NFR-04, and NFR-05 remain planned or partially verified until full application delivery.
-- **Acceptance Criteria Coverage:** AC-01, AC-03 through AC-11 are verified by passing tests; AC-02 is partially verified pending boundary validation, and AC-12 remains planned.
-- **End-to-End (Playwright) Coverage:** `TEST-E2E-01` through `TEST-E2E-03` passed. `TEST-E2E-04` and `TEST-E2E-05` remain planned / FIXME and are outside Issue 6's FEAT-01–FEAT-09 scope.
+- **Acceptance Criteria Coverage:** AC-01, AC-03 through AC-11 are verified by passing tests; AC-02 is partially verified pending boundary validation, and AC-12 filtering is verified by passing tests (reporting summaries remain planned).
+- **End-to-End (Playwright) Coverage:** `TEST-E2E-01` through `TEST-E2E-04` passed. `TEST-E2E-05` remains planned / FIXME for Sprint 3.

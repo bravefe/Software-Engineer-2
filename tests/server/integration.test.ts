@@ -843,7 +843,323 @@ describe("Integration and API tests: Authentication & Authorization", () => {
     });
   });
 
+  describe("TEST-INT-09: Request filtering and search (FEAT-10, FR-08, AC-12)", () => {
+    let requester1Cookie: string;
+    let requester2Cookie: string;
+    let reviewer1Cookie: string;
+    let reviewer2Cookie: string;
+
+    let filterReqApproved: any;
+    let filterReqDraft: any;
+    let filterReqRejected: any;
+    let filterReqOtherUser: any;
+
+    beforeAll(async () => {
+      // Log in users
+      const req1Login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      requester1Cookie = req1Login.headers["set-cookie"][0];
+
+      const req2Login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester2.email, password: seededUsers.requester2.password });
+      requester2Cookie = req2Login.headers["set-cookie"][0];
+
+      const rev1Login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
+      reviewer1Cookie = rev1Login.headers["set-cookie"][0];
+
+      const rev2Login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.reviewer2.email, password: seededUsers.reviewer2.password });
+      reviewer2Cookie = rev2Login.headers["set-cookie"][0];
+
+      // Create dedicated test requests with explicit dates and statuses
+      filterReqApproved = await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: "PR-2026-FIL01",
+          title: "Special Filtering Alpha Laptop",
+          description: "MacBook Pro for development",
+          amount: "2499.00",
+          justification: "High-spec machine",
+          status: "APPROVED",
+          requesterId: seededUsers.requester1.id,
+          reviewerId: seededUsers.reviewer1.id,
+          createdAt: new Date("2026-01-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-01-15T10:00:00.000Z"),
+        },
+      });
+
+      filterReqDraft = await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: "PR-2026-FIL02",
+          title: "Special Filtering Beta Standing Desk",
+          description: "Electric height adjustable desk",
+          amount: "650.00",
+          justification: "Ergonomics",
+          status: "DRAFT",
+          requesterId: seededUsers.requester1.id,
+          reviewerId: seededUsers.reviewer1.id,
+          createdAt: new Date("2026-02-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-02-15T10:00:00.000Z"),
+        },
+      });
+
+      filterReqRejected = await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: "PR-2026-FIL03",
+          title: "Special Filtering Gamma Gaming Monitor",
+          description: "Ultra-wide curved display",
+          amount: "899.00",
+          justification: "Visual design work",
+          status: "REJECTED",
+          requesterId: seededUsers.requester1.id,
+          reviewerId: seededUsers.reviewer1.id,
+          createdAt: new Date("2026-03-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-03-15T10:00:00.000Z"),
+        },
+      });
+
+      // Request belonging to Requester 2 and assigned to Reviewer 2
+      filterReqOtherUser = await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: "PR-2026-FIL04",
+          title: "Special Filtering Alpha Laptop Other User",
+          description: "Laptop for second user",
+          amount: "2100.00",
+          justification: "Project work",
+          status: "APPROVED",
+          requesterId: seededUsers.requester2.id,
+          reviewerId: seededUsers.reviewer2.id,
+          createdAt: new Date("2026-01-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-01-15T10:00:00.000Z"),
+        },
+      });
+    });
+
+    afterAll(async () => {
+      // Clean up dedicated filter requests
+      await prisma.purchaseRequest.deleteMany({
+        where: {
+          id: {
+            in: [
+              filterReqApproved.id,
+              filterReqDraft.id,
+              filterReqRejected.id,
+              filterReqOtherUser.id,
+            ],
+          },
+        },
+      });
+    });
+
+    it("filters requests by status correctly", async () => {
+      const res = await request(app)
+        .get("/api/requests?status=APPROVED")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.requests)).toBe(true);
+      expect(res.body.requests.length).toBeGreaterThanOrEqual(1);
+      for (const r of res.body.requests) {
+        expect(r.status).toBe("APPROVED");
+        expect(r.requesterId).toBe(seededUsers.requester1.id);
+      }
+      const found = res.body.requests.find((r: any) => r.id === filterReqApproved.id);
+      expect(found).toBeDefined();
+    });
+
+    it("filters requests by startDate correctly", async () => {
+      const res = await request(app)
+        .get("/api/requests?startDate=2026-02-01")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      for (const r of res.body.requests) {
+        expect(new Date(r.createdAt).getTime()).toBeGreaterThanOrEqual(
+          new Date("2026-02-01T00:00:00.000Z").getTime(),
+        );
+      }
+      const ids = res.body.requests.map((r: any) => r.id);
+      expect(ids).toContain(filterReqDraft.id);
+      expect(ids).toContain(filterReqRejected.id);
+      expect(ids).not.toContain(filterReqApproved.id);
+    });
+
+    it("filters requests by endDate correctly", async () => {
+      const res = await request(app)
+        .get("/api/requests?endDate=2026-01-31")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      for (const r of res.body.requests) {
+        expect(new Date(r.createdAt).getTime()).toBeLessThanOrEqual(
+          new Date("2026-01-31T23:59:59.999Z").getTime(),
+        );
+      }
+      const ids = res.body.requests.map((r: any) => r.id);
+      expect(ids).toContain(filterReqApproved.id);
+      expect(ids).not.toContain(filterReqDraft.id);
+      expect(ids).not.toContain(filterReqRejected.id);
+    });
+
+    it("filters requests by date range (startDate and endDate)", async () => {
+      const res = await request(app)
+        .get("/api/requests?startDate=2026-02-01&endDate=2026-02-28")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      const ids = res.body.requests.map((r: any) => r.id);
+      expect(ids).toContain(filterReqDraft.id);
+      expect(ids).not.toContain(filterReqApproved.id);
+      expect(ids).not.toContain(filterReqRejected.id);
+    });
+
+    it("searches requests by title keyword (case-insensitive)", async () => {
+      const res = await request(app)
+        .get("/api/requests?search=standing%20desk")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      const ids = res.body.requests.map((r: any) => r.id);
+      expect(ids).toContain(filterReqDraft.id);
+      expect(ids).not.toContain(filterReqApproved.id);
+      expect(ids).not.toContain(filterReqRejected.id);
+    });
+
+    it("searches requests by requestNumber keyword", async () => {
+      const res = await request(app)
+        .get("/api/requests?search=FIL03")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      expect(res.body.requests.length).toBe(1);
+      expect(res.body.requests[0].id).toBe(filterReqRejected.id);
+    });
+
+    it("combines multiple filters (status, search, date range)", async () => {
+      const res = await request(app)
+        .get("/api/requests?status=APPROVED&search=Laptop&startDate=2026-01-01&endDate=2026-01-31")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      expect(res.body.requests.length).toBe(1);
+      expect(res.body.requests[0].id).toBe(filterReqApproved.id);
+    });
+
+    it("returns empty array with 200 when no requests match the filter criteria", async () => {
+      const res = await request(app)
+        .get("/api/requests?search=NonExistentKeywordXYZ12345")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.requests)).toBe(true);
+      expect(res.body.requests.length).toBe(0);
+    });
+
+    it("clearing filters restores full authorized list", async () => {
+      const filteredRes = await request(app)
+        .get("/api/requests?status=DRAFT")
+        .set("Cookie", requester1Cookie);
+
+      const unfilteredRes = await request(app)
+        .get("/api/requests")
+        .set("Cookie", requester1Cookie);
+
+      expect(filteredRes.status).toBe(200);
+      expect(unfilteredRes.status).toBe(200);
+      expect(unfilteredRes.body.requests.length).toBeGreaterThan(filteredRes.body.requests.length);
+      const allIds = unfilteredRes.body.requests.map((r: any) => r.id);
+      expect(allIds).toContain(filterReqApproved.id);
+      expect(allIds).toContain(filterReqDraft.id);
+      expect(allIds).toContain(filterReqRejected.id);
+    });
+
+    it("strictly preserves requester ownership boundaries during search and filtering (BR-09, AC-10)", async () => {
+      // Requester 1 searches with a keyword matching Requester 2's request
+      const res = await request(app)
+        .get("/api/requests?search=Other%20User")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      expect(res.body.requests.length).toBe(0);
+
+      // Verify Requester 2 can find their own request
+      const req2Res = await request(app)
+        .get("/api/requests?search=Other%20User")
+        .set("Cookie", requester2Cookie);
+
+      expect(req2Res.status).toBe(200);
+      expect(req2Res.body.requests.length).toBe(1);
+      expect(req2Res.body.requests[0].id).toBe(filterReqOtherUser.id);
+    });
+
+    it("strictly preserves reviewer assignment boundaries during search and filtering (BR-04, AC-09)", async () => {
+      // Reviewer 1 searches for approved requests
+      const rev1Res = await request(app)
+        .get("/api/requests?status=APPROVED&search=Special%20Filtering")
+        .set("Cookie", reviewer1Cookie);
+
+      expect(rev1Res.status).toBe(200);
+      const rev1Ids = rev1Res.body.requests.map((r: any) => r.id);
+      expect(rev1Ids).toContain(filterReqApproved.id);
+      // Reviewer 1 must NOT see request assigned to Reviewer 2
+      expect(rev1Ids).not.toContain(filterReqOtherUser.id);
+
+      // Reviewer 2 searches for approved requests
+      const rev2Res = await request(app)
+        .get("/api/requests?status=APPROVED&search=Special%20Filtering")
+        .set("Cookie", reviewer2Cookie);
+
+      expect(rev2Res.status).toBe(200);
+      const rev2Ids = rev2Res.body.requests.map((r: any) => r.id);
+      expect(rev2Ids).toContain(filterReqOtherUser.id);
+      expect(rev2Ids).not.toContain(filterReqApproved.id);
+    });
+
+    it("rejects invalid status filter with 400 VALIDATION_ERROR", async () => {
+      const res = await request(app)
+        .get("/api/requests?status=INVALID_STATUS")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe("VALIDATION_ERROR");
+      expect(res.body.error).toContain("Invalid status filter");
+    });
+
+    it("rejects invalid startDate format with 400 VALIDATION_ERROR", async () => {
+      const res = await request(app)
+        .get("/api/requests?startDate=not-a-date")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe("VALIDATION_ERROR");
+      expect(res.body.error).toContain("Invalid startDate format");
+    });
+
+    it("rejects invalid endDate format with 400 VALIDATION_ERROR", async () => {
+      const res = await request(app)
+        .get("/api/requests?endDate=not-a-date")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe("VALIDATION_ERROR");
+      expect(res.body.error).toContain("Invalid endDate format");
+    });
+
+    it("rejects invalid date range where startDate > endDate with 400 VALIDATION_ERROR", async () => {
+      const res = await request(app)
+        .get("/api/requests?startDate=2026-05-01&endDate=2026-04-01")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe("VALIDATION_ERROR");
+      expect(res.body.error).toContain("startDate must not be after endDate");
+    });
+  });
+
   // Sprint 2/3 reporting tests preserved as todo
-  it.todo("TEST-INT-09: request filtering by status and date range");
   it.todo("TEST-INT-10: reporting summary aggregation endpoint");
 });
