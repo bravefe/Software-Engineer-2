@@ -10,6 +10,7 @@ import LoginPage from "./pages/Login";
 import NotFoundPage from "./pages/NotFound";
 import RequestDetail from "./pages/RequestDetail";
 import RequesterDashboard from "./pages/RequesterDashboard";
+import Reports from "./pages/Reports";
 import ReviewerQueue from "./pages/ReviewerQueue";
 
 function LoginRoute() {
@@ -38,6 +39,7 @@ export default function App() {
         {/* Protected Reviewer Routes */}
         <Route element={<ProtectedRoute allowedRoles={["REVIEWER"]} />}>
           <Route path="reviewer/queue" element={<ReviewerQueue />} />
+          <Route path="reports" element={<Reports />} />
         </Route>
 
         {/* Protected Common Routes (both roles can view permitted request details) */}

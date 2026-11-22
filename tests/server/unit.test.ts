@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { requireRole } from "../../server/src/middleware/auth";
 import { hashPassword, verifyPassword } from "../../server/src/utils/auth";
+import { aggregateReportMetrics } from "../../server/src/utils/reports";
 import { isValidTransition } from "../../server/src/utils/workflow";
 
 describe("Unit tests", () => {
@@ -178,5 +179,56 @@ describe("Unit tests", () => {
   });
 
   it.todo("TEST-UNIT-05: input validation and boundary checks");
-  it.todo("TEST-UNIT-06: financial aggregation and status metrics math");
+
+  describe("TEST-UNIT-06: financial aggregation and status metrics math", () => {
+    it("counts request statuses and adds decimal amounts without rounding errors", () => {
+      const metrics = aggregateReportMetrics([
+        { status: "APPROVED", amount: "500.00" },
+        { status: "APPROVED", amount: "200.00" },
+        { status: "APPROVED", amount: "300.00" },
+        { status: "PENDING_REVIEW", amount: "150.00" },
+        { status: "REJECTED", amount: "100.00" },
+      ]);
+
+      expect(metrics).toEqual({
+        totalCount: 5,
+        statusCounts: {
+          DRAFT: 0,
+          PENDING_REVIEW: 1,
+          APPROVED: 3,
+          REJECTED: 1,
+          RETURNED: 0,
+        },
+        statusAmounts: {
+          DRAFT: "0.00",
+          PENDING_REVIEW: "150.00",
+          APPROVED: "1000.00",
+          REJECTED: "100.00",
+          RETURNED: "0.00",
+        },
+        totalAmount: "1250.00",
+      });
+    });
+
+    it("returns zero counts and amount for an empty result", () => {
+      expect(aggregateReportMetrics([])).toEqual({
+        totalCount: 0,
+        statusCounts: {
+          DRAFT: 0,
+          PENDING_REVIEW: 0,
+          APPROVED: 0,
+          REJECTED: 0,
+          RETURNED: 0,
+        },
+        statusAmounts: {
+          DRAFT: "0.00",
+          PENDING_REVIEW: "0.00",
+          APPROVED: "0.00",
+          REJECTED: "0.00",
+          RETURNED: "0.00",
+        },
+        totalAmount: "0.00",
+      });
+    });
+  });
 });

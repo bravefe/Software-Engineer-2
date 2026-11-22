@@ -7,7 +7,7 @@ dotenv.config({ path: resolve(process.cwd(), "server/.env") });
 
 import { app } from "../../server/src/app";
 import { disconnectPrisma, prisma } from "../../server/src/prisma";
-import { COOKIE_NAME, createSessionToken, hashSessionToken } from "../../server/src/utils/auth";
+import { COOKIE_NAME, createSessionToken, hashPassword, hashSessionToken } from "../../server/src/utils/auth";
 import { resetAndSeedDatabase, type SeededTestRequests, type SeededTestUsers } from "../helpers/testDb";
 
 describe("Integration and API tests: Authentication & Authorization", () => {
@@ -1160,6 +1160,173 @@ describe("Integration and API tests: Authentication & Authorization", () => {
     });
   });
 
-  // Sprint 2/3 reporting tests preserved as todo
-  it.todo("TEST-INT-10: reporting summary aggregation endpoint");
+  describe("TEST-INT-10: Reporting summary aggregation endpoint", () => {
+    const reportPassword = "ReportTestPassword123!";
+    const requestPrefix = `PR-REPORT-${Date.now()}`;
+    let reportReviewer: { id: number; email: string };
+    let reportReviewerCookie: string;
+    let reportRequests: { id: number }[] = [];
+
+    beforeAll(async () => {
+      const passwordHash = await hashPassword(reportPassword);
+      reportReviewer = await prisma.user.create({
+        data: {
+          email: `report-reviewer-${Date.now()}@macau678.com`,
+          name: "Report Test Reviewer",
+          role: "REVIEWER",
+          passwordHash,
+          isActive: true,
+        },
+      });
+
+      const amounts = ["500.00", "200.00", "300.00", "150.00", "100.00"];
+      const statuses = ["APPROVED", "APPROVED", "APPROVED", "PENDING_REVIEW", "REJECTED"] as const;
+      reportRequests = await Promise.all(
+        amounts.map((amount, index) =>
+          prisma.purchaseRequest.create({
+            data: {
+              requestNumber: `${requestPrefix}-${index}`,
+              title: `Reporting Summary Fixture ${index}`,
+              description: "Test report metrics and filtering.",
+              amount,
+              justification: "Integration test fixture.",
+              status: statuses[index],
+              requesterId: seededUsers.requester1.id,
+              reviewerId: reportReviewer.id,
+              createdAt: new Date("2026-04-15T10:00:00.000Z"),
+              updatedAt: new Date("2026-04-15T10:00:00.000Z"),
+            },
+          }),
+        ),
+      );
+
+      await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: `${requestPrefix}-other-reviewer`,
+          title: "Reporting Fixture Assigned Elsewhere",
+          description: "Must not appear in this reviewer's report.",
+          amount: "9999.99",
+          justification: "Integration test fixture.",
+          status: "APPROVED",
+          requesterId: seededUsers.requester1.id,
+          reviewerId: seededUsers.reviewer2.id,
+          createdAt: new Date("2026-04-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-04-15T10:00:00.000Z"),
+        },
+      });
+
+      const login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: reportReviewer.email, password: reportPassword });
+      expect(login.status).toBe(200);
+      reportReviewerCookie = login.headers["set-cookie"][0];
+    });
+
+    afterAll(async () => {
+      await prisma.purchaseRequest.deleteMany({
+        where: { requestNumber: { startsWith: requestPrefix } },
+      });
+      if (reportReviewer?.id) {
+        await prisma.user.delete({ where: { id: reportReviewer.id } });
+      }
+    });
+
+    it("returns exact total, all status counts, and only the authenticated reviewer's requests", async () => {
+      const res = await request(app)
+        .get("/api/reports/summary")
+        .set("Cookie", reportReviewerCookie);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({
+        totalCount: 5,
+        statusCounts: {
+          DRAFT: 0,
+          PENDING_REVIEW: 1,
+          APPROVED: 3,
+          REJECTED: 1,
+          RETURNED: 0,
+        },
+        statusAmounts: {
+          DRAFT: "0.00",
+          PENDING_REVIEW: "150.00",
+          APPROVED: "1000.00",
+          REJECTED: "100.00",
+          RETURNED: "0.00",
+        },
+        totalAmount: "1250.00",
+      });
+
+      const requestsRes = await request(app)
+        .get("/api/reports/requests")
+        .set("Cookie", reportReviewerCookie);
+      expect(requestsRes.status).toBe(200);
+      expect(requestsRes.body.requests).toHaveLength(5);
+      expect(requestsRes.body.requests.every((item: { id: number }) =>
+        reportRequests.some((reportRequest) => reportRequest.id === item.id),
+      )).toBe(true);
+    });
+
+    it("applies status and date filters to both results and summary metrics", async () => {
+      const query = "?status=APPROVED&startDate=2026-04-01&endDate=2026-04-30";
+      const summaryRes = await request(app)
+        .get(`/api/reports/summary${query}`)
+        .set("Cookie", reportReviewerCookie);
+      const requestsRes = await request(app)
+        .get(`/api/reports/requests${query}`)
+        .set("Cookie", reportReviewerCookie);
+
+      expect(summaryRes.status).toBe(200);
+      expect(summaryRes.body).toEqual({
+        totalCount: 3,
+        statusCounts: {
+          DRAFT: 0,
+          PENDING_REVIEW: 0,
+          APPROVED: 3,
+          REJECTED: 0,
+          RETURNED: 0,
+        },
+        statusAmounts: {
+          DRAFT: "0.00",
+          PENDING_REVIEW: "0.00",
+          APPROVED: "1000.00",
+          REJECTED: "0.00",
+          RETURNED: "0.00",
+        },
+        totalAmount: "1000.00",
+      });
+      expect(requestsRes.status).toBe(200);
+      expect(requestsRes.body.requests).toHaveLength(3);
+      expect(requestsRes.body.requests.every((item: { status: string }) => item.status === "APPROVED")).toBe(true);
+    });
+
+    it("returns a zero-valued summary and empty request list when no records match", async () => {
+      const summaryRes = await request(app)
+        .get("/api/reports/summary?startDate=2099-01-01")
+        .set("Cookie", reportReviewerCookie);
+      const requestsRes = await request(app)
+        .get("/api/reports/requests?startDate=2099-01-01")
+        .set("Cookie", reportReviewerCookie);
+
+      expect(summaryRes.status).toBe(200);
+      expect(summaryRes.body.totalCount).toBe(0);
+      expect(summaryRes.body.totalAmount).toBe("0.00");
+      expect(Object.values(summaryRes.body.statusCounts)).toEqual([0, 0, 0, 0, 0]);
+      expect(Object.values(summaryRes.body.statusAmounts)).toEqual(["0.00", "0.00", "0.00", "0.00", "0.00"]);
+      expect(requestsRes.status).toBe(200);
+      expect(requestsRes.body.requests).toEqual([]);
+    });
+
+    it("rejects requester access to reviewer reports", async () => {
+      const login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const res = await request(app)
+        .get("/api/reports/summary")
+        .set("Cookie", login.headers["set-cookie"][0]);
+
+      expect(login.status).toBe(200);
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe("ACCESS_DENIED");
+    });
+  });
 });

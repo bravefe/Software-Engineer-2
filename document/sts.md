@@ -117,7 +117,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   3. Assert total request count equals 5.
   4. Assert approved monetary sum equals $1000.00 without floating point rounding error.
 - **Expected Result:** Counts and decimal sums match expected mathematical aggregates.
-- **Status:** `PLANNED` (Sprint 2)
+- **Status:** `PASSED` (Verified in `tests/server/unit.test.ts`)
 
 ---
 
@@ -285,8 +285,11 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   2. Send `GET /api/reports/summary`.
   3. Assert HTTP status `200 OK`.
   4. Verify JSON contains keys `totalCount`, `statusCounts` (with counts for each status), and `totalAmount`.
+  5. Verify status/date filters apply consistently to `/api/reports/summary` and `/api/reports/requests`.
+  6. Verify an empty result returns all status counts and total amount as zero.
+  7. Verify results are limited to requests assigned to the authenticated Reviewer.
 - **Expected Result:** Summary aggregates match database totals.
-- **Status:** `PLANNED` (Sprint 2)
+- **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
 ---
 
@@ -441,6 +444,9 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   10. Apply keyword filter and verify results match assigned requests.
   11. Attempt keyword search for a request assigned to another reviewer and verify it is not returned.
   12. Click "Clear Filters" and verify full authorized queue is restored.
+  13. Open `/reports` as Reviewer, filter by status and date range, and verify both result rows and summary metrics update.
+  14. Apply a date range with no matching requests and verify the empty state and zero-valued summary.
+  15. Clear report filters and verify the full authorized report is restored.
 - **Expected Result:** Filter controls dynamically update the UI across both roles, gracefully display empty states, restore full lists on reset, and never expose unauthorized requests.
 - **Status:** `PASSED` (Verified in `tests/e2e/purchase-approval.spec.ts`)
 
