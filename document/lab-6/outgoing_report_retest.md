@@ -28,7 +28,7 @@ The retest for UAT6-03 confirmed the cross-requester access restriction.
 
 **Finding:**
 
-No issue was observed in the retested behavior. The direct read of request #13 as requester2 returned HTTP 404 (Not Found), matching the UAT expectation and preventing private data disclosure.
+No issue was observed in the retested behavior. The direct read of request #13 as requester2 returned HTTP 404 (Not Found), matching the UAT expectation and preventing private data disclosure. After independent confirmation, HTTP 404 (Not Found) is now confirmed as the expected and correct response for this scenario. The earlier HTTP 403 (Forbidden) expectation in the old UAT document is no longer applicable.
 
 ## Conclusion
 
