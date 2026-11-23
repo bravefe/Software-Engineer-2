@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchRequests, PurchaseRequest } from "../api/requests";
+import { fetchRequests, PurchaseRequest, RequestFilters } from "../api/requests";
 import { StatusBadge } from "../components/StatusBadge";
 
 export default function RequesterDashboard() {
@@ -8,23 +8,55 @@ export default function RequesterDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true;
-    fetchRequests()
-      .then((data) => {
-        if (isMounted) setRequests(data);
-      })
-      .catch((err) => {
-        if (isMounted) setErrorMessage(err.message || "Failed to load requests");
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
+  // Filter states
+  const [statusFilter, setStatusFilter] = useState("");
+  const [startDateFilter, setStartDateFilter] = useState("");
+  const [endDateFilter, setEndDateFilter] = useState("");
+  const [searchFilter, setSearchFilter] = useState("");
+  const [isFiltered, setIsFiltered] = useState(false);
 
-    return () => {
-      isMounted = false;
-    };
+  const loadRequests = useCallback(async (filters?: RequestFilters) => {
+    setIsLoading(true);
+    setErrorMessage(null);
+    try {
+      const data = await fetchRequests(filters);
+      setRequests(data);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to load requests");
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadRequests();
+  }, [loadRequests]);
+
+  const handleApplyFilters = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (startDateFilter && endDateFilter && startDateFilter > endDateFilter) {
+      setErrorMessage("Start Date cannot be after End Date.");
+      return;
+    }
+    const hasFilter = Boolean(statusFilter || startDateFilter || endDateFilter || searchFilter.trim());
+    setIsFiltered(hasFilter);
+    loadRequests({
+      status: statusFilter || undefined,
+      startDate: startDateFilter || undefined,
+      endDate: endDateFilter || undefined,
+      search: searchFilter.trim() || undefined,
+    });
+  };
+
+  const handleClearFilters = () => {
+    setStatusFilter("");
+    setStartDateFilter("");
+    setEndDateFilter("");
+    setSearchFilter("");
+    setIsFiltered(false);
+    setErrorMessage(null);
+    loadRequests();
+  };
 
   return (
     <div className="container py-4">
@@ -50,6 +82,92 @@ export default function RequesterDashboard() {
         </div>
       )}
 
+      {/* Filter Controls Card */}
+      <div className="card shadow-sm border-0 mb-4">
+        <div className="card-body">
+          <form onSubmit={handleApplyFilters} data-testid="filter-form">
+            <div className="row g-3 align-items-end">
+              <div className="col-12 col-md-3">
+                <label htmlFor="filter-status" className="form-label small fw-semibold">
+                  Status
+                </label>
+                <select
+                  id="filter-status"
+                  aria-label="Status filter"
+                  className="form-select"
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="">All Statuses</option>
+                  <option value="DRAFT">Draft</option>
+                  <option value="PENDING_REVIEW">Pending Review</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="REJECTED">Rejected</option>
+                  <option value="RETURNED">Returned</option>
+                </select>
+              </div>
+
+              <div className="col-12 col-md-2">
+                <label htmlFor="filter-start-date" className="form-label small fw-semibold">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  id="filter-start-date"
+                  aria-label="Start date"
+                  className="form-control"
+                  value={startDateFilter}
+                  onChange={(e) => setStartDateFilter(e.target.value)}
+                />
+              </div>
+
+              <div className="col-12 col-md-2">
+                <label htmlFor="filter-end-date" className="form-label small fw-semibold">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  id="filter-end-date"
+                  aria-label="End date"
+                  className="form-control"
+                  value={endDateFilter}
+                  onChange={(e) => setEndDateFilter(e.target.value)}
+                />
+              </div>
+
+              <div className="col-12 col-md-3">
+                <label htmlFor="filter-search" className="form-label small fw-semibold">
+                  Keyword Search
+                </label>
+                <input
+                  type="text"
+                  id="filter-search"
+                  aria-label="Keyword search"
+                  className="form-control"
+                  placeholder="Search title or request #"
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                />
+              </div>
+
+              <div className="col-12 col-md-2 d-flex gap-2">
+                <button type="submit" className="btn btn-primary flex-grow-1" id="filter-submit-btn">
+                  Filter
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  id="filter-clear-btn"
+                  onClick={handleClearFilters}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
       {isLoading ? (
         <div className="text-center py-5">
           <div className="spinner-border text-primary" role="status">
@@ -59,11 +177,23 @@ export default function RequesterDashboard() {
       ) : requests.length === 0 ? (
         <div className="card shadow-sm border-0 text-center py-5">
           <div className="card-body">
-            <h3 className="h5 text-muted mb-2">No purchase requests submitted yet</h3>
-            <p className="text-muted mb-4">Get started by creating your first purchase approval request.</p>
-            <Link to="/requests/new" className="btn btn-primary">
-              Create First Request
-            </Link>
+            {isFiltered ? (
+              <>
+                <h3 className="h5 text-muted mb-2">No matching purchase requests</h3>
+                <p className="text-muted mb-4">No purchase requests match your selected filter criteria.</p>
+                <button type="button" className="btn btn-outline-primary" onClick={handleClearFilters}>
+                  Clear Filters
+                </button>
+              </>
+            ) : (
+              <>
+                <h3 className="h5 text-muted mb-2">No purchase requests submitted yet</h3>
+                <p className="text-muted mb-4">Get started by creating your first purchase approval request.</p>
+                <Link to="/requests/new" className="btn btn-primary">
+                  Create First Request
+                </Link>
+              </>
+            )}
           </div>
         </div>
       ) : (
