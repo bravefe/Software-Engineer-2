@@ -19,6 +19,7 @@
     "test:e2e": "playwright test",
     "db:up": "docker compose -f database/docker-compose.yml up -d",
     "db:down": "docker compose -f database/docker-compose.yml down",
+    "db:reset": "npm run prisma:reset --workspace server",
     "db:generate": "npm run prisma:generate --workspace server",
     "db:seed": "npm run prisma:seed --workspace server",
     "db:migrate": "npm run prisma:migrate --workspace server",

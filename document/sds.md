@@ -374,8 +374,8 @@ graph TD
 
 #### Reporting (`/api/reports`)
 
-- `GET /api/reports/summary`: Aggregate counts of requests grouped by status (FR-08, AC-12).
-- `GET /api/reports/requests`: Filter requests by status and date range (`startDate`, `endDate`) (FR-08, AC-12).
+- `GET /api/reports/summary`: Reviewer-only summary of requests assigned to the authenticated reviewer, returning `totalCount`, counts for every status in `statusCounts`, exact two-decimal amount subtotals in `statusAmounts`, and an exact two-decimal `totalAmount`. Accepts optional `status`, `startDate`, and `endDate` filters; summary values reflect the filtered results (FR-08, AC-12).
+- `GET /api/reports/requests`: Reviewer-only list of requests assigned to the authenticated reviewer, filtered by optional `status`, `startDate`, and `endDate` (`YYYY-MM-DD`, inclusive) parameters (FR-08, AC-12). Authorization scope is always applied alongside filters.
 
 ### 5.3 Request and Response Structure
 

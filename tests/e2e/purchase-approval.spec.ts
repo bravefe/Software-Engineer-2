@@ -415,6 +415,32 @@ test("TEST-E2E-04: multi-criteria filter and search across requester and reviewe
   // Clear filters and verify full authorized queue returns
   await page.locator("#reviewer-filter-clear-btn").click();
   await expect(page.getByRole("row").filter({ hasText: titleB })).toBeVisible();
+
+  // 4. Reviewer Reports filtering updates both the request list and summary metrics
+  await page.goto("/reports");
+  await expect(page.getByRole("heading", { name: "Purchase Request Reports" })).toBeVisible();
+  await page.locator("#report-status").selectOption("DRAFT");
+  const reportDate = new Date().toISOString().slice(0, 10);
+  await page.locator("#report-start-date").fill(reportDate);
+  await page.locator("#report-end-date").fill(reportDate);
+  await page.locator("#report-filter-submit").click();
+  await expect(page.getByRole("row").filter({ hasText: titleA })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toHaveCount(0);
+  await expect(page.getByTestId("report-total-count")).toHaveText("1");
+  await expect(page.getByTestId("report-total-amount")).toHaveText("$1500.00");
+  await expect(page.getByTestId("report-status-DRAFT")).toHaveText("1");
+  await expect(page.getByTestId("report-amount-DRAFT")).toHaveText("$1500.00");
+  await expect(page.getByTestId("report-status-PENDING_REVIEW")).toHaveText("0");
+
+  await page.locator("#report-start-date").fill("2099-01-01");
+  await page.locator("#report-end-date").fill("2099-01-31");
+  await page.locator("#report-filter-submit").click();
+  await expect(page.getByText("No matching purchase requests")).toBeVisible();
+  await expect(page.getByTestId("report-total-count")).toHaveText("0");
+  await expect(page.getByTestId("report-total-amount")).toHaveText("$0.00");
+
+  await page.locator("#report-filter-clear").click();
+  await expect(page.getByRole("row").filter({ hasText: titleA })).toBeVisible();
   await signOut(page);
 });
 
