@@ -22,13 +22,41 @@ The retest for UAT6-03 confirmed the cross-requester access restriction.
 
 ### UAT6-03 – Cross-requester Ownership and Forbidden Review
 
-- **Expected:** HTTP 404 (Not Found)
-- **Actual:** HTTP 404 (Not Found)
-- **Impact:** No unauthorized access or private data disclosure occurred. The access restriction remained enforced.
+- **Expected:** HTTP 404 (Not Found) for requester2's private read; HTTP 403 (Forbidden) for the POST claim attempt
+- **Actual:** Private read: HTTP 404 (Not Found); POST claim: HTTP 403 (Forbidden)
+- **Actual state after claimant attempt:** Request #13 remains Pending, has no reviewer, and its title, justification, and THB 25.50 amount are unchanged
+- **Impact:** No unauthorized access, claim, modification, or private data disclosure occurred
 
 **Finding:**
 
-No issue was observed in the retested behavior. The direct read of request #13 as requester2 returned HTTP 404 (Not Found), matching the UAT expectation and preventing private data disclosure. After independent confirmation, HTTP 404 (Not Found) is now confirmed as the expected and correct response for this scenario. The earlier HTTP 403 (Forbidden) expectation in the old UAT document is no longer applicable.
+No issue was observed in the retested behavior. The private read of request #13 by requester2 returned HTTP 404 (Not Found), preventing private data disclosure. The POST `/api/requests/13/claim` attempt by requester2 returned HTTP 403 (Forbidden), as required. After signing out of requester2 and signing in as requester1, request #13 was shown as Pending with no reviewer. The title, justification, and THB 25.50 amount remained unchanged.
+
+After independent confirmation, HTTP 404 (Not Found) is the expected and correct response for the private-read check. HTTP 403 (Forbidden) is the expected and correct response for the forbidden claim attempt. The old UAT result that listed HTTP 403 for the private read is outdated.
+
+**Issue #60 disposition:**
+
+PASS. UAT6-03 is satisfied, and issue #60 may be closed after the final evidence is added to the shared test evidence document.
+
+**Before/after verification using the API**
+
+Run this after signing in as requester1, first before the claim attempt and again after the requester2 claim attempt:
+
+```javascript
+const response = await fetch("/api/requests/13", {
+  method: "GET",
+  credentials: "include",
+});
+
+const body = await response.json();
+console.log({
+  status: response.status,
+  statusText: response.statusText,
+  url: "/api/requests/13",
+  request: body.request,
+});
+```
+
+Record the response fields for status, reviewer, title, amount, and justification. Capture the browser result and compare before and after; both views must show Pending, no reviewer, and unchanged title, THB 25.50 amount, and justification.
 
 ## Conclusion
 
