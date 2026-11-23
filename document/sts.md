@@ -102,7 +102,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   2. Test amount bounds: `0.00` (fail), `-10.50` (fail), `0.01` (pass), `1000000.00` (pass).
   3. Test description/justification: 2000 chars (pass), 2001 chars (fail).
 - **Expected Result:** Boundaries are strictly enforced matching SDS constraints.
-- **Status:** `PLANNED` (Sprint 2)
+- **Status:** `PASSED` (Verified in `tests/server/unit.test.ts`)
 
 ### TEST-UNIT-06: Financial Aggregation & Status Metrics Math
 
@@ -169,6 +169,8 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   2. Assert response status is `201 Created`.
   3. Assert returned entity contains valid `requestNumber` (`PR-2026-XXXXX`) and `status === 'PENDING_REVIEW'`.
   4. Verify record in PostgreSQL database matches submitted payload and foreign keys.
+  5. Recheck title 150-character, description/justification 2000-character, and amount `0.01` boundaries.
+  6. Reject title 151-character, text 2001-character, zero/negative, over-limit, and more-than-two-decimal amount cases.
 - **Expected Result:** Request is persistently saved in database and linked to submitting requester and assigned reviewer.
 - **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 

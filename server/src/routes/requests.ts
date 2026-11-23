@@ -166,7 +166,7 @@ router.post("/", requireRole(["REQUESTER"]), async (req, res): Promise<void> => 
   }
 
   const parsedAmountResult = parsePositiveAmount(amount);
-  if (parsedAmountResult.error) {
+  if (parsedAmountResult.amount === null) {
     res.status(400).json({
       error: parsedAmountResult.error,
       code: "VALIDATION_ERROR",
@@ -174,7 +174,7 @@ router.post("/", requireRole(["REQUESTER"]), async (req, res): Promise<void> => 
     });
     return;
   }
-  const parsedAmount = parsedAmountResult.amount;
+  const parsedAmount: number = parsedAmountResult.amount;
 
   const justificationError = validateRequestText(justification, "Justification");
   if (justificationError) {
@@ -381,7 +381,7 @@ router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void>
 
     if (amount !== undefined) {
       const parsedAmountResult = parsePositiveAmount(amount);
-      if (parsedAmountResult.error) {
+      if (parsedAmountResult.amount === null) {
         res.status(400).json({
           error: parsedAmountResult.error,
           code: "VALIDATION_ERROR",
