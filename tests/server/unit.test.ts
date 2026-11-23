@@ -2,6 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { requireRole } from "../../server/src/middleware/auth";
 import { hashPassword, verifyPassword } from "../../server/src/utils/auth";
 import { aggregateReportMetrics } from "../../server/src/utils/reports";
+import {
+  parsePositiveAmount,
+  validateRequestText,
+  validateRequestTitle,
+} from "../../server/src/utils/requestValidation";
 import { isValidTransition } from "../../server/src/utils/workflow";
 
 describe("Unit tests", () => {
@@ -178,7 +183,39 @@ describe("Unit tests", () => {
     });
   });
 
-  it.todo("TEST-UNIT-05: input validation and boundary checks");
+  describe("TEST-UNIT-05: input validation and boundary checks", () => {
+    it("enforces title minimum and maximum boundaries", () => {
+      expect(validateRequestTitle("AB")).toBe("Title must be at least 3 characters");
+      expect(validateRequestTitle("ABC")).toBeNull();
+      expect(validateRequestTitle("A".repeat(150))).toBeNull();
+      expect(validateRequestTitle("A".repeat(151))).toBe("Title must not exceed 150 characters");
+    });
+
+    it("enforces description and justification maximum boundaries", () => {
+      expect(validateRequestText("A".repeat(2000), "Description")).toBeNull();
+      expect(validateRequestText("A".repeat(2001), "Description")).toBe(
+        "Description must not exceed 2000 characters",
+      );
+      expect(validateRequestText("A".repeat(2000), "Justification")).toBeNull();
+      expect(validateRequestText("A".repeat(2001), "Justification")).toBe(
+        "Justification must not exceed 2000 characters",
+      );
+    });
+
+    it("accepts valid amount boundaries and rejects invalid amounts", () => {
+      expect(parsePositiveAmount("0.00").amount).toBeNull();
+      expect(parsePositiveAmount("-10.50").amount).toBeNull();
+      expect(parsePositiveAmount("0.01")).toEqual({ amount: 0.01, error: null });
+      expect(parsePositiveAmount("1000000.00")).toEqual({ amount: 1000000, error: null });
+      expect(parsePositiveAmount("450abc").amount).toBeNull();
+      expect(parsePositiveAmount("450.001").amount).toBeNull();
+      expect(parsePositiveAmount("9999999999.99")).toEqual({
+        amount: 9999999999.99,
+        error: null,
+      });
+      expect(parsePositiveAmount("10000000000.00").amount).toBeNull();
+    });
+  });
 
   describe("TEST-UNIT-06: financial aggregation and status metrics math", () => {
     it("counts request statuses and adds decimal amounts without rounding errors", () => {

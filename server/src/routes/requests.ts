@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { prisma } from "../prisma";
+import { parsePositiveAmount, validateRequestText, validateRequestTitle } from "../utils/requestValidation";
 import { isValidTransition } from "../utils/workflow";
 
 const router = Router();
@@ -144,39 +145,43 @@ router.post("/", requireRole(["REQUESTER"]), async (req, res): Promise<void> => 
   const currentUser = req.user!;
   const { title, description, amount, justification, reviewerId, status } = req.body || {};
 
-  // Title validation: 3 to 150 characters
-  if (!title || typeof title !== "string" || title.trim().length < 3 || title.trim().length > 150) {
+  const titleError = validateRequestTitle(title);
+  if (titleError) {
     res.status(400).json({
-      error: "Title must be between 3 and 150 characters",
+      error: titleError,
       code: "VALIDATION_ERROR",
+      fieldErrors: { title: titleError },
     });
     return;
   }
 
-  // Description validation: mandatory, up to 2000 characters
-  if (!description || typeof description !== "string" || description.trim().length === 0 || description.trim().length > 2000) {
+  const descriptionError = validateRequestText(description, "Description");
+  if (descriptionError) {
     res.status(400).json({
-      error: "Description is required and must not exceed 2000 characters",
+      error: descriptionError,
       code: "VALIDATION_ERROR",
+      fieldErrors: { description: descriptionError },
     });
     return;
   }
 
-  // Amount validation: positive decimal > 0.00
-  const parsedAmount = Number.parseFloat(amount);
-  if (amount === undefined || amount === null || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+  const parsedAmountResult = parsePositiveAmount(amount);
+  if (parsedAmountResult.error) {
     res.status(400).json({
-      error: "Amount must be a positive number greater than 0.00",
+      error: parsedAmountResult.error,
       code: "VALIDATION_ERROR",
+      fieldErrors: { amount: parsedAmountResult.error },
     });
     return;
   }
+  const parsedAmount = parsedAmountResult.amount;
 
-  // Justification validation: mandatory, up to 2000 characters
-  if (!justification || typeof justification !== "string" || justification.trim().length === 0 || justification.trim().length > 2000) {
+  const justificationError = validateRequestText(justification, "Justification");
+  if (justificationError) {
     res.status(400).json({
-      error: "Justification is required and must not exceed 2000 characters",
+      error: justificationError,
       code: "VALIDATION_ERROR",
+      fieldErrors: { justification: justificationError },
     });
     return;
   }
@@ -349,10 +354,12 @@ router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void>
     const updateData: any = {};
 
     if (title !== undefined) {
-      if (typeof title !== "string" || title.trim().length < 3 || title.trim().length > 150) {
+      const titleError = validateRequestTitle(title);
+      if (titleError) {
         res.status(400).json({
-          error: "Title must be between 3 and 150 characters",
+          error: titleError,
           code: "VALIDATION_ERROR",
+          fieldErrors: { title: titleError },
         });
         return;
       }
@@ -360,10 +367,12 @@ router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void>
     }
 
     if (description !== undefined) {
-      if (typeof description !== "string" || description.trim().length === 0 || description.trim().length > 2000) {
+      const descriptionError = validateRequestText(description, "Description");
+      if (descriptionError) {
         res.status(400).json({
-          error: "Description is required and must not exceed 2000 characters",
+          error: descriptionError,
           code: "VALIDATION_ERROR",
+          fieldErrors: { description: descriptionError },
         });
         return;
       }
@@ -371,22 +380,25 @@ router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void>
     }
 
     if (amount !== undefined) {
-      const parsedAmount = Number.parseFloat(amount);
-      if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      const parsedAmountResult = parsePositiveAmount(amount);
+      if (parsedAmountResult.error) {
         res.status(400).json({
-          error: "Amount must be a positive number greater than 0.00",
+          error: parsedAmountResult.error,
           code: "VALIDATION_ERROR",
+          fieldErrors: { amount: parsedAmountResult.error },
         });
         return;
       }
-      updateData.amount = parsedAmount.toFixed(2);
+      updateData.amount = parsedAmountResult.amount.toFixed(2);
     }
 
     if (justification !== undefined) {
-      if (typeof justification !== "string" || justification.trim().length === 0 || justification.trim().length > 2000) {
+      const justificationError = validateRequestText(justification, "Justification");
+      if (justificationError) {
         res.status(400).json({
-          error: "Justification is required and must not exceed 2000 characters",
+          error: justificationError,
           code: "VALIDATION_ERROR",
+          fieldErrors: { justification: justificationError },
         });
         return;
       }

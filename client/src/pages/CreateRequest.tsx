@@ -59,14 +59,25 @@ export default function CreateRequest({ initialReviewers, onSuccess }: CreateReq
 
   const trimmedDescription = description.trim();
   const isDescriptionValid = trimmedDescription.length > 0 && trimmedDescription.length <= 2000;
+  const showDescriptionError =
+    description.length > 0 &&
+    (!trimmedDescription || description.length > 2000);
 
-  const parsedAmount = Number.parseFloat(amount);
-  const isAmountValid = !Number.isNaN(parsedAmount) && parsedAmount > 0;
+  const parsedAmount = Number(amount);
+  const isAmountValid =
+    amount.trim() !== "" &&
+    /^(?:\d+(?:\.\d{1,2})?|\.\d{1,2})$/.test(amount.trim()) &&
+    Number.isFinite(parsedAmount) &&
+    parsedAmount > 0 &&
+    parsedAmount <= 9999999999.99;
   const isAmountStarted = amount.length > 0;
   const showAmountError = isAmountStarted && !isAmountValid;
 
   const trimmedJustification = justification.trim();
   const isJustificationValid = trimmedJustification.length > 0 && trimmedJustification.length <= 2000;
+  const showJustificationError =
+    justification.length > 0 &&
+    (!trimmedJustification || justification.length > 2000);
 
   const isReviewerValid = reviewerId !== "" && !Number.isNaN(Number(reviewerId));
 
@@ -168,7 +179,7 @@ export default function CreateRequest({ initialReviewers, onSuccess }: CreateReq
                   />
                   {showAmountError && (
                     <div className="invalid-feedback">
-                      Amount must be a positive number greater than 0.00.
+                      Amount must be a positive number greater than 0.00, have no more than 2 decimal places, and not exceed 9999999999.99.
                     </div>
                   )}
                 </div>
@@ -212,7 +223,7 @@ export default function CreateRequest({ initialReviewers, onSuccess }: CreateReq
                   <textarea
                     id="request-description"
                     name="description"
-                    className="form-control"
+                    className={`form-control ${showDescriptionError ? "is-invalid" : ""}`}
                     rows={4}
                     maxLength={2000}
                     placeholder="Detailed item specifications, quantities, and requirements..."
@@ -220,6 +231,11 @@ export default function CreateRequest({ initialReviewers, onSuccess }: CreateReq
                     onChange={(e) => setDescription(e.target.value)}
                     required
                   />
+                  {showDescriptionError && (
+                    <div className="invalid-feedback">
+                      Description is required and must not exceed 2000 characters.
+                    </div>
+                  )}
                 </div>
 
                 {/* Justification */}
@@ -233,7 +249,7 @@ export default function CreateRequest({ initialReviewers, onSuccess }: CreateReq
                   <textarea
                     id="request-justification"
                     name="justification"
-                    className="form-control"
+                    className={`form-control ${showJustificationError ? "is-invalid" : ""}`}
                     rows={3}
                     maxLength={2000}
                     placeholder="Why is this purchase required? What project or objective does it support?"
@@ -241,6 +257,11 @@ export default function CreateRequest({ initialReviewers, onSuccess }: CreateReq
                     onChange={(e) => setJustification(e.target.value)}
                     required
                   />
+                  {showJustificationError && (
+                    <div className="invalid-feedback">
+                      Business justification is required and must not exceed 2000 characters.
+                    </div>
+                  )}
                 </div>
 
                 {/* Action Buttons */}

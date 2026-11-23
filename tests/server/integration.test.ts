@@ -672,6 +672,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
           reviewerId: seededUsers.reviewer1.id,
         });
       expect(resShortTitle.status).toBe(400);
+      expect(resShortTitle.body.fieldErrors?.title).toBeDefined();
 
       // Non-positive amount
       const resZeroAmount = await request(app)
@@ -685,6 +686,83 @@ describe("Integration and API tests: Authentication & Authorization", () => {
           reviewerId: seededUsers.reviewer1.id,
         });
       expect(resZeroAmount.status).toBe(400);
+      expect(resZeroAmount.body.fieldErrors?.amount).toBeDefined();
+
+      const resOverTitle = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "T".repeat(151),
+          description: "Valid description",
+          amount: 100.0,
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resOverTitle.status).toBe(400);
+      expect(resOverTitle.body.fieldErrors?.title).toBeDefined();
+
+      const resOverText = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "D".repeat(2001),
+          amount: 100.0,
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resOverText.status).toBe(400);
+      expect(resOverText.body.fieldErrors?.description).toBeDefined();
+
+      const resOverJustification = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "Valid description",
+          amount: 100.0,
+          justification: "J".repeat(2001),
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resOverJustification.status).toBe(400);
+      expect(resOverJustification.body.fieldErrors?.justification).toBeDefined();
+
+      const resInvalidDecimal = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "Valid description",
+          amount: "450.001",
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resInvalidDecimal.status).toBe(400);
+      expect(resInvalidDecimal.body.fieldErrors?.amount).toBeDefined();
+    });
+
+    it("accepts title, text, and amount boundary values", async () => {
+      const loginRes = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const cookie = loginRes.headers["set-cookie"][0];
+
+      const res = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "T".repeat(150),
+          description: "D".repeat(2000),
+          amount: "0.01",
+          justification: "J".repeat(2000),
+          reviewerId: seededUsers.reviewer1.id,
+          status: "DRAFT",
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.request?.title).toHaveLength(150);
+      expect(res.body.request?.description).toHaveLength(2000);
+      expect(res.body.request?.justification).toHaveLength(2000);
     });
   });
 

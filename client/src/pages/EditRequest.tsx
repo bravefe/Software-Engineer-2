@@ -59,8 +59,13 @@ export default function EditRequest() {
   const isTitleValid = trimmedTitle.length >= 3 && trimmedTitle.length <= 150;
   const trimmedDescription = description.trim();
   const isDescriptionValid = trimmedDescription.length > 0 && trimmedDescription.length <= 2000;
-  const parsedAmount = Number.parseFloat(amount);
-  const isAmountValid = !Number.isNaN(parsedAmount) && parsedAmount > 0;
+  const parsedAmount = Number(amount);
+  const isAmountValid =
+    amount.trim() !== "" &&
+    /^(?:\d+(?:\.\d{1,2})?|\.\d{1,2})$/.test(amount.trim()) &&
+    Number.isFinite(parsedAmount) &&
+    parsedAmount > 0 &&
+    parsedAmount <= 9999999999.99;
   const trimmedJustification = justification.trim();
   const isJustificationValid = trimmedJustification.length > 0 && trimmedJustification.length <= 2000;
   const isReviewerValid = reviewerId !== "" && !Number.isNaN(Number(reviewerId));
@@ -183,6 +188,11 @@ export default function EditRequest() {
                     onChange={(e) => setTitle(e.target.value)}
                     required
                   />
+                  {title.length > 0 && !isTitleValid && (
+                    <div className="invalid-feedback d-block">
+                      Title must be at least 3 characters and at most 150 characters.
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-3">
@@ -200,6 +210,11 @@ export default function EditRequest() {
                     onChange={(e) => setAmount(e.target.value)}
                     required
                   />
+                  {amount.length > 0 && !isAmountValid && (
+                    <div className="invalid-feedback d-block">
+                      Amount must be a positive number greater than 0.00, have no more than 2 decimal places, and not exceed 9999999999.99.
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-3">
@@ -239,6 +254,11 @@ export default function EditRequest() {
                     onChange={(e) => setDescription(e.target.value)}
                     required
                   />
+                  {description.length > 0 && (!trimmedDescription || description.length > 2000) && (
+                    <div className="invalid-feedback d-block">
+                      Description is required and must not exceed 2000 characters.
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-3">
@@ -258,6 +278,11 @@ export default function EditRequest() {
                     onChange={(e) => setJustification(e.target.value)}
                     required
                   />
+                  {justification.length > 0 && (!trimmedJustification || justification.length > 2000) && (
+                    <div className="invalid-feedback d-block">
+                      Business justification is required and must not exceed 2000 characters.
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-4">
