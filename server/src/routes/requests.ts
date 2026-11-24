@@ -40,7 +40,7 @@ router.get("/", async (req, res): Promise<void> => {
     const whereClause =
       currentUser.role === "REQUESTER"
         ? { requesterId: currentUser.id }
-        : { reviewerId: currentUser.id };
+        : { reviewerId: currentUser.id, status: { not: "DRAFT" as const } };
 
     const requests = await prisma.purchaseRequest.findMany({
       where: whereClause,
@@ -199,6 +199,15 @@ router.get("/:id", async (req, res): Promise<void> => {
 
     if (!request) {
       res.status(404).json({ error: "Purchase request not found", code: "NOT_FOUND" });
+      return;
+    }
+
+    // Drafts are private to their owner, even when assigned to this reviewer.
+    if (currentUser.role === "REVIEWER" && request.status === "DRAFT") {
+      res.status(403).json({
+        error: "Access denied: draft requests are visible only to their requester",
+        code: "ACCESS_DENIED",
+      });
       return;
     }
 
@@ -418,7 +427,7 @@ router.post("/:id/submit", requireRole(["REQUESTER"]), async (req, res): Promise
           requestId: existing.id,
           actorId: currentUser.id,
           action,
-          fromStatus: existing.status,
+          fromStatus: action === "SUBMITTED" ? null : existing.status,
           toStatus: "PENDING_REVIEW",
           reason: req.body?.reason?.trim() || (action === "RESUBMITTED" ? "Request resubmitted after modifications" : "Draft submitted for review"),
         },
@@ -587,8 +596,19 @@ router.get("/:id/history", async (req, res): Promise<void> => {
       return;
     }
 
+    if (currentUser.role === "REVIEWER" && request.status === "DRAFT") {
+      res.status(403).json({
+        error: "Access denied: draft requests are visible only to their requester",
+        code: "ACCESS_DENIED",
+      });
+      return;
+    }
+
     const history = await prisma.requestHistory.findMany({
-      where: { requestId },
+      where: {
+        requestId,
+        ...(currentUser.role === "REVIEWER" ? { action: { notIn: ["CREATED", "EDITED"] } } : {}),
+      },
       include: {
         actor: { select: { id: true, name: true, email: true, role: true } },
       },

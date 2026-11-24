@@ -376,9 +376,24 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   3. Sign in as the assigned Reviewer, return the request with a reason, and verify `RETURNED`.
   4. Sign in as the Requester, update the amount, and resubmit; verify `PENDING_REVIEW`.
   5. Sign in as the Reviewer and approve the request; verify `APPROVED`.
-  6. Verify the timeline contains `CREATED`, `SUBMITTED`, `RETURNED`, `EDITED`, `RESUBMITTED`, and `APPROVED`, and confirm the final status, amount, and history in the database.
-- **Expected Result:** The complete draft-to-return-to-resubmit-to-approve journey and its audit history persist across role changes and browser sessions.
+  6. As the Requester, verify the timeline contains `CREATED`, `SUBMITTED`, `RETURNED`, `EDITED`, `RESUBMITTED`, and `APPROVED`; as the Reviewer, verify it contains `SUBMITTED`, `RETURNED`, `RESUBMITTED`, and `APPROVED` but omits `CREATED` and `EDITED`. Confirm the complete history persists in the database.
+- **Expected Result:** The complete history persists across roles, while each role sees only its specified timeline entries.
 - **Status:** `PASSED` (Verified in `tests/e2e/purchase-approval.spec.ts`)
+
+### UAT-TC-03: Draft privacy and reviewer timeline visibility
+
+- **Objective:** Confirm draft privacy and role-specific event history for assigned and unassigned Reviewers.
+- **Preconditions:** A Requester, the draft's assigned Reviewer, a different unassigned Reviewer, and the test database are available.
+- **Steps:**
+  1. As the Requester, create a `DRAFT` assigned to Reviewer A and verify the Requester can open it and sees `CREATED` in history.
+  2. As Reviewer A, verify the draft is absent from the queue and direct request and history API requests are denied.
+  3. Repeat step 2 as unassigned Reviewer B.
+  4. As the Requester, submit the draft and verify the Requester sees `CREATED` and `SUBMITTED`.
+  5. As Reviewer A, verify the request displays `Pending Review`, the timeline contains `SUBMITTED` with `None → Pending Review`, and `CREATED` is absent.
+  6. Return the request; as the Requester edit it and verify the `EDITED` event retains its actor, timestamp, unchanged status, and reason. As Reviewer A verify `EDITED` is absent while the review events remain.
+- **Expected Result:** Draft details are visible only to their owner; the Reviewer receives no draft data, and Reviewer and Requester timelines follow their respective history rules.
+- **Automation:** `TEST-INT` regression cases in `tests/server/integration.test.ts` and `TEST-E2E-01` in `tests/e2e/purchase-approval.spec.ts`.
+- **Status:** Passed by the automated assigned/unassigned Reviewer rerun in `tests/e2e/purchase-approval.spec.ts` and supporting API regressions in `tests/server/integration.test.ts`.
 
 ### TEST-E2E-02: Purchase Rejection Journey with Mandatory Reason
 

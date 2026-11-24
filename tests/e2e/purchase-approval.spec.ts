@@ -189,12 +189,33 @@ test("TEST-E2E-01: draft to return to resubmit to approval, with persisted histo
   await signIn(page, users.requester1);
   const requestId = await createRequest(page, title, users.reviewer1.id, false);
   await expectStatus(page, "draft");
+  await expect(page.getByTestId("action-badge-CREATED")).toBeVisible();
+  await signOut(page);
+
+  for (const reviewer of [users.reviewer1, users.reviewer2]) {
+    await signIn(page, reviewer);
+    await page.goto("/reviewer/queue");
+    await expect(page.getByText(title)).toHaveCount(0);
+    const directAccess = await page.request.get(`/api/requests/${requestId}`);
+    expect(directAccess.status()).toBe(403);
+    await page.goto(`/requests/${requestId}`);
+    await expect(page.getByText(/access denied/i)).toBeVisible();
+    await signOut(page);
+  }
+
+  await signIn(page, users.requester1);
+  await page.goto(`/requests/${requestId}`);
+  await expect(page.getByTestId("action-badge-CREATED")).toBeVisible();
   await page.getByRole("button", { name: "Submit for Review" }).click();
   await expectStatus(page, "pending_review");
+  await expect(page.getByTestId("action-badge-CREATED")).toBeVisible();
+  await expect(page.getByTestId("action-badge-SUBMITTED")).toBeVisible();
   await signOut(page);
 
   await signIn(page, users.reviewer1);
   await openQueueRequest(page, title);
+  await expect(page.getByTestId("action-badge-SUBMITTED")).toBeVisible();
+  await expect(page.getByTestId("action-badge-CREATED")).toHaveCount(0);
   await page.getByRole("button", { name: "Return", exact: true }).click();
   const returnDialog = page.getByRole("dialog");
   await returnDialog
@@ -212,11 +233,14 @@ test("TEST-E2E-01: draft to return to resubmit to approval, with persisted histo
   await page.locator("#edit-notes").fill("Updated quote amount.");
   await page.getByRole("button", { name: "Save & Resubmit for Review" }).click();
   await expectStatus(page, "pending_review");
+  await expect(page.getByTestId("action-badge-EDITED")).toBeVisible();
   await expect(page.getByTestId("action-badge-RESUBMITTED")).toBeVisible();
   await signOut(page);
 
   await signIn(page, users.reviewer1);
   await openQueueRequest(page, title);
+  await expect(page.getByTestId("action-badge-CREATED")).toHaveCount(0);
+  await expect(page.getByTestId("action-badge-EDITED")).toHaveCount(0);
   await page.getByRole("button", { name: "Approve", exact: true }).click();
   await page
     .getByRole("dialog")
