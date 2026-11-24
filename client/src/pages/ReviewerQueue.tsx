@@ -26,8 +26,9 @@ export default function ReviewerQueue() {
     };
   }, []);
 
-  const pendingRequests = requests.filter((r) => r.status === "PENDING_REVIEW");
-  const completedRequests = requests.filter((r) => r.status !== "PENDING_REVIEW");
+  const visibleRequests = requests.filter((r) => r.status !== "DRAFT");
+  const pendingRequests = visibleRequests.filter((r) => r.status === "PENDING_REVIEW");
+  const completedRequests = visibleRequests.filter((r) => r.status !== "PENDING_REVIEW");
 
   return (
     <div className="container py-4">
@@ -56,7 +57,7 @@ export default function ReviewerQueue() {
             <span className="visually-hidden">Loading review queue...</span>
           </div>
         </div>
-      ) : requests.length === 0 ? (
+      ) : visibleRequests.length === 0 ? (
         <div className="card shadow-sm border-0 text-center py-5">
           <div className="card-body">
             <h3 className="h5 text-muted mb-2">No requests assigned to your queue</h3>
