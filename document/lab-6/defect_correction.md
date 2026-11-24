@@ -19,7 +19,7 @@
 | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
 | F-01    | Filter `DRAFT` from Reviewer request lists and queue rendering. Deny Reviewer access to draft details and history, whether assigned or unassigned. Keep the draft visible to its owner.                                          | Fixed in branch; deployed retest pending |
 | F-02    | Write `CREATED` for every create and `SUBMITTED` for direct submit. Filter `CREATED` and individual requester-generated `EDITED` entries from Reviewer history. Combine all edit notes since the latest return in `RESUBMITTED`. | Fixed in branch; deployed retest pending |
-| F-03    | Update the UAT wording to use the labels displayed in the web form. This corrects the test documentation; it does not add a separate Quantity field or change the website.                                                       | Corrected                                |
+| F-03    | Correct the original UAT guide's field labels, displayed statuses, and SRS mappings while keeping its original case IDs and journeys. Quantity remains part of Description; no separate Quantity field is implied. | Resolved; no product retest required    |
 
 ## 3 RED: Failing Regression Test
 
@@ -35,7 +35,7 @@
 - Reviewer history omits `CREATED` and `EDITED`. After a draft is submitted, Reviewer history shows `SUBMITTED` with `fromStatus: null` and `toStatus: PENDING_REVIEW`.
 - Requester history contains `CREATED` followed by `SUBMITTED` for both draft submission and direct submission. Reviewer history hides `CREATED` and begins with `SUBMITTED`.
 - The `RESUBMITTED` reason combines every `EDITED` reason since the latest `RETURNED` event in chronological order. The final note from the edit form is included once, even though the form sends it with both the save and resubmit requests.
-- The UAT guide now uses the live labels: `Request Title`, `Description`, `Estimated Amount ($)`, `Assign Reviewer`, and `Business Justification`. Put quantity details in `Description`; there is no separate Quantity input. The status badge reads `Pending Review`; `SUBMITTED` is the timeline action.
+- The original UAT guide at `document/lab-6/UAT_TEST_CASES.md` now uses the live labels: `Request Title`, `Description`, `Estimated Amount ($)`, `Assign Reviewer`, and `Business Justification`. Put quantity details in `Description`; there is no separate Quantity input. The status badge reads `Pending Review`; `SUBMITTED` is a timeline event. The guide retains its original UAT-TC-01 through UAT-TC-05 case IDs and core journeys, and its SRS references now match `document/srs.md`.
 
 ## 5 Regression Suite
 
@@ -47,6 +47,8 @@
 | `npm run build`                 | Blocked during Prisma Client generation by Windows `EPERM` renaming its query-engine file |
 
 UAT-TC-03 was rerun automatically with the assigned Reviewer and a different, unassigned Reviewer. Both were denied draft access and neither saw the draft in the queue. Draft-submission Requester history and Reviewer timeline checks passed. The updated integration and E2E regressions also verify that direct submission shows `CREATED` and `SUBMITTED` to the Requester while the Reviewer sees only `SUBMITTED`. Resubmission note aggregation is covered by the updated tests. This local run does not claim an independent partner retest against the deployed release.
+
+F-03 is a documentation wording and traceability correction, not a product behavior change. The canonical guide is now corrected, so no additional product test is required for F-03. This does not change the separately recorded deployed-release retest status for F-01 and F-02.
 
 ## 6 Review, CI and Release
 
@@ -61,7 +63,7 @@ UAT-TC-03 was rerun automatically with the assigned Reviewer and a different, un
 | Field                               | Entry                                                                                                                         |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | Corrected version given to UAT team | Version 0.2.2 at https://macau678-purchase-approval-gfn7poakkq-as.a.run.app/; image/source commit `8f21c3252e72db1a17c9976701582fd21dc73cf5`; Cloud Run revision not supplied |
-| Original case / steps to rerun      | UAT-TC-03 assigned/unassigned Reviewer draft checks; UAT-TC-01 direct submit; UAT-TC-04 return/edit/resubmit and note summary |
+| Original case / steps to rerun      | UAT-TC-03 assigned/unassigned Reviewer draft checks; UAT-TC-01 direct submit; UAT-TC-04 return/edit/resubmit and note summary. F-03 is resolved by this guide correction and is not a retest item. |
 | Actual result                       | Pending independent retest                                                                                                    |
 | PASS / FAIL                         | Pending independent retest                                                                                                    |
 | Affected cases                      | UAT-TC-01, UAT-TC-03, and UAT-TC-04                                                                                           |

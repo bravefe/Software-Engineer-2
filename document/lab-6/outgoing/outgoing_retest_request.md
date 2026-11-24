@@ -44,9 +44,9 @@
 
 **Expected result:** The Requester sees each edit record. The Reviewer sees the combined edit summary on `RESUBMITTED`, but no individual `EDITED` entries.
 
-## F-03 - Low: UAT wording
+## F-03 - Low: UAT wording — Resolved (no retest required)
 
-**Change made:** The guide now uses the website's labels and the correct SRS references.
+**Change made:** The original UAT guide at `document/lab-6/UAT_TEST_CASES.md` now uses the website's field labels and displayed status names, and the corrected SRS references. The original case IDs and core test journeys remain unchanged. This documentation correction resolves F-03; no additional product test is required for it.
 
 Keep the same test data, mapping it to the form as follows:
 
@@ -59,4 +59,4 @@ Keep the same test data, mapping it to the form as follows:
 | Reviewer              | Assign Reviewer                                                             |
 | `SUBMITTED` status    | The status badge reads **Pending Review**. `SUBMITTED` is a timeline event. |
 
-Please return the result for each original case, any request IDs or evidence, and the tested release details. Keep F-01, F-02, and F-03 results separate in the retest report.
+Please return results for the original UAT-TC-01, UAT-TC-03, and UAT-TC-04 checks listed above, along with request IDs/evidence and tested release details. Record F-03 as resolved by the corrected guide; no test result is requested for F-03. Keep the F-01 and F-02 retest results separate.

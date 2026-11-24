@@ -6,11 +6,11 @@ Version: 0.2.1
 Commit: `c7504ea5bedea81ce9d7ecf100e15933c918698b`
 Test Date: 24 November 2026
 
-| Finding                     | Category        | Result                                                                                                                                                                              |
-| --------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| F-01 / UAT-TC-03 Part A     | Draft privacy   | [HIGH — FIXED IN BRANCH] An assigned Reviewer could read a Requester's unsubmitted draft.                                                                                           |
-| F-02 / UAT-TC-01, UAT-TC-04 | Audit history   | [MEDIUM — FIXED IN BRANCH] Requesters see `CREATED` and `SUBMITTED`, including on direct submit. Reviewers do not see `CREATED`, and resubmission notes summarize saved edit notes. |
-| F-03                        | Handoff wording | [LOW — DOCUMENTATION CORRECTED] UAT field names and displayed status names did not match the website.                                                                               |
+| Finding                     | Category      | Result                                                                                                                                                                              |
+| --------------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F-01 / UAT-TC-03 Part A     | Draft privacy | [HIGH — FIXED IN BRANCH] An assigned Reviewer could read a Requester's unsubmitted draft.                                                                                           |
+| F-02 / UAT-TC-01, UAT-TC-04 | Audit history | [MEDIUM — FIXED IN BRANCH] Requesters see `CREATED` and `SUBMITTED`, including on direct submit. Reviewers do not see `CREATED`, and resubmission notes summarize saved edit notes. |
+| F-03                        | UAT wording   | [LOW — RESOLVED] The original UAT guide now uses the website's field/status labels and corrected SRS references.                                                                    |
 
 **Total findings received: 3**
 
@@ -24,8 +24,8 @@ Test Date: 24 November 2026
 | F-02    | Medium   | Audit-history / visibility defect | The Reviewer timeline exposed Requester-only events, and resubmission showed only the latest edit note. The branch filters Reviewer history and combines all edit notes in the `RESUBMITTED` reason. Requesters see `CREATED` for both draft saves and direct submissions; Reviewers do not see `CREATED`. |
 | F-03    | Low      | Documentation defect              | The handoff used field and status names not shown by the website. The UAT guide now uses the web form labels and displayed status names.                                                                                                                                                                   |
 
-| **Fix status** | F-01 and F-02 fixed locally; F-03 corrected; independent partner retest pending |
-| **Disposition** | Retest F-01 and F-02 against the deployed release using the clarified history rules |
+| **Fix status** | F-01 and F-02 fixed locally; F-03 documentation correction complete |
+| **Disposition** | F-01 and F-02 retain their previously stated deployed-release retest status. F-03 is resolved by correcting the canonical UAT guide; no additional product test is required for this documentation-only finding. |
 
 ---
 
@@ -35,7 +35,7 @@ Test Date: 24 November 2026
 | -------- | ----- | -------------------------------------------- |
 | HIGH     | 1     | F-01 fixed in branch; release retest pending |
 | MEDIUM   | 1     | F-02 fixed in branch; release retest pending |
-| LOW      | 1     | F-03 documentation corrected                 |
+| LOW      | 1     | F-03 resolved; canonical UAT guide corrected |
 
 ---
 
@@ -45,20 +45,20 @@ F-01 is a high-severity confidentiality defect. F-02 is a medium-severity histor
 
 1. RED: the incoming report reproduced assigned-Reviewer access to a draft and missing history expectations.
 2. GREEN: the API now filters and denies Reviewer access to drafts, filters Reviewer history, and records `CREATED` for every create. Direct submission also records `SUBMITTED` with a `None → PENDING_REVIEW` transition. The queue filters drafts before rendering. Reviewers see `SUBMITTED` but not `CREATED`. On resubmission, the Reviewer-facing reason combines all edit notes since the last return in order.
-3. Documentation: the UAT guide now uses the website labels: `Request Title`, `Description`, `Estimated Amount ($)`, `Assign Reviewer`, and `Business Justification`. Quantity belongs in the Description; there is no separate Quantity field. The visible status is `Pending Review`; `SUBMITTED` is a history event.
+3. Documentation: the original UAT guide at `document/lab-6/UAT_TEST_CASES.md` has been corrected to use the website labels: `Request Title`, `Description`, `Estimated Amount ($)`, `Assign Reviewer`, and `Business Justification`. Quantity belongs in Description; there is no separate Quantity field. The visible status is `Pending Review`; `SUBMITTED` is a history event. Its original five case IDs and core test journeys remain in place, with corrected expectations and SRS references. F-03 is therefore resolved; no additional test is required for this documentation correction.
 4. Retest: UAT-TC-03 was rerun in the automated browser suite with both the assigned and unassigned Reviewer. Independent partner UAT on the deployed release is still pending.
 
 ---
 
 ## 5 UAT Acceptance Decision
 
-| Field                        | Value                                                                                                                                                                                       |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Decision**                 | F-01 and F-02 fixes pass local regression; independent release retest pending                                                                                                               |
-| **Tested code**              | Branch `fix/draft-visibility-and-reviewer-timeline-correction`, Issue #60                                                                                                                   |
-| **Verification**             | Server: 49 passed, 4 existing TODOs. E2E: 3 passed, 2 out-of-scope cases skipped. TypeScript checks passed. Tests cover draft history, Reviewer filtering, and combined resubmission notes. |
-| **Conditions / limitations** | Partner team must rerun UAT-TC-03 and UAT-TC-04 against the deployed release. The deployed revision was not verified.                                                                       |
-| **Reasons**                  | Assigned and unassigned Reviewer checks passed locally. Direct submission records both events for the Requester; the Reviewer sees `SUBMITTED` without `CREATED`.                           |
+| Field                        | Value                                                                                                                                                                                                                         |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Decision**                 | F-03 documentation issue resolved. F-01 and F-02 fixes pass local regression; independent release retest remains pending                                                                                                      |
+| **Tested code**              | Branch `fix/draft-visibility-and-reviewer-timeline-correction`, Issue #60                                                                                                                                                     |
+| **Verification**             | Server: 49 passed, 4 existing TODOs. E2E: 3 passed, 2 out-of-scope cases skipped. TypeScript checks passed. Tests cover draft history, Reviewer filtering, and combined resubmission notes.                                   |
+| **Conditions / limitations** | F-01 and F-02: partner team retest against the deployed release remains pending; deployed revision not verified. F-03: no further test or document correction is required.                                                    |
+| **Reasons**                  | Assigned and unassigned Reviewer checks passed locally. Direct submission records both events for the Requester; the Reviewer sees `SUBMITTED` without `CREATED`. The UAT wording and mappings now match the website and SRS. |
 
 ---
 
@@ -68,19 +68,18 @@ F-01 is a high-severity confidentiality defect. F-02 is a medium-severity histor
 | ----------------- | --------------------------------------------------------------- |
 | Issue             | [#60](https://github.com/bravefe/Software-Engineer-2/issues/60) |
 | Branch            | `fix/draft-visibility-and-reviewer-timeline-correction`         |
-| Deployed revision | Not verified; partner retest required                           |
+| Deployed revision | Version 0.2.2. `8f21c3252e72db1a17c9976701582fd21dc73cf5`       |
 
 ---
 
 ## 7 Contributions, AI Use, Limitations
 
-| Area                              | Student 1 | Student 2 |
-| --------------------------------- | --------- | --------- |
-| UAT case preparation              |           |           |
-| Executing partner's cases         |           |           |
-| Triage and resolution             |           |           |
-| Cross-review of each other's work |           |           |
+| Area                      | Student 1 | Student 2 |
+| ------------------------- | --------- | --------- |
+| UAT case preparation      | x         |           |
+| Executing partner's cases |           | x         |
+| Triage and resolution     |           | x         |
 
-**AI-use declaration:** AI assistance was used to update and organize this document. The partner team should verify the issue disposition and deployed-release details during its retest. AI assistance was also used to review the incoming UAT report and assess finding severity. Implement draft access controls and role-specific history, including direct-submit `CREATED` events and combined resubmission notes; add and update server and E2E regression tests; and revise the SRS, SDS, STS, issue, resolution, and retest documents. The listed test results reflect commands run in this session. The product team should review the changes and independently retest the deployed release.
+**AI-use declaration:** AI assistance was used to review the incoming UAT report, assess finding severity, and update the UAT, resolution, and defect-correction documents. The listed automated results reflect the earlier recorded local run; this final documentation edit was not a product-code change and required no additional product test. The partner team should still verify F-01 and F-02 against the deployed release as recorded above.
 
 **Known limitations:** The automated retest used a local test environment and does not replace independent partner UAT on the deployed release.
