@@ -17,9 +17,9 @@
 
 | Finding | Fix                                                                                                                                                                                                                              | Status                                   |
 | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| F-01    | Filter `DRAFT` from Reviewer request lists and queue rendering. Deny Reviewer access to draft details and history, whether assigned or unassigned. Keep the draft visible to its owner.                                          | Fixed in branch; deployed retest pending |
-| F-02    | Write `CREATED` for every create and `SUBMITTED` for direct submit. Filter `CREATED` and individual requester-generated `EDITED` entries from Reviewer history. Combine all edit notes since the latest return in `RESUBMITTED`. | Fixed in branch; deployed retest pending |
-| F-03    | Correct the original UAT guide's field labels, displayed statuses, and SRS mappings while keeping its original case IDs and journeys. Quantity remains part of Description; no separate Quantity field is implied.               | Resolved; no product retest required     |
+| F-01    | Filter `DRAFT` from Reviewer request lists and queue rendering. Deny Reviewer access to draft details and history, whether assigned or unassigned. Keep the draft visible to its owner.                                          | PASS — retested on Version 0.2.2        |
+| F-02    | Write `CREATED` for every create and `SUBMITTED` for direct submit. Filter `CREATED` and individual requester-generated `EDITED` entries from Reviewer history. Combine all edit notes since the latest return in `RESUBMITTED`. | PASS — retested on Version 0.2.2        |
+| F-03    | Correct the original UAT guide's field labels, displayed statuses, and SRS mappings while keeping its original case IDs and journeys. Quantity remains part of Description; no separate Quantity field is implied.               | PASS — corrected in final UAT guide    |
 
 ## 3 RED: Failing Regression Test
 
@@ -46,9 +46,9 @@
 | Server/client TypeScript checks | Pass                                                                                      |
 | `npm run build`                 | Blocked during Prisma Client generation by Windows `EPERM` renaming its query-engine file |
 
-UAT-TC-03 was rerun automatically with the assigned Reviewer and a different, unassigned Reviewer. Both were denied draft access and neither saw the draft in the queue. Draft-submission Requester history and Reviewer timeline checks passed. The updated integration and E2E regressions also verify that direct submission shows `CREATED` and `SUBMITTED` to the Requester while the Reviewer sees only `SUBMITTED`. Resubmission note aggregation is covered by the updated tests. This local run does not claim an independent partner retest against the deployed release.
+The local integration and E2E regressions verify draft access, role-specific timelines, direct-submit `CREATED` and `SUBMITTED` events, and resubmission note aggregation. The Version 0.2.2 retest also passed UAT-TC-01, UAT-TC-03, and UAT-TC-04. UAT-TC-02 and UAT-TC-05 passed in the original run. F-03 was resolved by correcting the original UAT guide; no product test was needed for this documentation change.
 
-F-03 is a documentation wording and traceability correction, not a product behavior change. The canonical guide is now corrected, so no additional product test is required for F-03. This does not change the separately recorded deployed-release retest status for F-01 and F-02.
+The reported Version 0.2.2 retest ran on Cloud Run revision `macau678-migrate-bqw67`, source/image tag `8f21c3252e72db1a17c9976701582fd21dc73cf5`.
 
 ## 6 Review, CI and Release
 
@@ -58,11 +58,13 @@ F-03 is a documentation wording and traceability correction, not a product behav
 | Pull request             | Not created in this work                                                                                                                                                                |
 | Deployed release         | https://macau678-purchase-approval-gfn7poakkq-as.a.run.app/; Version 0.2.2; Cloud Run revision `macau678-migrate-bqw67`; image/source commit `8f21c3252e72db1a17c9976701582fd21dc73cf5` |
 
-## 7 Independent Retest by UAT Team
+## 7 Deployed Retest Results
 
 | Field                               | Entry                                                                                                                                                                                              |
 | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Corrected version given to UAT team | Version 0.2.2 at https://macau678-purchase-approval-gfn7poakkq-as.a.run.app/; Cloud Run revision `macau678-migrate-bqw67`; image/source commit `8f21c3252e72db1a17c9976701582fd21dc73cf5`          |
-| Original case / steps to rerun      | UAT-TC-03 assigned/unassigned Reviewer draft checks; UAT-TC-01 direct submit; UAT-TC-04 return/edit/resubmit and note summary. F-03 is resolved by this guide correction and is not a retest item. |
-| Actual result                       | Pass                                                                                                                                                                                               |
-| Affected cases                      | UAT-TC-01, UAT-TC-03, and UAT-TC-04                                                                                                                                                                |
+| Cases executed                     | UAT-TC-01 direct submit/approval; UAT-TC-03 draft privacy; UAT-TC-04 return/edit/resubmit. F-03 is resolved by this guide correction and is not a retest item. |
+| Actual result                       | PASS for the reported Version 0.2.2 retest scenarios; UAT-TC-02 and UAT-TC-05 passed in the original run.                    |
+| PASS / FAIL                         | PASS                                                                                                                          |
+| Affected cases                      | UAT-TC-01, UAT-TC-03, and UAT-TC-04                                                                                           |
+| Tested revision                     | `macau678-migrate-bqw67`                                                                                                      |

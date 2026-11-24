@@ -2,8 +2,8 @@
 
 **Project:** Macau678 Purchase Approval System  
 **Branch:** `docs/1-uat`  
-**Release Commit:** `f9d6538` — "deploy-proof make visible change in home page"  
-**Application Version:** Version 0.2 (displayed on home page)  
+**Release Commit:** `f9d653882a40278394a1b007f98fdc5b7955ad34`
+**Application Version:** Version 0.2
 **Prepared by:** Macau678 Development Team  
 **Date:** 2026-11-19
 
@@ -57,7 +57,7 @@ The feature and acceptance-criteria references follow the current [SRS](../srs.m
 | Field                  | Value                                                       |
 | ---------------------- | ----------------------------------------------------------- |
 | **Application URL**    | https://macau678-purchase-approval-gfn7poakkq-as.a.run.app/ |
-| **Release Commit**     | `f9d6538`                                                   |
+| **Release Commit**     | `f9d653882a40278394a1b007f98fdc5b7955ad34`                  |
 | **Version Identifier** | "Macau678 Purchase Approval System Version 0.2"             |
 | **Hosting Platform**   | Google Cloud Run (GCP)                                      |
 

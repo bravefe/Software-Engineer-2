@@ -1,4 +1,4 @@
-# Retest Request - Lab 6, Issue #60
+# Retest Request and Results - Lab 6, Issue #60
 
 ## Corrected Release
 
@@ -8,13 +8,14 @@
 | Displayed app version   | 0.2.2                                                       |
 | Cloud Run revision      | `macau678-migrate-bqw67`                                    |
 | Image/source commit tag | `8f21c3252e72db1a17c9976701582fd21dc73cf5`                  |
-| Previous version reference | 0.2.1, revision `macau678-migrate-zlsgl`                 |
+
+**Final retest result:** PASS. UAT-TC-01, UAT-TC-03, and UAT-TC-04 passed on Version 0.2.2, revision `macau678-migrate-bqw67`. UAT-TC-02 and UAT-TC-05 passed in the original run. F-03 is resolved by correcting the original UAT guide; no additional test was required.
 
 ## F-01 - High: Draft privacy (UAT-TC-03)
 
 **Change made:** Reviewer list queries and queue rendering hide `DRAFT` requests. The API denies Reviewer access to draft detail and history. The Requester can still access their own draft.
 
-**Retest using the existing UAT-TC-03 ownership flow:**
+**Completed checks using the existing UAT-TC-03 ownership flow:**
 
 1. As `requester1`, create a DRAFT assigned to `reviewer1` and note its URL.
 2. As assigned Reviewer `reviewer1`, verify the draft is absent from the Reviewer Queue. Open the URL and request its history directly; both must be denied or redirected without showing request details.
@@ -28,7 +29,7 @@
 
 **Change made:** Every request creation records `CREATED`, including direct submission. Reviewers do not see `CREATED`; their direct-submit timeline starts with `SUBMITTED` and `None → Pending Review`. Requesters see both events. Reviewer history also hides individual requester-generated `EDITED` entries. On resubmission, the Reviewer-facing `RESUBMITTED` note combines the Requester's edit notes since the latest return, in order, without repeating the final note. The Requester retains each separate history entry.
 
-**Retest the original UAT-TC-01 direct-submit and approval flow:**
+**Completed checks for the original UAT-TC-01 direct-submit and approval flow:**
 
 1. Create and submit the request directly, as in the original case. The displayed status should be **Pending Review**.
 2. As the Requester, verify the timeline shows `CREATED` followed by `SUBMITTED`, with actor and timestamp for each.
@@ -37,7 +38,7 @@
 
 **Expected result:** Requester history shows `CREATED`, `SUBMITTED`, and `APPROVED`. Reviewer history shows `SUBMITTED` and `APPROVED` but omits `CREATED`.
 
-**Retest the original UAT-TC-04 return/edit/resubmit flow:**
+**Completed checks for the original UAT-TC-04 return/edit/resubmit flow:**
 
 1. Have the Reviewer return a Pending Review request with a reason, then sign in as its Requester.
 2. Edit and save the returned request several times with a different revision note for each save. Make a final field change and resubmit.
@@ -61,4 +62,4 @@ Keep the same test data, mapping it to the form as follows:
 | Reviewer              | Assign Reviewer                                                             |
 | `SUBMITTED` status    | The status badge reads **Pending Review**. `SUBMITTED` is a timeline event. |
 
-Please return results for the original UAT-TC-01, UAT-TC-03, and UAT-TC-04 checks listed above, along with request IDs/evidence and tested release details. Record F-03 as resolved by the corrected guide; no test result is requested for F-03. Keep the F-01 and F-02 retest results separate.
+**Recorded outcome:** UAT-TC-01, UAT-TC-03, and UAT-TC-04 passed on the Version 0.2.2 retest revision shown above. UAT-TC-02 and UAT-TC-05 passed in the original run. F-01, F-02, and F-03 are resolved; no retest item remains open.
