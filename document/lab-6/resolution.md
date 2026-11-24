@@ -3,78 +3,71 @@
 ## 1 Summary of Received Findings
 
 Version: 0.2.1
-Test Date: 21 November 2026
+Test Date: 24 November 2026
 
-| Test Case | Category                      | Result                                                                       |
-| --------- | ----------------------------- | ---------------------------------------------------------------------------- |
-| UAT-TC-01 | Normal domain journey         | [PASS]                                                                       |
-| UAT-TC-02 | Business rule / boundary      | [PASS]                                                                       |
-| UAT-TC-03 | Forbidden role / ownership    | [FAIL (Low) - could not complete cross-user checks on Version 0.2] |
-| UAT-TC-04 | State / history / persistence | [PASS]                                                                       |
-| UAT-TC-05 | Terminal state immutability   | [PASS]                                                                       |
+| Finding                     | Category        | Result                                                                                                                                                                              |
+| --------------------------- | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F-01 / UAT-TC-03 Part A     | Draft privacy   | [HIGH — FIXED IN BRANCH] An assigned Reviewer could read a Requester's unsubmitted draft.                                                                                           |
+| F-02 / UAT-TC-01, UAT-TC-04 | Audit history   | [MEDIUM — FIXED IN BRANCH] Requesters see `CREATED` and `SUBMITTED`, including on direct submit. Reviewers do not see `CREATED`, and resubmission notes summarize saved edit notes. |
+| F-03                        | Handoff wording | [LOW — DOCUMENTATION CORRECTED] UAT field names and displayed status names did not match the website.                                                                               |
 
-**Total findings received: 1**
+**Total findings received: 3**
 
 ---
 
 ## 2 Triage Table
 
-| Field                | Details                                                                                                                                                                                                                                                                      |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Issue ID**         | UAT-TC-03 / [#49](https://github.com/bravefe/Software-Engineer-2/issues/49)                                                                                                                                                                                                  |
-| **Linked case / AC** | UAT-TC-03 / AC-10, BR-09                                                                                                                                                                                                                                                     |
-| **Classification**   | Test setup defect                                                                                                                                                                                                                                                            |
-| **Severity**         | Low                                                                                                                                                                                                                                                                          |
-| **Reason**           | Version 0.2 had only `requester1` and `reviewer1`, so cross-requester ownership could not be tested. Version 0.2.1 adds `requester2` and `reviewer2`. |
+| Finding | Severity | Classification                    | Reason and disposition                                                                                                                                                                                                                                                                                     |
+| ------- | -------- | --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F-01    | High     | Product/security defect           | An assigned Reviewer viewed draft purchase details before submission. This exposes non-owner information and violates the draft privacy requirement. The branch filters drafts from Reviewer lists and denies direct detail/history access.                                                                |
+| F-02    | Medium   | Audit-history / visibility defect | The Reviewer timeline exposed Requester-only events, and resubmission showed only the latest edit note. The branch filters Reviewer history and combines all edit notes in the `RESUBMITTED` reason. Requesters see `CREATED` for both draft saves and direct submissions; Reviewers do not see `CREATED`. |
+| F-03    | Low      | Documentation defect              | The handoff used field and status names not shown by the website. The UAT guide now uses the web form labels and displayed status names.                                                                                                                                                                   |
 
-| **Fix status** | Fixed for testability, retest pending |
-| **Disposition** | Retest UAT-TC-03 on Version 0.2.1 |
+| **Fix status** | F-01 and F-02 fixed locally; F-03 corrected; independent partner retest pending |
+| **Disposition** | Retest F-01 and F-02 against the deployed release using the clarified history rules |
 
 ---
 
 ## 3 Blocking-Defect Check
 
-| Severity | Count | Status     |
-| -------- | ----- | ---------- |
-| HIGH     | 0     | N/A        |
-| MEDIUM   | 0     | N/A        |
-| LOW      | 1     | Retestable |
+| Severity | Count | Status                                       |
+| -------- | ----- | -------------------------------------------- |
+| HIGH     | 1     | F-01 fixed in branch; release retest pending |
+| MEDIUM   | 1     | F-02 fixed in branch; release retest pending |
+| LOW      | 1     | F-03 documentation corrected                 |
 
 ---
 
 ## 4 Legitimate-Defect and Correction Path
 
-UAT-TC-03 is the received finding. Version 0.2 could not perform the cross-requester check because the seed contained only one requester account and one reviewer account. The correction is documented in `defect_correction.md`.
+F-01 is a high-severity confidentiality defect. F-02 is a medium-severity history visibility defect: Requesters see `CREATED` and `SUBMITTED` for direct submission, but Reviewers see only `SUBMITTED`; Reviewers also do not see individual Requester edit entries, and their resubmission note summarizes all saved edit notes. F-03 is a low-severity handoff wording mismatch, not a missing form field. The agreed behavior and changes are recorded in `defect_correction.md`.
 
-1. RED: cross-requester UAT-TC-03 could not be completed with the Version 0.2 seed.
-2. GREEN: the seed was corrected by commit `8dd0dbe` and merged to `main` in `c7504ea5bedea81ce9d7ecf100e15933c918698b`.
-3. Retest: the partner UAT team must rerun UAT-TC-03 using `requester2@macau678.com` and `reviewer2@macau678.com` on Version 0.2.1.
+1. RED: the incoming report reproduced assigned-Reviewer access to a draft and missing history expectations.
+2. GREEN: the API now filters and denies Reviewer access to drafts, filters Reviewer history, and records `CREATED` for every create. Direct submission also records `SUBMITTED` with a `None → PENDING_REVIEW` transition. The queue filters drafts before rendering. Reviewers see `SUBMITTED` but not `CREATED`. On resubmission, the Reviewer-facing reason combines all edit notes since the last return in order.
+3. Documentation: the UAT guide now uses the website labels: `Request Title`, `Description`, `Estimated Amount ($)`, `Assign Reviewer`, and `Business Justification`. Quantity belongs in the Description; there is no separate Quantity field. The visible status is `Pending Review`; `SUBMITTED` is a history event.
+4. Retest: UAT-TC-03 was rerun in the automated browser suite with both the assigned and unassigned Reviewer. Independent partner UAT on the deployed release is still pending.
 
 ---
 
-## 5 Independent UAT Acceptance Decision
+## 5 UAT Acceptance Decision
 
-| Field                        | Value                                                                                                                                                           |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Decision**                 | Accepted with condition                                                                                                                                         |
-| **Tested release**           | `f9d653882a40278394a1b007f98fdc5b7955ad34`, Version 0.2; retest target `c7504ea5bedea81ce9d7ecf100e15933c918698b`, Version 0.2.1                                |
-| **Sprint 1 scope**           | FEAT-01 to FEAT-09, AC-01 to AC-11                                                                                                                              |
-| **Out of scope**             | FR-08 / AC-12 (email), FEAT-10, FEAT-11                                                                                                                         |
-| **Decision date**            | 21 November 2026                                                                                                                                                |
-| **Conditions / limitations** | UAT-TC-03 must be rerun independently on Version 0.2.1 before the final retest status can be closed.                                                          |
-| **Reasons**                  | Four of five original UAT cases passed; UAT-TC-03 could not be completed as originally seeded. Version 0.2.1 adds the required accounts for cross-user testing. |
+| Field                        | Value                                                                                                                                                                                       |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Decision**                 | F-01 and F-02 fixes pass local regression; independent release retest pending                                                                                                               |
+| **Tested code**              | Branch `fix/draft-visibility-and-reviewer-timeline-correction`, Issue #60                                                                                                                   |
+| **Verification**             | Server: 49 passed, 4 existing TODOs. E2E: 3 passed, 2 out-of-scope cases skipped. TypeScript checks passed. Tests cover draft history, Reviewer filtering, and combined resubmission notes. |
+| **Conditions / limitations** | Partner team must rerun UAT-TC-03 and UAT-TC-04 against the deployed release. The deployed revision was not verified.                                                                       |
+| **Reasons**                  | Assigned and unassigned Reviewer checks passed locally. Direct submission records both events for the Requester; the Reviewer sees `SUBMITTED` without `CREATED`.                           |
 
 ---
 
 ## 6 Version Table
 
-| Item                   | Value                                                                                                        |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------ |
-| Sprint 1 baseline      | `f9d653882a40278394a1b007f98fdc5b7955ad34` (Version 0.2)                                                     |
-| Defective commit       | `f9d653882a40278394a1b007f98fdc5b7955ad34` seed did not contain second requester/reviewer accounts           |
-| Corrected main release | `c7504ea5bedea81ce9d7ecf100e15933c918698b` (Version 0.2.1)                                                   |
-| Deployed revision      | Pending Cloud Run revision name; deployed source: `c7504ea5bedea81ce9d7ecf100e15933c918698b` (Version 0.2.1) |
-| Branch                 | `hotfix/seed-more-user-for-uat-cross-testing`                                                                |
+| Item              | Value                                                           |
+| ----------------- | --------------------------------------------------------------- |
+| Issue             | [#60](https://github.com/bravefe/Software-Engineer-2/issues/60) |
+| Branch            | `fix/draft-visibility-and-reviewer-timeline-correction`         |
+| Deployed revision | Not verified; partner retest required                           |
 
 ---
 
@@ -82,11 +75,11 @@ UAT-TC-03 is the received finding. Version 0.2 could not perform the cross-reque
 
 | Area                              | Student 1 | Student 2 |
 | --------------------------------- | --------- | --------- |
-| UAT case preparation              | X         |           |
-| Executing partner's cases         |           | X         |
-| Triage and resolution             |           | X         |
-| Cross-review of each other's work |           | X         |
+| UAT case preparation              |           |           |
+| Executing partner's cases         |           |           |
+| Triage and resolution             |           |           |
+| Cross-review of each other's work |           |           |
 
-**AI-use declaration:** AI assistance was used to draft and organize this document. Release, findings, and commit references must be verified against the repository and UAT evidence.
+**AI-use declaration:** AI assistance was used to update and organize this document. The partner team should verify the issue disposition and deployed-release details during its retest. AI assistance was also used to review the incoming UAT report and assess finding severity. Implement draft access controls and role-specific history, including direct-submit `CREATED` events and combined resubmission notes; add and update server and E2E regression tests; and revise the SRS, SDS, STS, issue, resolution, and retest documents. The listed test results reflect commands run in this session. The product team should review the changes and independently retest the deployed release.
 
-**Known limitations:** Version 0.2 did not provide the two distinct accounts needed to complete UAT-TC-03. The final retest result and deployed Cloud Run revision must be recorded after the partner UAT team reruns the case.
+**Known limitations:** The automated retest used a local test environment and does not replace independent partner UAT on the deployed release.

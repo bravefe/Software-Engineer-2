@@ -55,6 +55,7 @@ For this project, the team focuses on Macau678 purchase requests.
 **FR-03: Request Viewing**
 - The system shall allow Requesters to view their own submitted requests.
 - The system shall allow Reviewers to view requests assigned to them.
+- A saved `DRAFT` request shall be visible only to its owning Requester; it shall not appear in any Reviewer queue or be accessible to Reviewers through direct request or history URLs.
 - The system shall display the current status of each request.
 
 **FR-04: Request Review**
@@ -70,6 +71,9 @@ For this project, the team focuses on Macau678 purchase requests.
 - The system shall record request creation and submission.
 - The system shall record review decisions, reasons, timestamps, and the user responsible.
 - The system shall allow authorized users to view request history.
+- Requester history shall include `CREATED`, `SUBMITTED`, and Requester-generated `EDITED` records. This applies to direct submission as well as saving a draft first. For direct submission, `CREATED` records request creation and `SUBMITTED` records the transition to review; the Reviewer history omits `CREATED` and requester-generated `EDITED` records while retaining `SUBMITTED` and review events.
+- When a Requester resubmits a returned request, the `RESUBMITTED` note shown to the Reviewer shall combine the Requester's edit notes recorded since the latest `RETURNED` event, in chronological order. The final note entered during the resubmit must not be duplicated. Individual `EDITED` records remain in Requester history and stay hidden from Reviewers.
+- Submission of a draft shall be shown to Reviewers as `SUBMITTED` with the transition `None → Pending Review`; `PENDING_REVIEW` shall be displayed as “Pending Review”.
 
 **FR-07: Request Assignment**
 - The system shall assign each submitted request to an authorized Reviewer.
