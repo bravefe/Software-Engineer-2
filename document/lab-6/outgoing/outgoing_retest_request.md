@@ -2,14 +2,11 @@
 
 ## Corrected Release
 
-| Field                   | Value                                                                                                     |
-| ----------------------- | --------------------------------------------------------------------------------------------------------- |
-| App URL                 | https://macau678-purchase-approval-gfn7poakkq-as.a.run.app/                                               |
-| Displayed app version   | 0.2.2                                                                                                     |
-| Image/source commit tag | `8f21c3252e72db1a17c9976701582fd21dc73cf5`                                                                |
-| Cloud Run revision      | Not supplied in the release details; record it before testing if it is visible in the deployment metadata |
-
-Before testing, record the app version, source commit, and Cloud Run revision. Do not reset the shared test data. Use new synthetic requests where a case needs a fresh request.
+| Field                   | Value                                                       |
+| ----------------------- | ----------------------------------------------------------- |
+| App URL                 | https://macau678-purchase-approval-gfn7poakkq-as.a.run.app/ |
+| Displayed app version   | 0.2.2                                                       |
+| Image/source commit tag | `8f21c3252e72db1a17c9976701582fd21dc73cf5`                  |
 
 ## F-01 - High: Draft privacy (UAT-TC-03)
 
