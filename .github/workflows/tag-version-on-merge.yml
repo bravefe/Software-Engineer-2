@@ -1,0 +1,46 @@
+name: Tag merged version
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [closed]
+
+# Use the write-enabled token for merged PRs from forks; this workflow reads
+# only package.json through the API and never checks out or runs PR code.
+permissions:
+  contents: write
+
+concurrency:
+  group: tag-version-main
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPOSITORY: ${{ github.repository }}
+      TARGET_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+    steps:
+      - name: Create and push version tag
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="$(gh api "repos/$REPOSITORY/contents/package.json?ref=$TARGET_SHA" --jq '.content' | base64 --decode | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
+          if [[ ! "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "Invalid root package version: $VERSION (expected MAJOR.MINOR.PATCH)." >&2
+            exit 1
+          fi
+
+          TAG="v$VERSION"
+          if gh api "repos/$REPOSITORY/git/ref/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG already exists; leaving it unchanged."
+            exit 0
+          fi
+
+          gh api --method POST "repos/$REPOSITORY/git/refs" \
+            -f "ref=refs/tags/$TAG" \
+            -f "sha=$TARGET_SHA" >/dev/null
+          echo "Created tag $TAG at $TARGET_SHA"
