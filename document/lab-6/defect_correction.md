@@ -19,7 +19,7 @@
 | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
 | F-01    | Filter `DRAFT` from Reviewer request lists and queue rendering. Deny Reviewer access to draft details and history, whether assigned or unassigned. Keep the draft visible to its owner.                                          | Fixed in branch; deployed retest pending |
 | F-02    | Write `CREATED` for every create and `SUBMITTED` for direct submit. Filter `CREATED` and individual requester-generated `EDITED` entries from Reviewer history. Combine all edit notes since the latest return in `RESUBMITTED`. | Fixed in branch; deployed retest pending |
-| F-03    | Correct the original UAT guide's field labels, displayed statuses, and SRS mappings while keeping its original case IDs and journeys. Quantity remains part of Description; no separate Quantity field is implied. | Resolved; no product retest required    |
+| F-03    | Correct the original UAT guide's field labels, displayed statuses, and SRS mappings while keeping its original case IDs and journeys. Quantity remains part of Description; no separate Quantity field is implied.               | Resolved; no product retest required     |
 
 ## 3 RED: Failing Regression Test
 
@@ -52,18 +52,17 @@ F-03 is a documentation wording and traceability correction, not a product behav
 
 ## 6 Review, CI and Release
 
-| Step                     | Evidence                                                                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
-| Fix branch, linked Issue | `fix/draft-visibility-and-reviewer-timeline-correction`; Issue [#60](https://github.com/bravefe/Software-Engineer-2/issues/60) |
-| Pull request             | Not created in this work                                                                                                       |
-| Deployed release         | https://macau678-purchase-approval-gfn7poakkq-as.a.run.app/; Version 0.2.2; image/source commit `8f21c3252e72db1a17c9976701582fd21dc73cf5`; Cloud Run revision not supplied |
+| Step                     | Evidence                                                                                                                                                                                |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Fix branch, linked Issue | `fix/draft-visibility-and-reviewer-timeline-correction`; Issue [#60](https://github.com/bravefe/Software-Engineer-2/issues/60)                                                          |
+| Pull request             | Not created in this work                                                                                                                                                                |
+| Deployed release         | https://macau678-purchase-approval-gfn7poakkq-as.a.run.app/; Version 0.2.2; Cloud Run revision `macau678-migrate-bqw67`; image/source commit `8f21c3252e72db1a17c9976701582fd21dc73cf5` |
 
 ## 7 Independent Retest by UAT Team
 
-| Field                               | Entry                                                                                                                         |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Corrected version given to UAT team | Version 0.2.2 at https://macau678-purchase-approval-gfn7poakkq-as.a.run.app/; image/source commit `8f21c3252e72db1a17c9976701582fd21dc73cf5`; Cloud Run revision not supplied |
+| Field                               | Entry                                                                                                                                                                                              |
+| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Corrected version given to UAT team | Version 0.2.2 at https://macau678-purchase-approval-gfn7poakkq-as.a.run.app/; Cloud Run revision `macau678-migrate-bqw67`; image/source commit `8f21c3252e72db1a17c9976701582fd21dc73cf5`          |
 | Original case / steps to rerun      | UAT-TC-03 assigned/unassigned Reviewer draft checks; UAT-TC-01 direct submit; UAT-TC-04 return/edit/resubmit and note summary. F-03 is resolved by this guide correction and is not a retest item. |
-| Actual result                       | Pending independent retest                                                                                                    |
-| PASS / FAIL                         | Pending independent retest                                                                                                    |
-| Affected cases                      | UAT-TC-01, UAT-TC-03, and UAT-TC-04                                                                                           |
+| Actual result                       | Pass                                                                                                                                                                                               |
+| Affected cases                      | UAT-TC-01, UAT-TC-03, and UAT-TC-04                                                                                                                                                                |

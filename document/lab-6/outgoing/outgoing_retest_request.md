@@ -6,7 +6,9 @@
 | ----------------------- | ----------------------------------------------------------- |
 | App URL                 | https://macau678-purchase-approval-gfn7poakkq-as.a.run.app/ |
 | Displayed app version   | 0.2.2                                                       |
+| Cloud Run revision      | `macau678-migrate-bqw67`                                    |
 | Image/source commit tag | `8f21c3252e72db1a17c9976701582fd21dc73cf5`                  |
+| Previous version reference | 0.2.1, revision `macau678-migrate-zlsgl`                 |
 
 ## F-01 - High: Draft privacy (UAT-TC-03)
 

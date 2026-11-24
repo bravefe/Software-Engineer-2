@@ -33,8 +33,8 @@ Test Date: 24 November 2026
 
 | Severity | Count | Status                                       |
 | -------- | ----- | -------------------------------------------- |
-| HIGH     | 1     | F-01 fixed in branch; release retest pending |
-| MEDIUM   | 1     | F-02 fixed in branch; release retest pending |
+| HIGH     | 1     | F-01 fixed in branch; release retest Pass    |
+| MEDIUM   | 1     | F-02 fixed in branch; release retest Pass    |
 | LOW      | 1     | F-03 resolved; canonical UAT guide corrected |
 
 ---
@@ -57,18 +57,20 @@ F-01 is a high-severity confidentiality defect. F-02 is a medium-severity histor
 | **Decision**                 | F-03 documentation issue resolved. F-01 and F-02 fixes pass local regression; independent release retest remains pending                                                                                                      |
 | **Tested code**              | Branch `fix/draft-visibility-and-reviewer-timeline-correction`, Issue #60                                                                                                                                                     |
 | **Verification**             | Server: 49 passed, 4 existing TODOs. E2E: 3 passed, 2 out-of-scope cases skipped. TypeScript checks passed. Tests cover draft history, Reviewer filtering, and combined resubmission notes.                                   |
-| **Conditions / limitations** | F-01 and F-02: partner team retest against the deployed release remains pending; deployed revision not verified. F-03: no further test or document correction is required.                                                    |
+| **Conditions / limitations** | F-01 and F-02: the reported 0.2.2 retest revision is recorded below. Partner UAT results remain as documented. Version 0.2.1 revision is recorded for reference. F-03: no further test or document correction is required.    |
 | **Reasons**                  | Assigned and unassigned Reviewer checks passed locally. Direct submission records both events for the Requester; the Reviewer sees `SUBMITTED` without `CREATED`. The UAT wording and mappings now match the website and SRS. |
 
 ---
 
 ## 6 Version Table
 
-| Item              | Value                                                           |
-| ----------------- | --------------------------------------------------------------- |
-| Issue             | [#60](https://github.com/bravefe/Software-Engineer-2/issues/60) |
-| Branch            | `fix/draft-visibility-and-reviewer-timeline-correction`         |
-| Deployed revision | Version 0.2.2. `8f21c3252e72db1a17c9976701582fd21dc73cf5`       |
+| Item                          | Value                                                           |
+| ----------------------------- | --------------------------------------------------------------- |
+| Issue                         | [#60](https://github.com/bravefe/Software-Engineer-2/issues/60) |
+| Branch                        | `fix/draft-visibility-and-reviewer-timeline-correction`         |
+| Version 0.2.2 retest revision | `macau678-migrate-bqw67`                                        |
+| Version 0.2.1 revision        | `macau678-migrate-zlsgl`                                        |
+| Version 0.2.2 source tag      | `8f21c3252e72db1a17c9976701582fd21dc73cf5`                      |
 
 ---
 
