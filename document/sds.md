@@ -355,7 +355,7 @@ graph TD
 
 #### Purchase Requests (`/api/requests`)
 
-- `POST /api/requests`: Create a new purchase request as `DRAFT` or `PENDING_REVIEW` (FR-02, AC-02).
+- `POST /api/requests`: Create a new purchase request as `DRAFT` or `PENDING_REVIEW` (FR-02, AC-02). Every create writes a Requester-facing `CREATED` event. For direct submission, `CREATED` has no status transition and `SUBMITTED` records `None → PENDING_REVIEW` in the same transaction; the Reviewer history filter hides `CREATED`.
 - `GET /api/requests`: List requests for the logged-in user:
   - For `REQUESTER`: Returns own requests (`requesterId === currentUser.id`) (FR-03, AC-03).
   - For `REVIEWER`: Returns non-`DRAFT` requests assigned to current reviewer (`reviewerId === currentUser.id`) (FR-03, BR-04, AC-04).
@@ -497,7 +497,7 @@ All error responses return a standardized JSON structure with appropriate HTTP s
 1. **Requester Isolation (BR-09, AC-10):** Requesters are restricted to viewing and managing their own submitted requests. Attempts to access other requests return `404 Not Found` or `403 Forbidden`.
 2. **Reviewer Scope Restriction (BR-04, AC-09):** A Reviewer can view and act upon only the requests explicitly assigned to them (`request.reviewerId === currentUser.id`).
 3. **Draft Privacy:** A `DRAFT` is visible only to its owning Requester. Reviewer list queries exclude drafts, and request detail/history authorization denies both assigned and unassigned Reviewers access. The Reviewer UI also filters drafts from queue sections.
-4. **Role-Specific History:** Requester history is complete and includes draft `CREATED` and requester-generated `EDITED` entries with their actor, timestamp, unchanged status transition, and reason. Reviewer history omits `CREATED` and individual requester-generated `EDITED` entries, but preserves `SUBMITTED` (`fromStatus: null`, `toStatus: PENDING_REVIEW`) and subsequent review events. A `RESUBMITTED` entry summarizes all edit reasons since the most recent return in chronological order; the final note is not duplicated. The status badge renders `PENDING_REVIEW` as “Pending Review”.
+4. **Role-Specific History:** Requester history is complete and includes `CREATED` for every request creation, including direct submission, plus requester-generated `EDITED` entries with their actor, timestamp, unchanged status transition, and reason. Reviewer history omits `CREATED` and individual requester-generated `EDITED` entries, but preserves `SUBMITTED` (`fromStatus: null`, `toStatus: PENDING_REVIEW`) and subsequent review events. A `RESUBMITTED` entry summarizes all edit reasons since the most recent return in chronological order; the final note is not duplicated. The status badge renders `PENDING_REVIEW` as “Pending Review”.
 5. **Non-Self-Approval Guard (BR-03, AC-08):** Even if a user holds a reviewer identity, the system blocks them from approving, rejecting, or returning any request where `request.requesterId === currentUser.id`.
 6. **Lifecycle State Transition Matrix (BR-07):**
    - `Draft` $\rightarrow$ `Pending Review` (Submission)

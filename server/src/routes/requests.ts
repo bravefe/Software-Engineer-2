@@ -156,12 +156,25 @@ router.post("/", requireRole(["REQUESTER"]), async (req, res): Promise<void> => 
         data: {
           requestId: createdRequest.id,
           actorId: currentUser.id,
-          action: targetStatus === "DRAFT" ? "CREATED" : "SUBMITTED",
+          action: "CREATED",
           fromStatus: null,
-          toStatus: targetStatus,
-          reason: targetStatus === "DRAFT" ? "Draft purchase request created" : "Purchase request submitted for review",
+          toStatus: targetStatus === "DRAFT" ? "DRAFT" : null,
+          reason: targetStatus === "DRAFT" ? "Draft purchase request created" : "Purchase request created",
         },
       });
+
+      if (targetStatus === "PENDING_REVIEW") {
+        await tx.requestHistory.create({
+          data: {
+            requestId: createdRequest.id,
+            actorId: currentUser.id,
+            action: "SUBMITTED",
+            fromStatus: null,
+            toStatus: "PENDING_REVIEW",
+            reason: "Purchase request submitted for review",
+          },
+        });
+      }
 
       return createdRequest;
     });
@@ -641,7 +654,7 @@ router.get("/:id/history", async (req, res): Promise<void> => {
       include: {
         actor: { select: { id: true, name: true, email: true, role: true } },
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     });
 
     res.status(200).json({ history });

@@ -586,6 +586,22 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(history).toBeDefined();
       expect(history?.actorId).toBe(seededUsers.requester1.id);
       expect(history?.toStatus).toBe("PENDING_REVIEW");
+
+      const requesterHistory = await request(app)
+        .get(`/api/requests/${reqData.id}/history`)
+        .set("Cookie", cookie);
+      expect(requesterHistory.body.history.map(({ action }: { action: string }) => action)).toEqual(["CREATED", "SUBMITTED"]);
+      expect(requesterHistory.body.history[0].toStatus).toBeNull();
+
+      const reviewerLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
+      const reviewerHistory = await request(app)
+        .get(`/api/requests/${reqData.id}/history`)
+        .set("Cookie", reviewerLogin.headers["set-cookie"][0]);
+      expect(reviewerHistory.body.history.map(({ action }: { action: string }) => action)).toEqual(["SUBMITTED"]);
+      expect(reviewerHistory.body.history[0].fromStatus).toBeNull();
+      expect(reviewerHistory.body.history[0].toStatus).toBe("PENDING_REVIEW");
     });
 
     it("allows saving a request as DRAFT without immediate submission", async () => {

@@ -21,6 +21,7 @@ Reviewers must not be able to discover or open purchase requests that remain in 
   - Status transition: `None → Pending Review`
 - The Reviewer-facing timeline must not show `CREATED`.
 - A Requester may continue to see their complete history, including `CREATED` followed by `SUBMITTED`.
+- The Requester sees `CREATED` even when submitting immediately without saving a draft first. The assigned Reviewer does not see this `CREATED` entry; the Reviewer timeline begins with `SUBMITTED` (`None → Pending Review`).
 - When a Requester edits a purchase request, the application currently records an `EDITED` timeline entry, for example:
 
   **EDITED Alice Requester (REQUESTER)**  

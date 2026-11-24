@@ -169,7 +169,8 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   2. Assert response status is `201 Created`.
   3. Assert returned entity contains valid `requestNumber` (`PR-2026-XXXXX`) and `status === 'PENDING_REVIEW'`.
   4. Verify record in PostgreSQL database matches submitted payload and foreign keys.
-- **Expected Result:** Request is persistently saved in database and linked to submitting requester and assigned reviewer.
+  5. As the Requester, verify history contains `CREATED` then `SUBMITTED`. As the assigned Reviewer, verify history contains `SUBMITTED` but omits `CREATED`.
+- **Expected Result:** Request is persistently saved in database and linked to submitting requester and assigned reviewer. Direct submission records both actions, while the role-specific history endpoint hides `CREATED` from the Reviewer.
 - **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
 ### TEST-INT-04: Requester Data Isolation & Cross-Access Blocking
@@ -390,7 +391,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   1. As the Requester, create a `DRAFT` assigned to Reviewer A and verify the Requester can open it and sees `CREATED` in history.
   2. As Reviewer A, verify the draft is absent from the queue and direct request and history API requests are denied.
   3. Repeat step 2 as unassigned Reviewer B.
-  4. As the Requester, submit the draft and verify the Requester sees `CREATED` and `SUBMITTED`.
+  4. As the Requester, submit the draft and verify the Requester sees `CREATED` and `SUBMITTED`. (The same Requester events are recorded when a request is submitted directly.)
   5. As Reviewer A, verify the request displays `Pending Review`, the timeline contains `SUBMITTED` with `None → Pending Review`, and `CREATED` is absent.
   6. Return the request; as the Requester save multiple edits and verify each `EDITED` event retains its actor, timestamp, unchanged status, and reason. As Reviewer A verify the individual `EDITED` events are absent and `RESUBMITTED` summarizes all edit notes in order.
 - **Expected Result:** Draft details are visible only to their owner; the Reviewer receives no draft data, and Reviewer and Requester timelines follow their respective history rules.

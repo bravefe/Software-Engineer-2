@@ -287,10 +287,15 @@ test("TEST-E2E-02: rejection requires a reason and remains terminal", async ({ p
 
   await signIn(page, users.requester1);
   const requestId = await createRequest(page, title, users.reviewer1.id, true);
+  await page.goto(`/requests/${requestId}`);
+  await expect(page.getByTestId("action-badge-CREATED")).toBeVisible();
+  await expect(page.getByTestId("action-badge-SUBMITTED")).toBeVisible();
   await signOut(page);
 
   await signIn(page, users.reviewer1);
   await openQueueRequest(page, title);
+  await expect(page.getByTestId("action-badge-CREATED")).toHaveCount(0);
+  await expect(page.getByTestId("action-badge-SUBMITTED")).toBeVisible();
   await page.getByRole("button", { name: "Reject", exact: true }).click();
   const rejectDialog = page.getByRole("dialog");
   const confirmRejection = rejectDialog.getByRole("button", { name: "Confirm Rejection" });
