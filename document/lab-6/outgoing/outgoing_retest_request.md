@@ -1,15 +1,13 @@
 # Retest Request - Lab 6, Issue #60
 
-Please rerun the same UAT-TC-01 through UAT-TC-05 cases from the supplied handoff against the corrected release. Keep the original users, request flows, and case IDs. The checks below add expected results for the reported findings; they do not replace the original cases.
-
 ## Corrected Release
 
-| Field                  | Value                                                                                                      |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------- |
-| App URL                | https://macau678-purchase-approval-gfn7poakkq-as.a.run.app/                                               |
-| Displayed app version  | 0.2.2                                                                                                      |
-| Image/source commit tag | `8f21c3252e72db1a17c9976701582fd21dc73cf5`                                                               |
-| Cloud Run revision     | Not supplied in the release details; record it before testing if it is visible in the deployment metadata |
+| Field                   | Value                                                                                                     |
+| ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| App URL                 | https://macau678-purchase-approval-gfn7poakkq-as.a.run.app/                                               |
+| Displayed app version   | 0.2.2                                                                                                     |
+| Image/source commit tag | `8f21c3252e72db1a17c9976701582fd21dc73cf5`                                                                |
+| Cloud Run revision      | Not supplied in the release details; record it before testing if it is visible in the deployment metadata |
 
 Before testing, record the app version, source commit, and Cloud Run revision. Do not reset the shared test data. Use new synthetic requests where a case needs a fresh request.
 
