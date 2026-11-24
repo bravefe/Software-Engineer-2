@@ -795,24 +795,26 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(returnRes.status).toBe(200);
       expect(returnRes.body.request.status).toBe("RETURNED");
 
-      // 3. Requester edits the RETURNED request
-      const editRes = await request(app)
-        .patch(`/api/requests/${targetReqId}`)
-        .set("Cookie", requesterCookie)
-        .send({
-          amount: 550.0,
-          justification: "Vendor quotation attached: $550",
-          reason: "Updated amount based on revised quote",
-        });
-
-      expect(editRes.status).toBe(200);
-      expect(editRes.body.request.status).toBe("RETURNED");
+      // 3. Requester makes several saves before resubmitting.
+      const editNotes = [
+        { amount: 500.0, reason: "No changes in this save" },
+        { justification: "Initial justification", reason: "Still no changes" },
+        { amount: 550.0, justification: "Vendor quotation attached: $550", reason: "Updated amount based on revised quote" },
+      ];
+      for (const edit of editNotes) {
+        const editRes = await request(app)
+          .patch(`/api/requests/${targetReqId}`)
+          .set("Cookie", requesterCookie)
+          .send(edit);
+        expect(editRes.status).toBe(200);
+        expect(editRes.body.request.status).toBe("RETURNED");
+      }
 
       // 4. Requester resubmits the request
       const submitRes = await request(app)
         .post(`/api/requests/${targetReqId}/submit`)
         .set("Cookie", requesterCookie)
-        .send({ reason: "Resubmitting with attached quotation" });
+        .send({ reason: "Updated amount based on revised quote" });
 
       expect(submitRes.status).toBe(200);
       expect(submitRes.body.request.status).toBe("PENDING_REVIEW");
@@ -828,12 +830,17 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       });
       expect(resubmitHistory).toBeDefined();
       expect(resubmitHistory?.toStatus).toBe("PENDING_REVIEW");
+      expect(resubmitHistory?.reason).toContain("No changes in this save");
+      expect(resubmitHistory?.reason).toContain("Still no changes");
+      expect(resubmitHistory?.reason).toContain("Updated amount based on revised quote");
+      expect(resubmitHistory?.reason?.match(/Updated amount based on revised quote/g)).toHaveLength(1);
 
       const requesterHistory = await request(app)
         .get(`/api/requests/${targetReqId}/history`)
         .set("Cookie", requesterCookie);
-      const requesterEdit = requesterHistory.body.history.find(({ action }: { action: string }) => action === "EDITED");
-      expect(requesterEdit).toBeDefined();
+      const requesterEdits = requesterHistory.body.history.filter(({ action }: { action: string }) => action === "EDITED");
+      expect(requesterEdits).toHaveLength(3);
+      const requesterEdit = requesterEdits[2];
       expect(requesterEdit.actorId).toBe(seededUsers.requester1.id);
       expect(requesterEdit.createdAt).toBeDefined();
       expect(requesterEdit.fromStatus).toBe("RETURNED");

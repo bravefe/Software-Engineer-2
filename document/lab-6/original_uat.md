@@ -313,7 +313,7 @@ Before executing any test case, verify the following:
 14. Verify the request status changes to **Pending Review**.
 15. Scroll to the **Audit History / Timeline** section.
 16. As the Requester, verify the entries appear in order: `CREATED`, `SUBMITTED`, `RETURNED`, `EDITED`, and `RESUBMITTED`.
-17. Sign out and sign in as the assigned Reviewer. Verify the Reviewer timeline shows `SUBMITTED`, `RETURNED`, and `RESUBMITTED`, but not `CREATED` or requester-generated `EDITED`.
+17. Sign out and sign in as the assigned Reviewer. Verify the Reviewer timeline shows `SUBMITTED`, `RETURNED`, and `RESUBMITTED`, but not `CREATED` or individual requester-generated `EDITED` entries. Confirm the `RESUBMITTED` note combines the edit notes in order without repeating the final note.
 18. Verify the edited field values are saved correctly on the request detail page.
 
 **Expected Results:**

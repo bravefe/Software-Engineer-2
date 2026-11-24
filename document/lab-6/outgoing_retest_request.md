@@ -14,7 +14,7 @@ Please rerun the checks below against the corrected deployed release. Before tes
 ## F-02 — Medium: History
 
 1. Submit the saved draft. As the Requester, confirm `CREATED` then `SUBMITTED` are shown. As the assigned Reviewer, confirm `SUBMITTED` shows `None → Pending Review` and `CREATED` is hidden.
-2. Return the request. As the Requester, edit it and confirm the `EDITED` entry shows the requester, timestamp, `Returned → Returned`, and reason. As the Reviewer, confirm `EDITED` is hidden.
+2. Return the request. As the Requester, save multiple edits and confirm each `EDITED` entry shows the requester, timestamp, `Returned → Returned`, and its note. As the Reviewer, confirm the separate `EDITED` entries are hidden and the `RESUBMITTED` note combines them in order without duplicating the final note.
 3. Separately create and submit a request directly. Check whether the Requester timeline shows `CREATED` before `SUBMITTED`, as the incoming UAT handoff expects. Record the result and confirm any mismatch with the Product Owner before closing F-02.
 
 **Pass:** Role-specific draft history matches the rules above, and the direct-submit history expectation is explicitly resolved.

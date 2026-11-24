@@ -229,11 +229,19 @@ test("TEST-E2E-01: draft to return to resubmit to approval, with persisted histo
   await signIn(page, users.requester1);
   await page.goto(`/requests/${requestId}`);
   await page.getByRole("link", { name: "Edit & Resubmit" }).click();
+  await page.locator("#edit-notes").fill("Reviewed returned request; no field changes.");
+  await page.getByRole("button", { name: "Save Changes" }).click();
+
+  await page.getByRole("link", { name: "Edit & Resubmit" }).click();
+  await page.locator("#edit-notes").fill("Confirmed no further changes in this save.");
+  await page.getByRole("button", { name: "Save Changes" }).click();
+
+  await page.getByRole("link", { name: "Edit & Resubmit" }).click();
   await page.locator("#edit-amount").fill("1450.00");
-  await page.locator("#edit-notes").fill("Updated quote amount.");
+  await page.locator("#edit-notes").fill("Updated quote amount and attached the quote.");
   await page.getByRole("button", { name: "Save & Resubmit for Review" }).click();
   await expectStatus(page, "pending_review");
-  await expect(page.getByTestId("action-badge-EDITED")).toBeVisible();
+  await expect(page.getByTestId("action-badge-EDITED")).toHaveCount(3);
   await expect(page.getByTestId("action-badge-RESUBMITTED")).toBeVisible();
   await signOut(page);
 
@@ -241,6 +249,10 @@ test("TEST-E2E-01: draft to return to resubmit to approval, with persisted histo
   await openQueueRequest(page, title);
   await expect(page.getByTestId("action-badge-CREATED")).toHaveCount(0);
   await expect(page.getByTestId("action-badge-EDITED")).toHaveCount(0);
+  await expect(page.getByText(/Requester changes since return:/)).toBeVisible();
+  await expect(page.getByText(/Reviewed returned request; no field changes\./)).toBeVisible();
+  await expect(page.getByText(/Confirmed no further changes in this save\./)).toBeVisible();
+  await expect(page.getByText(/Updated quote amount and attached the quote\./)).toBeVisible();
   await page.getByRole("button", { name: "Approve", exact: true }).click();
   await page
     .getByRole("dialog")
@@ -262,6 +274,8 @@ test("TEST-E2E-01: draft to return to resubmit to approval, with persisted histo
     "CREATED",
     "SUBMITTED",
     "RETURNED",
+    "EDITED",
+    "EDITED",
     "EDITED",
     "RESUBMITTED",
     "APPROVED",

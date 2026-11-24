@@ -9,7 +9,7 @@
 | Branch | `fix/draft-visibility-and-reviewer-timeline-correction` |
 | Findings | F-01 draft visibility; F-02 history completeness and role filtering; F-03 UAT wording |
 | Severity | F-01 High; F-02 Medium; F-03 Low |
-| Expected result | Drafts are visible only to their Requester. Requesters see complete history; Reviewers see `SUBMITTED` and review events without `CREATED` or requester-generated `EDITED`. The UAT field and status labels match the website. |
+| Expected result | Drafts are visible only to their Requester. Requesters see complete history; Reviewers see `SUBMITTED` and review events without `CREATED` or individual `EDITED` entries. A `RESUBMITTED` note combines all edit notes since the latest return. The UAT labels match the website. |
 | Actual result | An assigned Reviewer could open a draft. The direct-submit Requester timeline omitted `CREATED`; Reviewer history also needed role filtering. UAT instructions used field and status names that do not match the website. |
 | Classification | F-01: high-severity confidentiality defect. F-02: medium-severity audit-history defect. F-03: low-severity documentation defect. |
 
@@ -34,6 +34,7 @@
 - The Requester continues to see the draft and complete history.
 - Reviewer history omits `CREATED` and `EDITED`. After a draft is submitted, Reviewer history shows `SUBMITTED` with `fromStatus: null` and `toStatus: PENDING_REVIEW`.
 - Requester history for a draft contains `CREATED` followed by `SUBMITTED`. Direct submission at request creation still records `SUBMITTED` without a separate `CREATED` event; this incoming F-02 expectation remains open.
+- The `RESUBMITTED` reason combines every `EDITED` reason since the latest `RETURNED` event in chronological order. The final note from the edit form is included once, even though the form sends it with both the save and resubmit requests.
 - The UAT guide now uses the live labels: `Request Title`, `Description`, `Estimated Amount ($)`, `Assign Reviewer`, and `Business Justification`. Put quantity details in `Description`; there is no separate Quantity input. The status badge reads `Pending Review`; `SUBMITTED` is the timeline action.
 
 ## 5 Regression Suite
@@ -44,7 +45,7 @@
 | `npm run test:e2e` | Pass: 3 passed, 2 out-of-scope cases skipped |
 | `npm run build` | Pass |
 
-UAT-TC-03 was rerun automatically with the assigned Reviewer and a different, unassigned Reviewer. Both were denied draft access and neither saw the draft in the queue. Draft-submission Requester history and Reviewer timeline checks passed. The direct-submit `CREATED` event gap remains open. This local run does not claim an independent partner retest against the deployed release.
+UAT-TC-03 was rerun automatically with the assigned Reviewer and a different, unassigned Reviewer. Both were denied draft access and neither saw the draft in the queue. Draft-submission Requester history and Reviewer timeline checks passed. The resubmission aggregation is covered by the updated integration and E2E regression tests. The direct-submit `CREATED` event gap remains open. This local run does not claim an independent partner retest against the deployed release.
 
 ## 6 Review, CI and Release
 

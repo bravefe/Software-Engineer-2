@@ -422,6 +422,35 @@ router.post("/:id/submit", requireRole(["REQUESTER"]), async (req, res): Promise
         },
       });
 
+      let historyReason = req.body?.reason?.trim();
+      if (action === "RESUBMITTED") {
+        const lastReturn = await tx.requestHistory.findFirst({
+          where: { requestId: existing.id, action: "RETURNED" },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        });
+        const editsSinceReturn = await tx.requestHistory.findMany({
+          where: {
+            requestId: existing.id,
+            actorId: currentUser.id,
+            action: "EDITED",
+            ...(lastReturn ? { createdAt: { gte: lastReturn.createdAt } } : {}),
+          },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        });
+        const editNotes = editsSinceReturn
+          .map((entry) => entry.reason?.trim())
+          .filter((reason): reason is string => Boolean(reason));
+
+        // The edit form sends its final note with both PATCH and submit. Include
+        // it only once, while retaining every earlier edit note in the summary.
+        if (historyReason && historyReason !== editNotes[editNotes.length - 1]) {
+          editNotes.push(historyReason);
+        }
+        if (editNotes.length > 0) {
+          historyReason = `Requester changes since return: ${editNotes.join(" | ")}`.slice(0, 2000);
+        }
+      }
+
       await tx.requestHistory.create({
         data: {
           requestId: existing.id,
@@ -429,7 +458,7 @@ router.post("/:id/submit", requireRole(["REQUESTER"]), async (req, res): Promise
           action,
           fromStatus: action === "SUBMITTED" ? null : existing.status,
           toStatus: "PENDING_REVIEW",
-          reason: req.body?.reason?.trim() || (action === "RESUBMITTED" ? "Request resubmitted after modifications" : "Draft submitted for review"),
+          reason: historyReason || (action === "RESUBMITTED" ? "Request resubmitted after modifications" : "Draft submitted for review"),
         },
       });
 

@@ -43,7 +43,7 @@ Test Date: 24 November 2026
 F-01 is a high-severity confidentiality defect. F-02 is medium severity because the direct-submit Requester timeline is incomplete against the handoff, although submission actor/time remain recorded. The branch also corrects role-specific Reviewer history and draft submission history. F-03 is a low-severity handoff mismatch, not a missing form field. Changes and the remaining F-02 gap are recorded in `defect_correction.md`.
 
 1. RED: the incoming report reproduced assigned-Reviewer access to a draft and missing history expectations.
-2. GREEN: the API now filters and denies Reviewer access to drafts, filters Reviewer history, and records draft submission as `SUBMITTED` with a `None → PENDING_REVIEW` transition. The queue also filters drafts before rendering. Requesters see `CREATED` followed by `SUBMITTED` for the draft-submit path.
+2. GREEN: the API now filters and denies Reviewer access to drafts, filters Reviewer history, and records draft submission as `SUBMITTED` with a `None → PENDING_REVIEW` transition. The queue also filters drafts before rendering. Requesters see `CREATED` followed by `SUBMITTED` for the draft-submit path. On resubmission, the Reviewer-facing reason combines all edit notes since the last return in order.
 3. Documentation: the UAT guide now uses the website labels: `Request Title`, `Description`, `Estimated Amount ($)`, `Assign Reviewer`, and `Business Justification`. Quantity belongs in the Description; there is no separate Quantity field. The visible status is `Pending Review`; `SUBMITTED` is a history event.
 4. Retest: UAT-TC-03 was rerun in the automated browser suite with both the assigned and unassigned Reviewer. Independent partner UAT on the deployed release is still pending.
 
@@ -55,7 +55,7 @@ F-01 is a high-severity confidentiality defect. F-02 is medium severity because 
 | ----- | ----- |
 | **Decision** | F-01 and role-specific history fixes pass local regression; overall acceptance pending F-02 triage and independent release retest |
 | **Tested code** | Branch `fix/draft-visibility-and-reviewer-timeline-correction`, Issue #60 |
-| **Verification** | Server: 49 passed, 4 existing TODOs. E2E: 3 passed, 2 out-of-scope cases skipped. Production build passed. These checks cover draft submission and role filtering, not the direct-submit `CREATED` event. |
+| **Verification** | Server: 49 passed, 4 existing TODOs. E2E: 3 passed, 2 out-of-scope cases skipped. Production build passed. The resubmission summary is covered by the added regression; direct-submit `CREATED` remains unresolved. |
 | **Conditions / limitations** | Partner team must rerun UAT-TC-03 against the deployed release and confirm whether direct submission requires a separate `CREATED` history event. The deployed revision was not verified. |
 | **Reasons** | Assigned and unassigned Reviewer checks passed locally. The incoming F-02 direct-submit expectation remains unresolved. |
 

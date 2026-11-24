@@ -231,6 +231,8 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   3. Send `POST /api/requests/81/submit`.
   4. Assert status transitions from `RETURNED` to `PENDING_REVIEW`.
   5. Verify `RequestHistory` records `RESUBMITTED` action.
+  6. After multiple edits, assert the `RESUBMITTED` reason contains each edit note in chronological order and does not repeat the final note sent with both requests.
+  7. Verify the Requester still sees separate `EDITED` records and the Reviewer sees the combined summary only on `RESUBMITTED`.
 - **Expected Result:** Only `RETURNED` requests can be edited and resubmitted.
 - **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
@@ -374,9 +376,9 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   1. Log in as the test Requester and create a request as a draft.
   2. Verify `DRAFT`, then submit it and verify `PENDING_REVIEW`.
   3. Sign in as the assigned Reviewer, return the request with a reason, and verify `RETURNED`.
-  4. Sign in as the Requester, update the amount, and resubmit; verify `PENDING_REVIEW`.
+  4. Sign in as the Requester, make multiple saves with revision notes, update the amount, and resubmit; verify `PENDING_REVIEW`.
   5. Sign in as the Reviewer and approve the request; verify `APPROVED`.
-  6. As the Requester, verify the timeline contains `CREATED`, `SUBMITTED`, `RETURNED`, `EDITED`, `RESUBMITTED`, and `APPROVED`; as the Reviewer, verify it contains `SUBMITTED`, `RETURNED`, `RESUBMITTED`, and `APPROVED` but omits `CREATED` and `EDITED`. Confirm the complete history persists in the database.
+  6. As the Requester, verify the timeline contains `CREATED`, `SUBMITTED`, `RETURNED`, each `EDITED`, `RESUBMITTED`, and `APPROVED`; as the Reviewer, verify it contains `SUBMITTED`, `RETURNED`, `RESUBMITTED`, and `APPROVED` but omits `CREATED` and individual `EDITED` entries. Confirm the `RESUBMITTED` reason combines edit notes in order without duplicating the final note, and confirm the complete history persists in the database.
 - **Expected Result:** The complete history persists across roles, while each role sees only its specified timeline entries.
 - **Status:** `PASSED` (Verified in `tests/e2e/purchase-approval.spec.ts`)
 
@@ -390,7 +392,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   3. Repeat step 2 as unassigned Reviewer B.
   4. As the Requester, submit the draft and verify the Requester sees `CREATED` and `SUBMITTED`.
   5. As Reviewer A, verify the request displays `Pending Review`, the timeline contains `SUBMITTED` with `None → Pending Review`, and `CREATED` is absent.
-  6. Return the request; as the Requester edit it and verify the `EDITED` event retains its actor, timestamp, unchanged status, and reason. As Reviewer A verify `EDITED` is absent while the review events remain.
+  6. Return the request; as the Requester save multiple edits and verify each `EDITED` event retains its actor, timestamp, unchanged status, and reason. As Reviewer A verify the individual `EDITED` events are absent and `RESUBMITTED` summarizes all edit notes in order.
 - **Expected Result:** Draft details are visible only to their owner; the Reviewer receives no draft data, and Reviewer and Requester timelines follow their respective history rules.
 - **Automation:** `TEST-INT` regression cases in `tests/server/integration.test.ts` and `TEST-E2E-01` in `tests/e2e/purchase-approval.spec.ts`.
 - **Status:** Passed by the automated assigned/unassigned Reviewer rerun in `tests/e2e/purchase-approval.spec.ts` and supporting API regressions in `tests/server/integration.test.ts`.
