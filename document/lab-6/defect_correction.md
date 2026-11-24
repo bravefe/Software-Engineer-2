@@ -54,13 +54,13 @@ UAT-TC-03 was rerun automatically with the assigned Reviewer and a different, un
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | Fix branch, linked Issue | `fix/draft-visibility-and-reviewer-timeline-correction`; Issue [#60](https://github.com/bravefe/Software-Engineer-2/issues/60) |
 | Pull request             | Not created in this work                                                                                                       |
-| Deployed release         | Not verified; partner UAT retest remains pending                                                                               |
+| Deployed release         | https://macau678-purchase-approval-gfn7poakkq-as.a.run.app/; Version 0.2.2; image/source commit `8f21c3252e72db1a17c9976701582fd21dc73cf5`; Cloud Run revision not supplied |
 
 ## 7 Independent Retest by UAT Team
 
 | Field                               | Entry                                                                                                                         |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Corrected version given to UAT team | Pending release and handoff                                                                                                   |
+| Corrected version given to UAT team | Version 0.2.2 at https://macau678-purchase-approval-gfn7poakkq-as.a.run.app/; image/source commit `8f21c3252e72db1a17c9976701582fd21dc73cf5`; Cloud Run revision not supplied |
 | Original case / steps to rerun      | UAT-TC-03 assigned/unassigned Reviewer draft checks; UAT-TC-01 direct submit; UAT-TC-04 return/edit/resubmit and note summary |
 | Actual result                       | Pending independent retest                                                                                                    |
 | PASS / FAIL                         | Pending independent retest                                                                                                    |

@@ -3,6 +3,7 @@
 ## 1 Summary of Received Findings
 
 Version: 0.2.1
+Commit: `c7504ea5bedea81ce9d7ecf100e15933c918698b`
 Test Date: 24 November 2026
 
 | Finding                     | Category        | Result                                                                                                                                                                              |
