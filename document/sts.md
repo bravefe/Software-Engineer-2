@@ -1,9 +1,39 @@
 # Software Test Specification (STS) & Test Strategy
 
 **Project Name:** Macau678 University Purchase Approval System  
-**Course:** CPE 334 - Introduction to Software Engineering in the Age of AI Agents (Semester 1/2026)  
-**Theme:** Theme 5: Workflow and Approval System  
-**Baseline References:** [Software Requirements Specification (SRS)](file:///c:/Users/Cent/Desktop/Software-Engineer-2/document/srs.md) | [System Design Specification (SDS)](file:///c:/Users/Cent/Desktop/Software-Engineer-2/document/sds.md) | [Feature Inventory](file:///c:/Users/Cent/Desktop/Software-Engineer-2/document/feature.md)
+**Course:** CPE 334 - Introduction to Software Engineering in the Age of AI Agents (Semester 1/2026)
+
+## Test Execution Summary
+
+| Test ID      | Test Case                                            | Test File                                                                  | Status             |
+| ------------ | ---------------------------------------------------- | -------------------------------------------------------------------------- | ------------------ |
+| TEST-UNIT-01 | Password Hashing and Salt Verification               | `tests/server/unit.test.ts`                                                | PASSED             |
+| TEST-UNIT-02 | Role-Based Authorization Guard Logic                 | `tests/server/unit.test.ts`                                                | PASSED             |
+| TEST-UNIT-03 | Lifecycle State Transition Matrix Validation         | `tests/server/unit.test.ts`                                                | PASSED             |
+| TEST-UNIT-04 | Non-Self-Approval & Mandatory Reason Rules           | `tests/server/unit.test.ts`                                                | PASSED             |
+| TEST-UNIT-05 | Input Validation & Boundary Checks                   | Not yet implemented                                                        | PLANNED (Sprint 2) |
+| TEST-UNIT-06 | Financial Aggregation & Status Metrics Math          | Not yet implemented                                                        | PLANNED (Sprint 2) |
+| TEST-INT-01  | User Authentication & Cookie Lifecycle               | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-02  | Authentication Guards & Unauthenticated Rejection    | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-03  | Purchase Request Creation & Reviewer Assignment      | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-04  | Requester Data Isolation & Cross-Access Blocking     | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-05  | Reviewer Queue Scoping & Assignment Isolation        | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-06  | Review Decision Execution                            | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-07  | Request Modification & Resubmission Enforcement      | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-08  | Complete Audit History Persistence                   | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-09  | Request Filtering by Status and Date Range           | Not yet implemented                                                        | PLANNED (Sprint 2) |
+| TEST-INT-10  | Reporting Summary Aggregation Endpoint               | Not yet implemented                                                        | PLANNED (Sprint 2) |
+| TEST-COMP-01 | Login Form Rendering and Submission Handling         | `tests/client/components.test.tsx`                                         | PASSED             |
+| TEST-COMP-02 | Purchase Request Form & Character Counters           | `tests/client/components.test.tsx`                                         | PASSED             |
+| TEST-COMP-03 | Review Decision Modal & Mandatory Reason Enforcement | `tests/client/components.test.tsx`                                         | PASSED             |
+| TEST-COMP-04 | History Timeline Presentation                        | `tests/client/components.test.tsx`                                         | PASSED             |
+| TEST-COMP-05 | Dynamic Navigation Bar Role Rendering                | `tests/client/components.test.tsx`                                         | PASSED             |
+| TEST-E2E-01  | Full Purchase Approval Journey                       | `tests/e2e/purchase-approval.spec.ts`                                      | PASSED             |
+| UAT-TC-03    | Draft Privacy and Reviewer Timeline Visibility       | `tests/e2e/purchase-approval.spec.ts` + `tests/server/integration.test.ts` | PASSED             |
+| TEST-E2E-02  | Purchase Rejection Journey with Mandatory Reason     | `tests/e2e/purchase-approval.spec.ts`                                      | PASSED             |
+| TEST-E2E-03  | Security & Authorization Boundary Checks             | `tests/e2e/purchase-approval.spec.ts`                                      | PASSED             |
+| TEST-E2E-04  | Multi-Criteria Filter & Reports Journey              | Not yet implemented                                                        | PLANNED (Sprint 2) |
+| TEST-E2E-05  | Cross-Viewport Responsive Design Verification        | Not yet implemented                                                        | PLANNED (Sprint 3) |
 
 ---
 
@@ -19,9 +49,6 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 - **End-to-End (E2E) Browser Testing (Playwright):** Automates multi-role user journeys across browser engines and responsive viewports (Desktop 1280x720, Tablet 768x1024), validating end-to-end workflow execution.
 
 ### 1.2 Execution Status Convention
-
-> [!NOTE]
-> Test execution results strictly distinguish between verified tests with actual execution evidence and tests currently planned for future sprints.
 
 - **Status Values:**
   - `PASSED`: Test implemented and verified by automated test runner with log evidence.
