@@ -1,6 +1,6 @@
 # Macau678 Purchase Approval System
 
-**Version:** 0.2.1
+**Version:** 0.2.2
 
 ## Prerequisites
 

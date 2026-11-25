@@ -586,6 +586,22 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(history).toBeDefined();
       expect(history?.actorId).toBe(seededUsers.requester1.id);
       expect(history?.toStatus).toBe("PENDING_REVIEW");
+
+      const requesterHistory = await request(app)
+        .get(`/api/requests/${reqData.id}/history`)
+        .set("Cookie", cookie);
+      expect(requesterHistory.body.history.map(({ action }: { action: string }) => action)).toEqual(["CREATED", "SUBMITTED"]);
+      expect(requesterHistory.body.history[0].toStatus).toBeNull();
+
+      const reviewerLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
+      const reviewerHistory = await request(app)
+        .get(`/api/requests/${reqData.id}/history`)
+        .set("Cookie", reviewerLogin.headers["set-cookie"][0]);
+      expect(reviewerHistory.body.history.map(({ action }: { action: string }) => action)).toEqual(["SUBMITTED"]);
+      expect(reviewerHistory.body.history[0].fromStatus).toBeNull();
+      expect(reviewerHistory.body.history[0].toStatus).toBe("PENDING_REVIEW");
     });
 
     it("allows saving a request as DRAFT without immediate submission", async () => {
@@ -616,6 +632,63 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       });
       expect(history).toBeDefined();
       expect(history?.toStatus).toBe("DRAFT");
+    });
+
+    it("keeps drafts private to the requester in lists, detail, and history", async () => {
+      const requesterCookie = (await request(app).post("/api/auth/login").send({
+        email: seededUsers.requester1.email, password: seededUsers.requester1.password,
+      })).headers["set-cookie"][0];
+      const assignedCookie = (await request(app).post("/api/auth/login").send({
+        email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password,
+      })).headers["set-cookie"][0];
+      const unassignedCookie = (await request(app).post("/api/auth/login").send({
+        email: seededUsers.reviewer2.email, password: seededUsers.reviewer2.password,
+      })).headers["set-cookie"][0];
+      const created = await request(app).post("/api/requests").set("Cookie", requesterCookie).send({
+        title: "Private Draft Visibility", description: "Draft detail", amount: 10,
+        justification: "Draft justification", reviewerId: seededUsers.reviewer1.id, status: "DRAFT",
+      });
+      const draftId = created.body.request.id;
+
+      const requesterList = await request(app).get("/api/requests").set("Cookie", requesterCookie);
+      expect(requesterList.body.requests.some((item: { id: number }) => item.id === draftId)).toBe(true);
+      for (const cookie of [assignedCookie, unassignedCookie]) {
+        const list = await request(app).get("/api/requests").set("Cookie", cookie);
+        expect(list.body.requests.some((item: { id: number }) => item.id === draftId)).toBe(false);
+        const detail = await request(app).get(`/api/requests/${draftId}`).set("Cookie", cookie);
+        expect(detail.status).toBe(403);
+        expect(detail.body.code).toBe("ACCESS_DENIED");
+        const history = await request(app).get(`/api/requests/${draftId}/history`).set("Cookie", cookie);
+        expect(history.status).toBe(403);
+      }
+
+      const requesterHistory = await request(app).get(`/api/requests/${draftId}/history`).set("Cookie", requesterCookie);
+      expect(requesterHistory.status).toBe(200);
+      expect(requesterHistory.body.history.map(({ action }: { action: string }) => action)).toEqual(["CREATED"]);
+    });
+
+    it("shows reviewers SUBMITTED but not CREATED after a draft is submitted", async () => {
+      const requesterCookie = (await request(app).post("/api/auth/login").send({
+        email: seededUsers.requester1.email, password: seededUsers.requester1.password,
+      })).headers["set-cookie"][0];
+      const reviewerCookie = (await request(app).post("/api/auth/login").send({
+        email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password,
+      })).headers["set-cookie"][0];
+      const created = await request(app).post("/api/requests").set("Cookie", requesterCookie).send({
+        title: "Submitted Draft Timeline", description: "Timeline detail", amount: 10,
+        justification: "Timeline justification", reviewerId: seededUsers.reviewer1.id, status: "DRAFT",
+      });
+      const draftId = created.body.request.id;
+      await request(app).post(`/api/requests/${draftId}/submit`).set("Cookie", requesterCookie).send({});
+
+      const reviewerHistory = await request(app).get(`/api/requests/${draftId}/history`).set("Cookie", reviewerCookie);
+      expect(reviewerHistory.status).toBe(200);
+      expect(reviewerHistory.body.history.map(({ action }: { action: string }) => action)).toEqual(["SUBMITTED"]);
+      expect(reviewerHistory.body.history[0].fromStatus).toBeNull();
+      expect(reviewerHistory.body.history[0].toStatus).toBe("PENDING_REVIEW");
+
+      const requesterHistory = await request(app).get(`/api/requests/${draftId}/history`).set("Cookie", requesterCookie);
+      expect(requesterHistory.body.history.map(({ action }: { action: string }) => action)).toEqual(["CREATED", "SUBMITTED"]);
     });
 
     it("retrieves active reviewers list via GET /api/users/reviewers", async () => {
@@ -738,24 +811,26 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(returnRes.status).toBe(200);
       expect(returnRes.body.request.status).toBe("RETURNED");
 
-      // 3. Requester edits the RETURNED request
-      const editRes = await request(app)
-        .patch(`/api/requests/${targetReqId}`)
-        .set("Cookie", requesterCookie)
-        .send({
-          amount: 550.0,
-          justification: "Vendor quotation attached: $550",
-          reason: "Updated amount based on revised quote",
-        });
-
-      expect(editRes.status).toBe(200);
-      expect(editRes.body.request.status).toBe("RETURNED");
+      // 3. Requester makes several saves before resubmitting.
+      const editNotes = [
+        { amount: 500.0, reason: "No changes in this save" },
+        { justification: "Initial justification", reason: "Still no changes" },
+        { amount: 550.0, justification: "Vendor quotation attached: $550", reason: "Updated amount based on revised quote" },
+      ];
+      for (const edit of editNotes) {
+        const editRes = await request(app)
+          .patch(`/api/requests/${targetReqId}`)
+          .set("Cookie", requesterCookie)
+          .send(edit);
+        expect(editRes.status).toBe(200);
+        expect(editRes.body.request.status).toBe("RETURNED");
+      }
 
       // 4. Requester resubmits the request
       const submitRes = await request(app)
         .post(`/api/requests/${targetReqId}/submit`)
         .set("Cookie", requesterCookie)
-        .send({ reason: "Resubmitting with attached quotation" });
+        .send({ reason: "Updated amount based on revised quote" });
 
       expect(submitRes.status).toBe(200);
       expect(submitRes.body.request.status).toBe("PENDING_REVIEW");
@@ -771,6 +846,26 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       });
       expect(resubmitHistory).toBeDefined();
       expect(resubmitHistory?.toStatus).toBe("PENDING_REVIEW");
+      expect(resubmitHistory?.reason).toContain("No changes in this save");
+      expect(resubmitHistory?.reason).toContain("Still no changes");
+      expect(resubmitHistory?.reason).toContain("Updated amount based on revised quote");
+      expect(resubmitHistory?.reason?.match(/Updated amount based on revised quote/g)).toHaveLength(1);
+
+      const requesterHistory = await request(app)
+        .get(`/api/requests/${targetReqId}/history`)
+        .set("Cookie", requesterCookie);
+      const requesterEdits = requesterHistory.body.history.filter(({ action }: { action: string }) => action === "EDITED");
+      expect(requesterEdits).toHaveLength(3);
+      const requesterEdit = requesterEdits[2];
+      expect(requesterEdit.actorId).toBe(seededUsers.requester1.id);
+      expect(requesterEdit.createdAt).toBeDefined();
+      expect(requesterEdit.fromStatus).toBe("RETURNED");
+      expect(requesterEdit.toStatus).toBe("RETURNED");
+      expect(requesterEdit.reason).toBe("Updated amount based on revised quote");
+      const reviewerHistory = await request(app)
+        .get(`/api/requests/${targetReqId}/history`)
+        .set("Cookie", reviewerCookie);
+      expect(reviewerHistory.body.history.some(({ action }: { action: string }) => action === "EDITED")).toBe(false);
     });
   });
 
