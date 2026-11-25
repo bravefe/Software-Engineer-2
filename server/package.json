@@ -1,6 +1,5 @@
 {
   "name": "@macau678/server",
-  "version": "0.2.2",
   "private": true,
   "scripts": {
     "dev": "tsx watch src/index.ts",
