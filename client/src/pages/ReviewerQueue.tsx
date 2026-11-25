@@ -1,12 +1,17 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchRequests, PurchaseRequest, RequestFilters } from "../api/requests";
+import {
+  fetchRequests,
+  PurchaseRequest,
+  RequestFilters,
+} from "../api/requests";
 import { StatusBadge } from "../components/StatusBadge";
 
 export default function ReviewerQueue() {
   const [requests, setRequests] = useState<PurchaseRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const isMounted = useRef(false);
 
   // Filter states
   const [statusFilter, setStatusFilter] = useState("");
@@ -15,16 +20,24 @@ export default function ReviewerQueue() {
   const [searchFilter, setSearchFilter] = useState("");
   const [isFiltered, setIsFiltered] = useState(false);
 
+  useEffect(() => {
+    isMounted.current = true;
+    return () => {
+      isMounted.current = false;
+    };
+  }, []);
+
   const loadRequests = useCallback(async (filters?: RequestFilters) => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
       const data = await fetchRequests(filters);
-      setRequests(data);
+      if (isMounted.current) setRequests(data);
     } catch (err: any) {
-      setErrorMessage(err.message || "Failed to load review queue");
+      if (isMounted.current)
+        setErrorMessage(err.message || "Failed to load review queue");
     } finally {
-      setIsLoading(false);
+      if (isMounted.current) setIsLoading(false);
     }
   }, []);
 
@@ -38,7 +51,9 @@ export default function ReviewerQueue() {
       setErrorMessage("Start Date cannot be after End Date.");
       return;
     }
-    const hasFilter = Boolean(statusFilter || startDateFilter || endDateFilter || searchFilter.trim());
+    const hasFilter = Boolean(
+      statusFilter || startDateFilter || endDateFilter || searchFilter.trim(),
+    );
     setIsFiltered(hasFilter);
     loadRequests({
       status: statusFilter || undefined,
@@ -58,15 +73,22 @@ export default function ReviewerQueue() {
     loadRequests();
   };
 
-  const pendingRequests = requests.filter((r) => r.status === "PENDING_REVIEW");
-  const completedRequests = requests.filter((r) => r.status !== "PENDING_REVIEW");
+  const visibleRequests = requests.filter((r) => r.status !== "DRAFT");
+  const pendingRequests = visibleRequests.filter(
+    (r) => r.status === "PENDING_REVIEW",
+  );
+  const completedRequests = visibleRequests.filter(
+    (r) => r.status !== "PENDING_REVIEW",
+  );
 
   return (
     <div className="container py-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h1 className="h3 mb-1">Reviewer Queue</h1>
-          <p className="text-muted mb-0">Evaluate purchase requests assigned to your review portfolio</p>
+          <p className="text-muted mb-0">
+            Evaluate purchase requests assigned to your review portfolio
+          </p>
         </div>
       </div>
 
@@ -85,10 +107,16 @@ export default function ReviewerQueue() {
       {/* Filter Controls Card */}
       <div className="card shadow-sm border-0 mb-4">
         <div className="card-body">
-          <form onSubmit={handleApplyFilters} data-testid="reviewer-filter-form">
+          <form
+            onSubmit={handleApplyFilters}
+            data-testid="reviewer-filter-form"
+          >
             <div className="row g-3 align-items-end">
               <div className="col-12 col-md-3">
-                <label htmlFor="reviewer-filter-status" className="form-label small fw-semibold">
+                <label
+                  htmlFor="reviewer-filter-status"
+                  className="form-label small fw-semibold"
+                >
                   Status
                 </label>
                 <select
@@ -107,7 +135,10 @@ export default function ReviewerQueue() {
               </div>
 
               <div className="col-12 col-md-2">
-                <label htmlFor="reviewer-filter-start-date" className="form-label small fw-semibold">
+                <label
+                  htmlFor="reviewer-filter-start-date"
+                  className="form-label small fw-semibold"
+                >
                   Start Date
                 </label>
                 <input
@@ -121,7 +152,10 @@ export default function ReviewerQueue() {
               </div>
 
               <div className="col-12 col-md-2">
-                <label htmlFor="reviewer-filter-end-date" className="form-label small fw-semibold">
+                <label
+                  htmlFor="reviewer-filter-end-date"
+                  className="form-label small fw-semibold"
+                >
                   End Date
                 </label>
                 <input
@@ -135,7 +169,10 @@ export default function ReviewerQueue() {
               </div>
 
               <div className="col-12 col-md-3">
-                <label htmlFor="reviewer-filter-search" className="form-label small fw-semibold">
+                <label
+                  htmlFor="reviewer-filter-search"
+                  className="form-label small fw-semibold"
+                >
                   Keyword Search
                 </label>
                 <input
@@ -150,7 +187,11 @@ export default function ReviewerQueue() {
               </div>
 
               <div className="col-12 col-md-2 d-flex gap-2">
-                <button type="submit" className="btn btn-primary flex-grow-1" id="reviewer-filter-submit-btn">
+                <button
+                  type="submit"
+                  className="btn btn-primary flex-grow-1"
+                  id="reviewer-filter-submit-btn"
+                >
                   Filter
                 </button>
                 <button
@@ -173,22 +214,33 @@ export default function ReviewerQueue() {
             <span className="visually-hidden">Loading review queue...</span>
           </div>
         </div>
-      ) : requests.length === 0 ? (
+      ) : visibleRequests.length === 0 ? (
         <div className="card shadow-sm border-0 text-center py-5">
           <div className="card-body">
             {isFiltered ? (
               <>
-                <h3 className="h5 text-muted mb-2">No matching purchase requests</h3>
-                <p className="text-muted mb-4">No requests match your selected filter criteria.</p>
-                <button type="button" className="btn btn-outline-primary" onClick={handleClearFilters}>
+                <h3 className="h5 text-muted mb-2">
+                  No matching purchase requests
+                </h3>
+                <p className="text-muted mb-4">
+                  No requests match your selected filter criteria.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-outline-primary"
+                  onClick={handleClearFilters}
+                >
                   Clear Filters
                 </button>
               </>
             ) : (
               <>
-                <h3 className="h5 text-muted mb-2">No requests assigned to your queue</h3>
+                <h3 className="h5 text-muted mb-2">
+                  No requests assigned to your queue
+                </h3>
                 <p className="text-muted mb-0">
-                  New purchase requests assigned to you will appear here for evaluation.
+                  New purchase requests assigned to you will appear here for
+                  evaluation.
                 </p>
               </>
             )}
@@ -220,26 +272,40 @@ export default function ReviewerQueue() {
                       <th scope="col">Amount</th>
                       <th scope="col">Status</th>
                       <th scope="col">Submitted</th>
-                      <th scope="col" className="text-end">Actions</th>
+                      <th scope="col" className="text-end">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {pendingRequests.map((req) => (
                       <tr key={req.id}>
                         <td>
-                          <span className="fw-semibold">{req.requestNumber}</span>
+                          <span className="fw-semibold">
+                            {req.requestNumber}
+                          </span>
                         </td>
                         <td>{req.title}</td>
-                        <td>{req.requester?.name || `Requester #${req.requesterId}`}</td>
-                        <td className="fw-semibold">${Number(req.amount).toFixed(2)}</td>
+                        <td>
+                          {req.requester?.name ||
+                            `Requester #${req.requesterId}`}
+                        </td>
+                        <td className="fw-semibold">
+                          ${Number(req.amount).toFixed(2)}
+                        </td>
                         <td>
                           <StatusBadge status={req.status} />
                         </td>
                         <td className="small text-muted">
-                          {req.submittedAt ? new Date(req.submittedAt).toLocaleDateString() : "Draft"}
+                          {req.submittedAt
+                            ? new Date(req.submittedAt).toLocaleDateString()
+                            : "Draft"}
                         </td>
                         <td className="text-end">
-                          <Link to={`/requests/${req.id}`} className="btn btn-sm btn-primary">
+                          <Link
+                            to={`/requests/${req.id}`}
+                            className="btn btn-sm btn-primary"
+                          >
                             Review Request
                           </Link>
                         </td>
@@ -268,7 +334,9 @@ export default function ReviewerQueue() {
                       <th scope="col">Requester</th>
                       <th scope="col">Amount</th>
                       <th scope="col">Final Status</th>
-                      <th scope="col" className="text-end">Details</th>
+                      <th scope="col" className="text-end">
+                        Details
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -282,7 +350,10 @@ export default function ReviewerQueue() {
                           <StatusBadge status={req.status} />
                         </td>
                         <td className="text-end">
-                          <Link to={`/requests/${req.id}`} className="btn btn-sm btn-outline-secondary">
+                          <Link
+                            to={`/requests/${req.id}`}
+                            className="btn btn-sm btn-outline-secondary"
+                          >
                             View
                           </Link>
                         </td>

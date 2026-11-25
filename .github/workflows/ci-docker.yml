@@ -8,8 +8,13 @@ on:
       - sprint-1
       - sprint-2
       - sprint-3
+      - sprint-1
+      - sprint-2
+      - sprint-3
       - lab-5
       - lab-6
+      - lab-6
+      - lab-7
   workflow_dispatch:
 
 # Least privilege: this workflow only needs to read the repository.

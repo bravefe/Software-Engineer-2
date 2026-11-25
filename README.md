@@ -1,6 +1,6 @@
 # Macau678 Purchase Approval System
 
-**Version:** 0.2.1
+The release version is maintained in the root `package.json`.
 
 ## Prerequisites
 
