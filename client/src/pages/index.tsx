@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 export default function HomePage() {
   return (
     <main className="container py-5">
-      <h1 className="mb-3">Macau678 Purchase Approval System Version 0.2.2 </h1>
+      <h1 className="mb-3">
+        Macau678 Purchase Approval System Version {__APP_VERSION__}
+      </h1>
       <p className="lead">
         The application foundation is ready for the Sprint 1 approval workflow.
       </p>
