@@ -20,10 +20,15 @@ describe("Integration and API tests: Authentication & Authorization", () => {
     seededRequests = data.requests;
   });
 
-  async function createPendingRequest(cookie: string, title: string): Promise<number> {
+  async function createPendingRequest(title: string): Promise<number> {
+    const requesterLogin = await request(app)
+      .post("/api/auth/login")
+      .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+    expect(requesterLogin.status).toBe(200);
+
     const response = await request(app)
       .post("/api/requests")
-      .set("Cookie", cookie)
+      .set("Cookie", requesterLogin.headers["set-cookie"][0])
       .send({
         title,
         description: "Integration test request",
@@ -453,8 +458,8 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
       const cookie = loginRes.headers["set-cookie"][0];
-      const missingReasonRequestId = await createPendingRequest(cookie, "Reject Missing Reason");
-      const whitespaceReasonRequestId = await createPendingRequest(cookie, "Reject Whitespace Reason");
+      const missingReasonRequestId = await createPendingRequest("Reject Missing Reason");
+      const whitespaceReasonRequestId = await createPendingRequest("Reject Whitespace Reason");
 
       // Missing reason
       const resNoReason = await request(app)
@@ -480,8 +485,8 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
       const cookie = loginRes.headers["set-cookie"][0];
-      const missingReasonRequestId = await createPendingRequest(cookie, "Return Missing Reason");
-      const whitespaceReasonRequestId = await createPendingRequest(cookie, "Return Whitespace Reason");
+      const missingReasonRequestId = await createPendingRequest("Return Missing Reason");
+      const whitespaceReasonRequestId = await createPendingRequest("Return Whitespace Reason");
 
       // Missing reason
       const resNoReason = await request(app)
@@ -507,7 +512,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
       const cookie = loginRes.headers["set-cookie"][0];
-      const requestId = await createPendingRequest(cookie, "Valid Reject Reason");
+      const requestId = await createPendingRequest("Valid Reject Reason");
 
       const res = await request(app)
         .post(`/api/requests/${requestId}/review`)
@@ -530,7 +535,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
       const cookie = loginRes.headers["set-cookie"][0];
-      const requestId = await createPendingRequest(cookie, "Valid Return Reason");
+      const requestId = await createPendingRequest("Valid Return Reason");
 
       const res = await request(app)
         .post(`/api/requests/${requestId}/review`)
@@ -553,7 +558,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
       const cookie = loginRes.headers["set-cookie"][0];
-      const requestId = await createPendingRequest(cookie, "Valid Approval");
+      const requestId = await createPendingRequest("Valid Approval");
 
       const res = await request(app)
         .post(`/api/requests/${requestId}/review`)
@@ -792,9 +797,8 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
       const cookie = loginRes.headers["set-cookie"][0];
-      // Do not use request1 here: the approval test above has already moved it
-      // to APPROVED, which would also reject edits and could mask a BR-06 bug.
-      const pendingRequestId = await createPendingRequest(cookie, "Pending Edit Guard Test");
+      // Keep this fixture isolated so the test proves the pending-review rule.
+      const pendingRequestId = await createPendingRequest("Pending Edit Guard Test");
 
       const res = await request(app)
         .patch(`/api/requests/${pendingRequestId}`)
