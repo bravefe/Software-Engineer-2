@@ -13,7 +13,6 @@ export default defineConfig({
       size: { width: 1280, height: 720 },
     },
     viewport: { width: 1280, height: 720 },
-    video: 'on',
   },
   webServer: [
     {
