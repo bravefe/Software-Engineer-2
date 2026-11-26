@@ -117,7 +117,7 @@ flowchart TD
   - **Requester Views:**
     - `RequesterDashboard.tsx`: Overview of submitted requests and current status indicators (FR-03, FR-08).
     - `CreateRequest.tsx`: Purchase request submission form with fields for title, description, amount, justification, reviewer selection, and Draft vs. Submit actions (FR-02, BR-02).
-    - `EditRequest.tsx`: Modification form enabled for owning Requesters when requests are `PENDING_REVIEW` or `RETURNED` (FR-05, BR-06).
+    - `EditRequest.tsx`: Modification form enabled for owning Requesters when requests are `DRAFT`, `PENDING_REVIEW`, or `RETURNED` (FR-05, BR-06).
     - `RequestDetail.tsx`: Detailed view showing request parameters, current status, and full historical timeline of decisions (FR-03, FR-06).
   - **Reviewer Views:**
     - `ReviewerQueue.tsx`: Queue displaying requests assigned to the logged-in Reviewer (FR-03, BR-04).
@@ -161,7 +161,7 @@ flowchart TD
   - Prevents a Requester from approving or reviewing their own request (BR-03).
   - Enforces that Reviewers can only review requests assigned to them (BR-04, AC-09).
   - Mandates a non-empty reason when a request is rejected or returned (BR-05, AC-06).
-  - Restricts request editing to owning Requesters and `PENDING_REVIEW` or `RETURNED` statuses; pending edits preserve status and are visible to the Requester and assigned Reviewer (BR-06, AC-13).
+  - Restricts request editing to owning Requesters and `DRAFT`, `PENDING_REVIEW`, or `RETURNED` statuses; draft edits remain drafts, and pending edits preserve status and are visible to the Requester and assigned Reviewer (BR-06, AC-13).
   - Allows withdrawal only by the owning Requester while `PENDING_REVIEW`; records `WITHDRAWN` and blocks further review or edits (AD-10, AC-13).
   - Enforces valid status transitions according to BR-07 lifecycle rules.
   - Automatically writes history logs inside database transactions upon any status modification (BR-08).
@@ -260,7 +260,7 @@ erDiagram
 - **Login (`/login`):** Authentication form supporting email and password inputs with immediate error feedback on invalid attempts (FR-01, AC-01).
 - **Requester Dashboard (`/requester/dashboard`):** Displays status summary metric cards (Drafts, Pending Review, Returned, Approved, Rejected, Withdrawn) and a table of recent requests (FR-03, FR-08).
 - **Create Request (`/requests/new`):** Input form for title, description, amount, justification, and reviewer assignment dropdown with "Save as Draft" and "Submit for Review" options (FR-02, BR-02, AC-02).
-- **Edit Request (`/requests/:id/edit`):** Edit form for the owning Requester when status is `PENDING_REVIEW` or `RETURNED`. Pending edits preserve `PENDING_REVIEW` and become visible to both participants (FR-05, BR-06, AC-13).
+- **Edit Request (`/requests/:id/edit`):** Edit form for the owning Requester when status is `DRAFT`, `PENDING_REVIEW`, or `RETURNED`. Draft edits can be saved or submitted; pending edits preserve `PENDING_REVIEW` and become visible to both participants (FR-05, BR-06, AC-13).
 - **Request Detail View (`/requests/:id`):** Displays comprehensive request details, current status badge, and a role-filtered chronological `RequestHistory` timeline with review reasons (FR-03, FR-06). Requesters see their complete history. Reviewers do not see `CREATED` or individual edits made to returned requests; they see pending edit events, `SUBMITTED`, and review events.
 - **Reviewer Queue (`/reviewer/queue`):** Table showing non-draft requests assigned to the logged-in Reviewer, filterable by status (`Pending Review`, `Approved`, `Rejected`, `Returned`) (FR-03, BR-04, AC-04). `DRAFT` requests are private to their owning Requester and are excluded from the server list response and queue rendering.
 - **Reviewer Decision Modal / Action (`/requests/:id/review`):** Interface for assigned Reviewer to inspect request details and select action:
@@ -293,7 +293,7 @@ graph TD
     RDash --> RNew["/requests/new"]
     RDash --> RList["/requester/requests"]
     RList --> RDetail["/requests/:id"]
-    RDetail -->|If Pending or Returned| REdit["/requests/:id/edit"]
+    RDetail -->|If Draft, Pending or Returned| REdit["/requests/:id/edit"]
 
     RQueue --> RevDetail["/requests/:id"]
     RevDetail --> ReviewModal["Review Action (Approve / Reject / Return)"]
@@ -362,7 +362,7 @@ graph TD
   - For `REQUESTER`: Returns own requests (`requesterId === currentUser.id`) (FR-03, AC-03).
   - For `REVIEWER`: Returns non-`DRAFT` requests assigned to current reviewer (`reviewerId === currentUser.id`) (FR-03, BR-04, AC-04).
 - `GET /api/requests/:id`: Retrieve detailed purchase request by ID, verifying ownership/assignment and denying Reviewer access to every `DRAFT`, including directly addressed requests (FR-03, BR-09, AC-10).
-- `PATCH /api/requests/:id`: Update request details only when the authenticated user owns the request and its status is `PENDING_REVIEW` or `RETURNED`. Pending edits preserve status and are recorded in participant-visible history; returned edits continue to follow the existing resubmission workflow (FR-05, BR-06, AC-07, AC-13).
+- `PATCH /api/requests/:id`: Update request details only when the authenticated user owns the request and its status is `DRAFT`, `PENDING_REVIEW`, or `RETURNED`. Draft edits preserve draft status; pending edits preserve status and are recorded in participant-visible history; returned edits continue to follow the existing resubmission workflow (FR-05, BR-06, AC-07, AC-13).
 - `POST /api/requests/:id/withdraw`: Withdraw an owned request only while `PENDING_REVIEW`; record a `WITHDRAWN` history event and prevent subsequent review or edits (FR-05, AD-10, AC-13).
 - `POST /api/requests/:id/submit`: Submit a `DRAFT` or resubmit a `RETURNED` request to `PENDING_REVIEW` (FR-02, BR-07, AC-07). For resubmission, the API combines Requester `EDITED` reasons since the latest `RETURNED` event into the `RESUBMITTED` reason in chronological order. If the request body repeats the final edit note, it is included only once.
 - `POST /api/requests/:id/review`: Record a review decision (`APPROVE`, `REJECT`, `RETURN`) with reason (FR-04, BR-03, BR-04, BR-05, AC-05, AC-06).
@@ -486,7 +486,7 @@ All error responses return a standardized JSON structure with appropriate HTTP s
 | Login / Logout                        |    Yes    |          Yes          | FR-01, AC-01               |
 | View Own Requests                     |    Yes    | No (unless requester) | FR-03, AC-03               |
 | Create Purchase Request               |    Yes    |          No           | FR-02, BR-01, AC-02        |
-| Edit Pending/Returned Request         | Yes (Own) |          No           | FR-05, BR-06, AC-07, AC-13 |
+| Edit Draft/Pending/Returned Request   | Yes (Own) |          No           | FR-05, BR-06, AC-07, AC-13 |
 | Withdraw Pending Request              | Yes (Own) |          No           | FR-05, AD-10, AC-13        |
 | Resubmit Request                      | Yes (Own) |          No           | FR-05, BR-07, AC-07        |
 | View Assigned Review Queue            |    No     |          Yes          | FR-03, BR-04, AC-04        |

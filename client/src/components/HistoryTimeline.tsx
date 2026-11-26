@@ -23,6 +23,7 @@ export function HistoryTimeline({ history }: HistoryTimelineProps) {
           if (entry.action === "APPROVED") badgeVariant = "bg-success";
           if (entry.action === "REJECTED") badgeVariant = "bg-danger";
           if (entry.action === "RETURNED") badgeVariant = "bg-warning text-dark";
+          if (entry.action === "WITHDRAWN") badgeVariant = "bg-secondary";
           if (entry.action === "CREATED" || entry.action === "EDITED") badgeVariant = "bg-secondary";
 
           return (

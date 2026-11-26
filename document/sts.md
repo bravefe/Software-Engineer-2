@@ -250,7 +250,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 ### TEST-INT-07: Request Modification, Withdrawal & Resubmission Enforcement
 
 - **Test ID:** `TEST-INT-07`
-- **Test Objective:** Verify that pending and returned requests can be edited by their owner, pending requests can be withdrawn, and other lifecycle states remain protected.
+- **Test Objective:** Verify that draft, pending, and returned requests can be edited by their owner, pending requests can be withdrawn, and terminal states remain protected.
 - **Related Requirements:** FR-05, FR-06, BR-06, BR-07, AC-07, AC-13
 - **Related Features:** `FEAT-08`
 - **Preconditions:** Owning Requester is authenticated. Fixtures include requests in `PENDING_REVIEW`, `RETURNED`, `DRAFT`, `APPROVED`, and `REJECTED`; an assigned Reviewer can inspect the pending request.
@@ -258,11 +258,12 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   1. Send `PATCH /api/requests/:pendingId` with updated details and revision note. Assert success and status remains `PENDING_REVIEW`.
   2. Fetch details and history as the Requester and assigned Reviewer. Assert both see current details and the revision event; an unassigned Reviewer remains denied.
   3. Send `POST /api/requests/:pendingId/withdraw`. Assert status is `WITHDRAWN`, history records the actor and timestamp, and subsequent review, edit, or withdrawal attempts fail.
-  4. Attempt to edit or withdraw the `DRAFT`, `APPROVED`, and `REJECTED` fixtures; assert each operation is denied without changing data.
-  5. Edit `RETURNED` request #81, submit it, and assert transition to `PENDING_REVIEW` and a `RESUBMITTED` history event.
-  6. After multiple returned-request edits, assert the `RESUBMITTED` reason contains edit notes chronologically without duplicating the final note.
-  7. Verify Requester history retains individual `EDITED` records and Reviewer visibility follows the pending-edit rule and existing returned-resubmission summary rule.
-- **Expected Result:** Pending edits preserve review status and are visible to the owner and assigned Reviewer; withdrawal is terminal; existing returned edit/resubmission behavior continues to work; other status protections remain enforced.
+  4. Edit the `DRAFT` fixture; assert it remains `DRAFT`, its owner sees the `EDITED` event, and only the owner can submit it. Assert withdrawal of the draft is denied.
+  5. Attempt to edit or withdraw the `APPROVED` and `REJECTED` fixtures; assert each operation is denied without changing data.
+  6. Edit `RETURNED` request #81, submit it, and assert transition to `PENDING_REVIEW` and a `RESUBMITTED` history event.
+  7. After multiple returned-request edits, assert the `RESUBMITTED` reason contains edit notes chronologically without duplicating the final note.
+  8. Verify Requester history retains individual `EDITED` records and Reviewer visibility follows the pending-edit rule and existing returned-resubmission summary rule.
+- **Expected Result:** Draft edits preserve draft status; pending edits preserve review status and are visible to the owner and assigned Reviewer; withdrawal is terminal; existing returned edit/resubmission behavior continues to work; approved/rejected states remain protected.
 - **Status:** `REVISION SPECIFIED — IMPLEMENTATION PLANNED FOR ISSUE 7.2; TEST FILE CHANGES PLANNED FOR ISSUE 7.3 (#66)`
 
 ### TEST-INT-08: Complete Audit History Persistence

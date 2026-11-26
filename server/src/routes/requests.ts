@@ -251,7 +251,7 @@ router.get("/:id", async (req, res): Promise<void> => {
   }
 });
 
-// PATCH /api/requests/:id - edit request (strictly permitted when status is RETURNED)
+// PATCH /api/requests/:id - edit an owned pending or returned request
 router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void> => {
   const requestId = Number.parseInt(String(req.params.id), 10);
   if (Number.isNaN(requestId)) {
@@ -279,10 +279,10 @@ router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void>
       return;
     }
 
-    // BR-06 / FR-05: Requesters can only edit requests in RETURNED status
-    if (existing.status !== "RETURNED") {
+    // BR-06 / FR-05: owners can edit drafts, pending requests, and returned requests.
+    if (existing.status !== "DRAFT" && existing.status !== "RETURNED" && existing.status !== "PENDING_REVIEW") {
       res.status(409).json({
-        error: "Editing is permitted only when request is in RETURNED status",
+        error: "Editing is permitted only when a request is DRAFT, PENDING_REVIEW, or RETURNED",
         code: "INVALID_STATE_TRANSITION",
       });
       return;
@@ -336,7 +336,8 @@ router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void>
       updateData.justification = justification.trim();
     }
 
-    if (reviewerId !== undefined) {
+    // Keep assignment stable while a Reviewer is actively reviewing the request.
+    if (reviewerId !== undefined && existing.status !== "PENDING_REVIEW") {
       const parsedReviewerId = Number.parseInt(reviewerId, 10);
       const reviewer = await prisma.user.findFirst({
         where: { id: parsedReviewerId, role: "REVIEWER", isActive: true },
@@ -351,15 +352,29 @@ router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void>
       updateData.reviewerId = parsedReviewerId;
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const updatedRequest = await tx.purchaseRequest.update({
-        where: { id: requestId },
-        data: updateData,
-        include: {
-          requester: { select: { id: true, name: true, email: true } },
-          reviewer: { select: { id: true, name: true, email: true } },
-        },
+    if (Object.keys(updateData).length === 0) {
+      res.status(400).json({
+        error: "At least one request detail must be provided",
+        code: "VALIDATION_ERROR",
       });
+      return;
+    }
+
+    const editReason = req.body?.reason;
+    if (editReason !== undefined && (typeof editReason !== "string" || editReason.trim().length > 2000)) {
+      res.status(400).json({
+        error: "Revision note must be a string of at most 2000 characters",
+        code: "VALIDATION_ERROR",
+      });
+      return;
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const result = await tx.purchaseRequest.updateMany({
+        where: { id: requestId, requesterId: currentUser.id, status: existing.status },
+        data: updateData,
+      });
+      if (result.count !== 1) return null;
 
       await tx.requestHistory.create({
         data: {
@@ -368,17 +383,106 @@ router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void>
           action: "EDITED",
           fromStatus: existing.status,
           toStatus: existing.status,
-          reason: req.body.reason?.trim() || "Request details updated by requester",
+          reason: editReason?.trim() || "Request details updated by requester",
         },
       });
 
-      return updatedRequest;
+      return tx.purchaseRequest.findUnique({
+        where: { id: requestId },
+        include: {
+          requester: { select: { id: true, name: true, email: true } },
+          reviewer: { select: { id: true, name: true, email: true } },
+        },
+      });
     });
+
+    if (!updated) {
+      res.status(409).json({
+        error: "Request status changed before the update could be saved",
+        code: "INVALID_STATE_TRANSITION",
+      });
+      return;
+    }
 
     res.status(200).json({ request: updated });
   } catch (error) {
     res.status(500).json({
       error: "Failed to update purchase request",
+      code: "INTERNAL_SERVER_ERROR",
+    });
+  }
+});
+
+// POST /api/requests/:id/withdraw - withdraw an owned pending request
+router.post("/:id/withdraw", requireRole(["REQUESTER"]), async (req, res): Promise<void> => {
+  const requestId = Number.parseInt(String(req.params.id), 10);
+  if (Number.isNaN(requestId)) {
+    res.status(400).json({ error: "Invalid request ID", code: "VALIDATION_ERROR" });
+    return;
+  }
+
+  const currentUser = req.user!;
+
+  try {
+    const existing = await prisma.purchaseRequest.findUnique({ where: { id: requestId } });
+    if (!existing) {
+      res.status(404).json({ error: "Purchase request not found", code: "NOT_FOUND" });
+      return;
+    }
+    if (existing.requesterId !== currentUser.id) {
+      res.status(403).json({
+        error: "Access denied: you can only withdraw your own requests",
+        code: "ACCESS_DENIED",
+      });
+      return;
+    }
+    if (existing.status !== "PENDING_REVIEW") {
+      res.status(409).json({
+        error: "Only requests in PENDING_REVIEW status can be withdrawn",
+        code: "INVALID_STATE_TRANSITION",
+      });
+      return;
+    }
+
+    const withdrawn = await prisma.$transaction(async (tx) => {
+      const result = await tx.purchaseRequest.updateMany({
+        where: { id: requestId, requesterId: currentUser.id, status: "PENDING_REVIEW" },
+        data: { status: "WITHDRAWN" },
+      });
+      if (result.count !== 1) return null;
+
+      await tx.requestHistory.create({
+        data: {
+          requestId,
+          actorId: currentUser.id,
+          action: "WITHDRAWN",
+          fromStatus: "PENDING_REVIEW",
+          toStatus: "WITHDRAWN",
+          reason: "Request withdrawn by requester",
+        },
+      });
+
+      return tx.purchaseRequest.findUnique({
+        where: { id: requestId },
+        include: {
+          requester: { select: { id: true, name: true, email: true } },
+          reviewer: { select: { id: true, name: true, email: true } },
+        },
+      });
+    });
+
+    if (!withdrawn) {
+      res.status(409).json({
+        error: "Request is no longer pending review",
+        code: "INVALID_STATE_TRANSITION",
+      });
+      return;
+    }
+
+    res.status(200).json({ request: withdrawn });
+  } catch (error) {
+    res.status(500).json({
+      error: "Failed to withdraw purchase request",
       code: "INTERNAL_SERVER_ERROR",
     });
   }
@@ -569,14 +673,11 @@ router.post("/:id/review", requireRole(["REVIEWER"]), async (req, res): Promise<
     }
 
     const updated = await prisma.$transaction(async (tx) => {
-      const updatedRequest = await tx.purchaseRequest.update({
-        where: { id: requestId },
+      const result = await tx.purchaseRequest.updateMany({
+        where: { id: requestId, reviewerId: currentUser.id, status: "PENDING_REVIEW" },
         data: { status: nextStatus },
-        include: {
-          requester: { select: { id: true, name: true, email: true } },
-          reviewer: { select: { id: true, name: true, email: true } },
-        },
       });
+      if (result.count !== 1) return null;
 
       await tx.requestHistory.create({
         data: {
@@ -589,8 +690,22 @@ router.post("/:id/review", requireRole(["REVIEWER"]), async (req, res): Promise<
         },
       });
 
-      return updatedRequest;
+      return tx.purchaseRequest.findUnique({
+        where: { id: requestId },
+        include: {
+          requester: { select: { id: true, name: true, email: true } },
+          reviewer: { select: { id: true, name: true, email: true } },
+        },
+      });
     });
+
+    if (!updated) {
+      res.status(409).json({
+        error: "Request is no longer pending review",
+        code: "INVALID_STATE_TRANSITION",
+      });
+      return;
+    }
 
     res.status(200).json({ request: updated });
   } catch (error) {
@@ -649,7 +764,14 @@ router.get("/:id/history", async (req, res): Promise<void> => {
     const history = await prisma.requestHistory.findMany({
       where: {
         requestId,
-        ...(currentUser.role === "REVIEWER" ? { action: { notIn: ["CREATED", "EDITED"] } } : {}),
+        ...(currentUser.role === "REVIEWER"
+          ? {
+              OR: [
+                { action: { notIn: ["CREATED", "EDITED"] } },
+                { action: "EDITED", fromStatus: "PENDING_REVIEW" },
+              ],
+            }
+          : {}),
       },
       include: {
         actor: { select: { id: true, name: true, email: true, role: true } },

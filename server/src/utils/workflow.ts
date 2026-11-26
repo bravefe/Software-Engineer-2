@@ -3,17 +3,19 @@ export type PurchaseRequestStatusType =
   | "PENDING_REVIEW"
   | "APPROVED"
   | "REJECTED"
-  | "RETURNED";
+  | "RETURNED"
+  | "WITHDRAWN";
 
 export const VALID_STATUS_TRANSITIONS: Record<
   PurchaseRequestStatusType,
   PurchaseRequestStatusType[]
 > = {
   DRAFT: ["PENDING_REVIEW"],
-  PENDING_REVIEW: ["APPROVED", "REJECTED", "RETURNED"],
+  PENDING_REVIEW: ["APPROVED", "REJECTED", "RETURNED", "WITHDRAWN"],
   RETURNED: ["PENDING_REVIEW"],
   APPROVED: [],
   REJECTED: [],
+  WITHDRAWN: [],
 };
 
 /**
