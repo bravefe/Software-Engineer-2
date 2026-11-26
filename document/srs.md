@@ -64,10 +64,10 @@ For this project, the team focuses on Macau678 purchase requests.
 - The system shall allow assigned Reviewers to return requests with a reason.
 
 **FR-05: Request Updates**
-- The system shall allow Requesters to edit their own requests while they are `PENDING_REVIEW` or `RETURNED`.
+- The system shall allow Requesters to edit their own requests while they are `DRAFT`, `PENDING_REVIEW`, or `RETURNED`.
 - Editing a `PENDING_REVIEW` request shall leave it pending review; the updated request details shall be visible to its Requester and assigned Reviewer.
 - The system shall allow Requesters to withdraw their own requests while they are `PENDING_REVIEW`; a withdrawn request cannot be reviewed or edited further.
-- The system shall prevent Requesters from editing or withdrawing requests that are `DRAFT`, `APPROVED`, or `REJECTED`; drafts remain editable under the draft workflow.
+- The system shall prevent Requesters from editing requests that are `APPROVED`, `REJECTED`, or `WITHDRAWN`, and from withdrawing requests outside `PENDING_REVIEW`. Drafts remain editable and may be saved or submitted by their owner.
 
 **FR-06: Request History**
 - The system shall record request creation and submission.
@@ -100,7 +100,7 @@ For this project, the team focuses on Macau678 purchase requests.
 
 **BR-05:** A Reviewer must provide a reason when rejecting or returning a request.
 
-**BR-06:** A Requester may edit their own `PENDING_REVIEW` or `RETURNED` request. A pending edit keeps the request in `PENDING_REVIEW` and is visible to the Requester and assigned Reviewer.
+**BR-06:** A Requester may edit their own `DRAFT`, `PENDING_REVIEW`, or `RETURNED` request. A pending edit keeps the request in `PENDING_REVIEW` and is visible to the Requester and assigned Reviewer.
 
 **BR-07:** A request must follow valid status transitions:
 - Draft → Pending Review
@@ -193,4 +193,4 @@ For this project, the team focuses on Macau678 purchase requests.
 
 **AC-12:** Authorized users can filter requests and view basic request summaries.
 
-**AC-13:** While a request is `PENDING_REVIEW`, its Requester can edit its details and withdraw it. An edit keeps the status pending and is visible to both the Requester and assigned Reviewer; a withdrawn request is no longer reviewable or editable. Existing draft, approved, and rejected request rules remain unchanged.
+**AC-13:** While a request is `PENDING_REVIEW`, its Requester can edit its details and withdraw it. An edit keeps the status pending and is visible to both the Requester and assigned Reviewer; a withdrawn request is no longer reviewable or editable. The owner can edit and submit a `DRAFT`; approved and rejected request rules remain unchanged.
