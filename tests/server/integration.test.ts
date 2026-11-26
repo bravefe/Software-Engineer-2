@@ -20,6 +20,24 @@ describe("Integration and API tests: Authentication & Authorization", () => {
     seededRequests = data.requests;
   });
 
+  async function createPendingRequest(cookie: string, title: string): Promise<number> {
+    const response = await request(app)
+      .post("/api/requests")
+      .set("Cookie", cookie)
+      .send({
+        title,
+        description: "Integration test request",
+        amount: 100,
+        justification: "Isolated test fixture",
+        reviewerId: seededUsers.reviewer1.id,
+      });
+
+    expect(response.status).toBe(201);
+    const created = response.body.request || response.body;
+    expect(created.status).toBe("PENDING_REVIEW");
+    return created.id;
+  }
+
   afterAll(async () => {
     await disconnectPrisma();
   });
@@ -435,10 +453,12 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
       const cookie = loginRes.headers["set-cookie"][0];
+      const missingReasonRequestId = await createPendingRequest(cookie, "Reject Missing Reason");
+      const whitespaceReasonRequestId = await createPendingRequest(cookie, "Reject Whitespace Reason");
 
       // Missing reason
       const resNoReason = await request(app)
-        .post(`/api/requests/${seededRequests.requestForReject.id}/review`)
+        .post(`/api/requests/${missingReasonRequestId}/review`)
         .set("Cookie", cookie)
         .send({ decision: "REJECT" });
 
@@ -447,7 +467,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
 
       // Whitespace reason
       const resWhitespace = await request(app)
-        .post(`/api/requests/${seededRequests.requestForReject.id}/review`)
+        .post(`/api/requests/${whitespaceReasonRequestId}/review`)
         .set("Cookie", cookie)
         .send({ decision: "REJECT", reason: "   " });
 
@@ -460,10 +480,12 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
       const cookie = loginRes.headers["set-cookie"][0];
+      const missingReasonRequestId = await createPendingRequest(cookie, "Return Missing Reason");
+      const whitespaceReasonRequestId = await createPendingRequest(cookie, "Return Whitespace Reason");
 
       // Missing reason
       const resNoReason = await request(app)
-        .post(`/api/requests/${seededRequests.requestForReturn.id}/review`)
+        .post(`/api/requests/${missingReasonRequestId}/review`)
         .set("Cookie", cookie)
         .send({ decision: "RETURN" });
 
@@ -472,7 +494,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
 
       // Whitespace reason
       const resWhitespace = await request(app)
-        .post(`/api/requests/${seededRequests.requestForReturn.id}/review`)
+        .post(`/api/requests/${whitespaceReasonRequestId}/review`)
         .set("Cookie", cookie)
         .send({ decision: "RETURN", reason: "   " });
 
@@ -485,9 +507,10 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
       const cookie = loginRes.headers["set-cookie"][0];
+      const requestId = await createPendingRequest(cookie, "Valid Reject Reason");
 
       const res = await request(app)
-        .post(`/api/requests/${seededRequests.requestForReject.id}/review`)
+        .post(`/api/requests/${requestId}/review`)
         .set("Cookie", cookie)
         .send({ decision: "REJECT", reason: "Budget exhausted for current fiscal year." });
 
@@ -495,7 +518,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(res.body.request.status).toBe("REJECTED");
 
       const history = await prisma.requestHistory.findFirst({
-        where: { requestId: seededRequests.requestForReject.id, action: "REJECTED" },
+        where: { requestId, action: "REJECTED" },
       });
       expect(history).toBeDefined();
       expect(history?.reason).toBe("Budget exhausted for current fiscal year.");
@@ -507,9 +530,10 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
       const cookie = loginRes.headers["set-cookie"][0];
+      const requestId = await createPendingRequest(cookie, "Valid Return Reason");
 
       const res = await request(app)
-        .post(`/api/requests/${seededRequests.requestForReturn.id}/review`)
+        .post(`/api/requests/${requestId}/review`)
         .set("Cookie", cookie)
         .send({ decision: "RETURN", reason: "Please upload official quote before approval." });
 
@@ -517,7 +541,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(res.body.request.status).toBe("RETURNED");
 
       const history = await prisma.requestHistory.findFirst({
-        where: { requestId: seededRequests.requestForReturn.id, action: "RETURNED" },
+        where: { requestId, action: "RETURNED" },
       });
       expect(history).toBeDefined();
       expect(history?.reason).toBe("Please upload official quote before approval.");
@@ -529,9 +553,10 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
       const cookie = loginRes.headers["set-cookie"][0];
+      const requestId = await createPendingRequest(cookie, "Valid Approval");
 
       const res = await request(app)
-        .post(`/api/requests/${seededRequests.request1.id}/review`)
+        .post(`/api/requests/${requestId}/review`)
         .set("Cookie", cookie)
         .send({ decision: "APPROVE" });
 
@@ -539,7 +564,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(res.body.request.status).toBe("APPROVED");
 
       const history = await prisma.requestHistory.findFirst({
-        where: { requestId: seededRequests.request1.id, action: "APPROVED" },
+        where: { requestId, action: "APPROVED" },
       });
       expect(history).toBeDefined();
       expect(history?.actorId).toBe(seededUsers.reviewer1.id);
@@ -767,9 +792,12 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
       const cookie = loginRes.headers["set-cookie"][0];
+      // Do not use request1 here: the approval test above has already moved it
+      // to APPROVED, which would also reject edits and could mask a BR-06 bug.
+      const pendingRequestId = await createPendingRequest(cookie, "Pending Edit Guard Test");
 
       const res = await request(app)
-        .patch(`/api/requests/${seededRequests.request1.id}`)
+        .patch(`/api/requests/${pendingRequestId}`)
         .set("Cookie", cookie)
         .send({ amount: 999.0 });
 
