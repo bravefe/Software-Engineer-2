@@ -19,7 +19,7 @@
 | TEST-INT-04  | Requester Data Isolation & Cross-Access Blocking     | `tests/server/integration.test.ts`                                         | PASSED             |
 | TEST-INT-05  | Reviewer Queue Scoping & Assignment Isolation        | `tests/server/integration.test.ts`                                         | PASSED             |
 | TEST-INT-06  | Review Decision Execution                            | `tests/server/integration.test.ts`                                         | PASSED             |
-| TEST-INT-07  | Request Modification & Resubmission Enforcement      | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-07  | Request Modification, Withdrawal & Resubmission      | `tests/server/integration.test.ts`                                         | Sprint 1 baseline passed; revised behavior planned for issue 7.3 (#66) |
 | TEST-INT-08  | Complete Audit History Persistence                   | `tests/server/integration.test.ts`                                         | PASSED             |
 | TEST-INT-09  | Request Filtering by Status and Date Range           | Not yet implemented                                                        | PLANNED (Sprint 2) |
 | TEST-INT-10  | Reporting Summary Aggregation Endpoint               | Not yet implemented                                                        | PLANNED (Sprint 2) |
@@ -34,6 +34,7 @@
 | TEST-E2E-03  | Security & Authorization Boundary Checks             | `tests/e2e/purchase-approval.spec.ts`                                      | PASSED             |
 | TEST-E2E-04  | Multi-Criteria Filter & Reports Journey              | Not yet implemented                                                        | PLANNED (Sprint 2) |
 | TEST-E2E-05  | Cross-Viewport Responsive Design Verification        | Not yet implemented                                                        | PLANNED (Sprint 3) |
+| TEST-E2E-06  | Pending Request Edit and Withdrawal                  | `tests/e2e/purchase-approval.spec.ts` (issue 7.3 #66)                       | SPECIFIED; IMPLEMENTATION PENDING |
 
 ---
 
@@ -246,23 +247,23 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 - **Expected Result:** Authorization checks and business rules are strictly enforced on review actions.
 - **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
-### TEST-INT-07: Request Modification & Resubmission Enforcement
+### TEST-INT-07: Request Modification, Withdrawal & Resubmission Enforcement
 
 - **Test ID:** `TEST-INT-07`
-- **Test Objective:** Verify that editing is permitted only on RETURNED requests and blocked on all others.
-- **Related Requirements:** FR-05, BR-06, BR-07, AC-07
+- **Test Objective:** Verify that pending and returned requests can be edited by their owner, pending requests can be withdrawn, and other lifecycle states remain protected.
+- **Related Requirements:** FR-05, FR-06, BR-06, BR-07, AC-07, AC-13
 - **Related Features:** `FEAT-08`
-- **Preconditions:** Request #80 is `PENDING_REVIEW`; Request #81 is `RETURNED`. Authenticated as owning Requester.
+- **Preconditions:** Owning Requester is authenticated. Fixtures include requests in `PENDING_REVIEW`, `RETURNED`, `DRAFT`, `APPROVED`, and `REJECTED`; an assigned Reviewer can inspect the pending request.
 - **Test Steps:**
-  1. Send `PATCH /api/requests/80` with updated description. Assert `409 Conflict` (editing blocked).
-  2. Send `PATCH /api/requests/81` with updated amount (550.00). Assert `200 OK` (editing permitted).
-  3. Send `POST /api/requests/81/submit`.
-  4. Assert status transitions from `RETURNED` to `PENDING_REVIEW`.
-  5. Verify `RequestHistory` records `RESUBMITTED` action.
-  6. After multiple edits, assert the `RESUBMITTED` reason contains each edit note in chronological order and does not repeat the final note sent with both requests.
-  7. Verify the Requester still sees separate `EDITED` records and the Reviewer sees the combined summary only on `RESUBMITTED`.
-- **Expected Result:** Only `RETURNED` requests can be edited and resubmitted.
-- **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
+  1. Send `PATCH /api/requests/:pendingId` with updated details and revision note. Assert success and status remains `PENDING_REVIEW`.
+  2. Fetch details and history as the Requester and assigned Reviewer. Assert both see current details and the revision event; an unassigned Reviewer remains denied.
+  3. Send `POST /api/requests/:pendingId/withdraw`. Assert status is `WITHDRAWN`, history records the actor and timestamp, and subsequent review, edit, or withdrawal attempts fail.
+  4. Attempt to edit or withdraw the `DRAFT`, `APPROVED`, and `REJECTED` fixtures; assert each operation is denied without changing data.
+  5. Edit `RETURNED` request #81, submit it, and assert transition to `PENDING_REVIEW` and a `RESUBMITTED` history event.
+  6. After multiple returned-request edits, assert the `RESUBMITTED` reason contains edit notes chronologically without duplicating the final note.
+  7. Verify Requester history retains individual `EDITED` records and Reviewer visibility follows the pending-edit rule and existing returned-resubmission summary rule.
+- **Expected Result:** Pending edits preserve review status and are visible to the owner and assigned Reviewer; withdrawal is terminal; existing returned edit/resubmission behavior continues to work; other status protections remain enforced.
+- **Status:** `REVISION SPECIFIED — IMPLEMENTATION PLANNED FOR ISSUE 7.2; TEST FILE CHANGES PLANNED FOR ISSUE 7.3 (#66)`
 
 ### TEST-INT-08: Complete Audit History Persistence
 
@@ -487,3 +488,20 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   5. Fill and submit a purchase request on tablet viewport to confirm touch accessibility.
 - **Expected Result:** Application renders cleanly across target viewports meeting usability requirements (NFR-02).
 - **Status:** `PLANNED` (Sprint 3)
+
+### TEST-E2E-06: Pending Request Edit and Withdrawal
+
+- **Test ID:** `TEST-E2E-06`
+- **Test Objective:** Verify a Requester can revise or withdraw a pending request through the UI, with updated details visible to the assigned Reviewer.
+- **Related Requirements:** FR-03, FR-05, FR-06, BR-06, BR-07, BR-09, AC-03, AC-04, AC-10, AC-13
+- **Related Features:** `FEAT-05`, `FEAT-06`, `FEAT-08`, `FEAT-09`
+- **Preconditions:** Test Requester, assigned Reviewer, unassigned Reviewer, and test database are available.
+- **Test Steps:**
+  1. As the Requester, submit a request and confirm it is `PENDING_REVIEW`.
+  2. Edit the pending request with a revision note. Confirm it remains pending and the Requester sees the updated details and history event.
+  3. As the assigned Reviewer, open the request and confirm the latest details and revision event are visible. Confirm an unassigned Reviewer cannot access it.
+  4. As the Requester, withdraw the request and confirm `WITHDRAWN` status and history.
+  5. As the assigned Reviewer, confirm the request cannot be approved, rejected, or returned after withdrawal. Confirm the Requester cannot edit or withdraw it again.
+  6. Confirm a separate pending request remains reviewable, and returned-request edit/resubmit behavior remains available.
+- **Expected Result:** Pending edit details are shared only with the Requester and assigned Reviewer; withdrawal is persisted and terminal; unrelated requests and returned-request flow remain unchanged.
+- **Status:** `SPECIFIED; AUTOMATED TEST DEFERRED TO ISSUE 7.3 (#66)`
