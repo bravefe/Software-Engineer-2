@@ -20,6 +20,7 @@ describe("Frontend component tests: Authentication and Authorization", () => {
 
   afterEach(() => {
     cleanup();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
@@ -59,10 +60,10 @@ describe("Frontend component tests: Authentication and Authorization", () => {
         role: "REQUESTER" as const,
       };
 
-      globalThis.fetch = vi.fn().mockResolvedValue({
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({ user: mockUser }),
-      } as any);
+      } as any));
 
       render(
         <AuthProvider>
@@ -92,10 +93,10 @@ describe("Frontend component tests: Authentication and Authorization", () => {
     });
 
     it("displays error message returned from server on failed authentication", async () => {
-      globalThis.fetch = vi.fn().mockResolvedValue({
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
         ok: false,
         json: async () => ({ error: "Invalid email or password", code: "INVALID_CREDENTIALS" }),
-      } as any);
+      } as any));
 
       render(
         <AuthProvider>
