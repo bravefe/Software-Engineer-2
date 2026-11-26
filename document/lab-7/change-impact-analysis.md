@@ -2,7 +2,7 @@
 
 **Parent issue:** #65  
 **Branch:** `docs/lab7-change-analysis`  
-**Status:** Proposed
+**Status:** APPROVED
 **Change type:** Sprint 1 behavior change; documentation only in issue 7.1
 
 ## Change request
