@@ -19,7 +19,7 @@
 | TEST-INT-04  | Requester Data Isolation & Cross-Access Blocking     | `tests/server/integration.test.ts`                                         | PASSED             |
 | TEST-INT-05  | Reviewer Queue Scoping & Assignment Isolation        | `tests/server/integration.test.ts`                                         | PASSED             |
 | TEST-INT-06  | Review Decision Execution                            | `tests/server/integration.test.ts`                                         | PASSED             |
-| TEST-INT-07  | Request Modification, Withdrawal & Resubmission      | `tests/server/integration.test.ts`                                         | Sprint 1 baseline passed; revised behavior planned for issue 7.3 (#66) |
+| TEST-INT-07  | Request Modification, Withdrawal & Resubmission      | `tests/server/integration.test.ts`                                         | PASSED             |
 | TEST-INT-08  | Complete Audit History Persistence                   | `tests/server/integration.test.ts`                                         | PASSED             |
 | TEST-INT-09  | Request Filtering by Status and Date Range           | Not yet implemented                                                        | PLANNED (Sprint 2) |
 | TEST-INT-10  | Reporting Summary Aggregation Endpoint               | Not yet implemented                                                        | PLANNED (Sprint 2) |
@@ -34,7 +34,7 @@
 | TEST-E2E-03  | Security & Authorization Boundary Checks             | `tests/e2e/purchase-approval.spec.ts`                                      | PASSED             |
 | TEST-E2E-04  | Multi-Criteria Filter & Reports Journey              | Not yet implemented                                                        | PLANNED (Sprint 2) |
 | TEST-E2E-05  | Cross-Viewport Responsive Design Verification        | Not yet implemented                                                        | PLANNED (Sprint 3) |
-| TEST-E2E-06  | Pending Request Edit and Withdrawal                  | `tests/e2e/purchase-approval.spec.ts` (issue 7.3 #66)                       | SPECIFIED; IMPLEMENTATION PENDING |
+| TEST-E2E-06  | Pending Request Edit and Withdrawal                  | `tests/e2e/purchase-approval.spec.ts`                                      | PASSED             |
 
 ---
 
@@ -264,7 +264,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   7. After multiple returned-request edits, assert the `RESUBMITTED` reason contains edit notes chronologically without duplicating the final note.
   8. Verify Requester history retains individual `EDITED` records and Reviewer visibility follows the pending-edit rule and existing returned-resubmission summary rule.
 - **Expected Result:** Draft edits preserve draft status; pending edits preserve review status and are visible to the owner and assigned Reviewer; withdrawal is terminal; existing returned edit/resubmission behavior continues to work; approved/rejected states remain protected.
-- **Status:** `REVISION SPECIFIED — IMPLEMENTATION PLANNED FOR ISSUE 7.2; TEST FILE CHANGES PLANNED FOR ISSUE 7.3 (#66)`
+- **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
 ### TEST-INT-08: Complete Audit History Persistence
 
@@ -505,4 +505,4 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   5. As the assigned Reviewer, confirm the request cannot be approved, rejected, or returned after withdrawal. Confirm the Requester cannot edit or withdraw it again.
   6. Confirm a separate pending request remains reviewable, and returned-request edit/resubmit behavior remains available.
 - **Expected Result:** Pending edit details are shared only with the Requester and assigned Reviewer; withdrawal is persisted and terminal; unrelated requests and returned-request flow remain unchanged.
-- **Status:** `SPECIFIED; AUTOMATED TEST DEFERRED TO ISSUE 7.3 (#66)`
+- **Status:** `PASSED` (Verified in `tests/e2e/purchase-approval.spec.ts`)
