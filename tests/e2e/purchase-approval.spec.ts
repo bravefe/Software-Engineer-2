@@ -370,3 +370,91 @@ test.fixme(
   "TEST-E2E-05: cross-viewport responsive design verification (outside Issue 6 scope)",
   async () => {},
 );
+
+test("TEST-E2E-06: pending request edit, reviewer visibility, withdrawal, and terminal protection", async ({
+  page,
+}) => {
+  const title = `Issue 66 Pending Edit & Withdraw Journey ${runId}`;
+
+  // 1. Requester signs in and submits a new request
+  await signIn(page, users.requester1);
+  const requestId = await createRequest(page, title, users.reviewer1.id, true);
+  await expectStatus(page, "pending_review");
+  await expect(page.getByTestId("action-badge-SUBMITTED")).toBeVisible();
+
+  // 2. Requester edits the pending request
+  await page.getByRole("link", { name: "Edit Request" }).click();
+  await expect(page.getByRole("heading", { name: "Edit Pending Request" })).toBeVisible();
+  await page.locator("#edit-amount").fill("1750.00");
+  await page.locator("#edit-notes").fill("Adjusted pricing following vendor discount update.");
+  await page.getByRole("button", { name: "Save Changes" }).click();
+
+  // Confirm navigated back to request detail, status remains pending_review
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await expectStatus(page, "pending_review");
+  await expect(page.getByText("$1750.00")).toBeVisible();
+  await expect(page.getByTestId("action-badge-EDITED")).toBeVisible();
+  await expect(page.getByText("Adjusted pricing following vendor discount update.")).toBeVisible();
+  await signOut(page);
+
+  // 3. Assigned Reviewer signs in: sees updated details and EDITED history
+  await signIn(page, users.reviewer1);
+  await openQueueRequest(page, title);
+  await expectStatus(page, "pending_review");
+  await expect(page.getByText("$1750.00")).toBeVisible();
+  await expect(page.getByTestId("action-badge-EDITED")).toBeVisible();
+  await expect(page.getByText("Adjusted pricing following vendor discount update.")).toBeVisible();
+  await signOut(page);
+
+  // 4. Unassigned Reviewer is blocked
+  await signIn(page, users.reviewer2);
+  const directAccess = await page.request.get(`/api/requests/${requestId}`);
+  expect(directAccess.status()).toBe(403);
+  await page.goto(`/requests/${requestId}`);
+  await expect(page.getByRole("alert")).toContainText("Access denied");
+  await signOut(page);
+
+  // 5. Requester withdraws the request
+  await signIn(page, users.requester1);
+  await page.goto(`/requests/${requestId}`);
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Withdraw Request" }).click();
+  await expectStatus(page, "withdrawn");
+  await expect(page.getByTestId("action-badge-WITHDRAWN")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Withdraw Request" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Edit Request" })).toHaveCount(0);
+
+  // Confirm requester cannot edit withdrawn request via URL
+  await page.goto(`/requests/${requestId}/edit`);
+  await expect(page.getByRole("heading", { name: "Editing Not Allowed" })).toBeVisible();
+  await signOut(page);
+
+  // 6. Assigned Reviewer confirms withdrawn request is not actionable
+  await signIn(page, users.reviewer1);
+  await page.goto(`/requests/${requestId}`);
+  await expectStatus(page, "withdrawn");
+  await expect(page.getByRole("button", { name: "Approve" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Reject" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Return" })).toHaveCount(0);
+
+  const blockedReview = await page.context().request.post(
+    new URL(`/api/requests/${requestId}/review`, page.url()).toString(),
+    { data: { decision: "APPROVE" } },
+  );
+  expect(blockedReview.status()).toBe(409);
+  expect((await blockedReview.json()).code).toBe("INVALID_STATE_TRANSITION");
+  await signOut(page);
+
+  // 7. Verify unaffected workflows: another pending request can still be approved
+  const unaffectedTitle = `Issue 66 Unaffected Workflow ${runId}`;
+  await signIn(page, users.requester1);
+  await createRequest(page, unaffectedTitle, users.reviewer1.id, true);
+  await signOut(page);
+
+  await signIn(page, users.reviewer1);
+  await openQueueRequest(page, unaffectedTitle);
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Confirm Approval" }).click();
+  await expectStatus(page, "approved");
+  await signOut(page);
+});

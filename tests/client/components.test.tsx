@@ -398,6 +398,26 @@ describe("Frontend component tests: Authentication and Authorization", () => {
       ).toBeTruthy();
     });
 
+    it("renders WITHDRAWN status and history timeline badges (FR-05, FR-06, BR-08)", () => {
+      const mockHistory = [
+        {
+          id: 5,
+          requestId: 12,
+          actorId: 1,
+          action: "WITHDRAWN" as const,
+          fromStatus: "PENDING_REVIEW",
+          toStatus: "WITHDRAWN",
+          reason: "Request withdrawn by requester",
+          createdAt: "2026-11-27T10:00:00.000Z",
+          actor: { id: 1, name: "Alice Requester", email: "alice@macau678.com", role: "REQUESTER" as const },
+        },
+      ];
+
+      render(<RequestHistoryTimeline history={mockHistory} />);
+      expect(screen.getByText("WITHDRAWN")).toBeTruthy();
+      expect(screen.getByText("Request withdrawn by requester")).toBeTruthy();
+    });
+
     it("renders empty state message when history array is empty", () => {
       render(<RequestHistoryTimeline history={[]} />);
       expect(screen.getByText(/no history entries recorded yet/i)).toBeTruthy();
