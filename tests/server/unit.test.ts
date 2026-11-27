@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { requireRole } from "../../server/src/middleware/auth";
 import { hashPassword, verifyPassword } from "../../server/src/utils/auth";
-import { isValidTransition } from "../../server/src/utils/workflow";
+import { isValidTransition, VALID_STATUS_TRANSITIONS } from "../../server/src/utils/workflow";
 
 describe("Unit tests", () => {
   describe("TEST-UNIT-01: password hashing and salt verification", () => {
@@ -142,6 +142,7 @@ describe("Unit tests", () => {
         { from: "PENDING_REVIEW", to: "APPROVED" },
         { from: "PENDING_REVIEW", to: "REJECTED" },
         { from: "PENDING_REVIEW", to: "RETURNED" },
+        { from: "PENDING_REVIEW", to: "WITHDRAWN" },
         { from: "RETURNED", to: "PENDING_REVIEW" },
       ];
 
@@ -158,20 +159,51 @@ describe("Unit tests", () => {
         { from: "DRAFT", to: "APPROVED" },
         { from: "DRAFT", to: "RETURNED" },
         { from: "DRAFT", to: "REJECTED" },
+        { from: "DRAFT", to: "WITHDRAWN" },
         { from: "APPROVED", to: "PENDING_REVIEW" },
         { from: "APPROVED", to: "REJECTED" },
         { from: "APPROVED", to: "RETURNED" },
+        { from: "APPROVED", to: "WITHDRAWN" },
         { from: "REJECTED", to: "RETURNED" },
         { from: "REJECTED", to: "PENDING_REVIEW" },
+        { from: "REJECTED", to: "WITHDRAWN" },
         { from: "RETURNED", to: "APPROVED" },
         { from: "RETURNED", to: "REJECTED" },
+        { from: "RETURNED", to: "WITHDRAWN" },
         { from: "PENDING_REVIEW", to: "DRAFT" },
+        { from: "WITHDRAWN", to: "PENDING_REVIEW" },
+        { from: "WITHDRAWN", to: "APPROVED" },
+        { from: "WITHDRAWN", to: "REJECTED" },
+        { from: "WITHDRAWN", to: "RETURNED" },
+        { from: "WITHDRAWN", to: "DRAFT" },
       ];
 
       for (const { from, to } of invalidTransitions) {
         expect(
           isValidTransition(from, to),
           `Expected transition ${from} -> ${to} to be invalid`,
+        ).toBe(false);
+      }
+    });
+
+    it("enforces WITHDRAWN as a terminal status with no allowed outgoing transitions (BR-07, AD-10)", () => {
+      expect(VALID_STATUS_TRANSITIONS.WITHDRAWN).toEqual([]);
+      const targetStatuses = ["DRAFT", "PENDING_REVIEW", "APPROVED", "REJECTED", "RETURNED", "WITHDRAWN"];
+      for (const target of targetStatuses) {
+        expect(
+          isValidTransition("WITHDRAWN", target),
+          `Expected transition WITHDRAWN -> ${target} to be blocked`,
+        ).toBe(false);
+      }
+    });
+
+    it("restricts withdrawal transition exclusively to PENDING_REVIEW status (BR-07, AC-13)", () => {
+      expect(isValidTransition("PENDING_REVIEW", "WITHDRAWN")).toBe(true);
+      const nonPendingStatuses = ["DRAFT", "APPROVED", "REJECTED", "RETURNED", "WITHDRAWN"];
+      for (const status of nonPendingStatuses) {
+        expect(
+          isValidTransition(status, "WITHDRAWN"),
+          `Expected transition ${status} -> WITHDRAWN to be rejected`,
         ).toBe(false);
       }
     });
