@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Macau678 - Lab 7 Final Report</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 20mm 15mm 20mm 15mm;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.5;
+      color: #1f2937;
+      margin: 0;
+      padding: 0;
+    }
+    .cover {
+      page-break-after: always;
+      padding-top: 40px;
+    }
+    h1.doc-h1 {
+      font-size: 20pt;
+      font-weight: 700;
+      color: #111827;
+      border-bottom: 2px solid #2563eb;
+      padding-bottom: 6px;
+      margin-top: 24px;
+      margin-bottom: 14px;
+    }
+    h2.doc-h2 {
+      font-size: 14pt;
+      font-weight: 600;
+      color: #1e3a8a;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 4px;
+      margin-top: 20px;
+      margin-bottom: 10px;
+    }
+    h3.doc-h3 {
+      font-size: 12pt;
+      font-weight: 600;
+      color: #1e40af;
+      margin-top: 16px;
+      margin-bottom: 8px;
+    }
+    h4.doc-h4 {
+      font-size: 11pt;
+      font-weight: 600;
+      color: #374151;
+      margin-top: 12px;
+      margin-bottom: 6px;
+    }
+    p {
+      margin-top: 0;
+      margin-bottom: 8px;
+      text-align: justify;
+    }
+    ul, ol {
+      margin-top: 0;
+      margin-bottom: 10px;
+      padding-left: 24px;
+    }
+    li {
+      margin-bottom: 4px;
+    }
+    hr.divider {
+      border: 0;
+      border-top: 1px solid #e5e7eb;
+      margin: 16px 0;
+    }
+    blockquote {
+      border-left: 4px solid #3b82f6;
+      background-color: #f8fafc;
+      padding: 8px 14px;
+      margin: 10px 0;
+      color: #334155;
+      font-style: italic;
+    }
+    pre {
+      background-color: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 10px;
+      font-size: 8.5pt;
+      font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+      margin: 10px 0;
+    }
+    code {
+      font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+      font-size: 9pt;
+      background-color: #f1f5f9;
+      padding: 2px 4px;
+      border-radius: 3px;
+      color: #0f172a;
+    }
+    pre code {
+      padding: 0;
+      background-color: transparent;
+      color: inherit;
+    }
+    table.report-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 16px 0;
+      font-size: 9pt;
+      page-break-inside: avoid;
+    }
+    table.report-table th, table.report-table td {
+      border: 1px solid #d1d5db;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    table.report-table th {
+      background-color: #f3f4f6;
+      font-weight: 600;
+      color: #111827;
+    }
+    table.report-table tr:nth-child(even) td {
+      background-color: #f9fafb;
+    }
+    .math-block {
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      padding: 8px;
+      font-family: monospace;
+      text-align: center;
+      margin: 10px 0;
+    }
+    a {
+      color: #2563eb;
+      text-decoration: none;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      font-size: 8pt;
+      font-weight: 600;
+      border-radius: 4px;
+    }
+    .badge-ready { background-color: #dcfce7; color: #166534; }
+    .badge-not-ready { background-color: #fee2e2; color: #991b1b; }
+  </style>
+</head>
+<body>
+  <h1 class="doc-h1">Macau678 Purchase Approval System</h1>
+<h2 class="doc-h2">Lab 7 Maintenance Metrics, Release Readiness, and Final Engineering Report</h2>
+
+<p><strong>Course:</strong> CPE 334 — Introduction to Software Engineering in the Age of AI Agents  </p>
+<p><strong>Semester:</strong> 1/2026  </p>
+<p><strong>Due Date:</strong> 29 November 2026 at 23:59 Thailand Time  </p>
+<p><strong>Repository:</strong> <a href="https://github.com/bravefe/Software-Engineer-2">https://github.com/bravefe/Software-Engineer-2</a>  </p>
+<p><strong>Production URL:</strong> <a href="https://macau678-purchase-approval-1084101367777.asia-southeast1.run.app/">https://macau678-purchase-approval-1084101367777.asia-southeast1.run.app/</a>  </p>
+
+<hr class="divider" />
+
+<h3 class="doc-h3">Team Members & Contributions</h3>
+<li><strong>Patcharak Paipatcharakun</strong> (GitHub: <code>@bravefe</code>, Email: <code>paipatcharak@gmail.com</code>) — Student ID: <code>67070503417</code></li>
+<li><strong>Punnawich S.</strong> (GitHub: <code>@SaintCrois</code>, Email: <code>punnawc@gmail.com</code>) — Student ID: <code>67070503434</code></li>
+
+<h3 class="doc-h3">Version & Commit Baseline Reference</h3>
+<li><strong>Accepted Sprint 1 Baseline:</strong> Tag <code>v0.2.3</code> / Commit <code>71080afe5302c4152e4895528f0a43665147ee4e</code> (Merged PR #63 from <code>lab-6</code>)</li>
+<li><strong>Pre-Change Document Snapshot:</strong> Commit <code>47bd9bec9d3cc94bc2e07e8bf58c5f987bf1b7e0</code> (<code>docs: Test Execution Summary in sts</code>)</li>
+<li><strong>Pre-Change Implementation Commit:</strong> Commit <code>cb84325c5dae1b975e74a92ef554331d349bf35c</code> (Merged PR #71 fixture fix)</li>
+<li><strong>Maintenance Implementation Commit:</strong> Commit <code>7ddc741fcd6440b6658d1bd8ece913a57852896b</code> (Merged PR #70 on <code>lab-7</code>)</li>
+<li><strong>Maintenance Test Verification Commit:</strong> Commit <code>10800cad4405e26a2d7508d0087659e06cca409d</code> (Branch <code>test/lab7-maintenance-change</code>)</li>
+<li><strong>Current Documentation Branch:</strong> <code>docs/lab7-metrics-and-final-report</code> (Issue #67)</li>
+
+<hr class="divider" />
+
+<h2 class="doc-h2">Table of Contents & Evidence Navigation</h2>
+
+<table class="report-table">
+<tr><th>Section</th><th>Content Description</th><th>Evidence ID(s)</th><th>Primary Artefact / Reference</th></tr>
+<tr><td><strong>Part A</strong></td><td><strong>Change Impact and Updated Contract</strong></td><td><code>CR-L7-01</code><br><code>CIA-L7-01</code><br><code>REV-L7-01</code></td><td><a href="file:///c:/Users/Cent/Desktop/Software-Engineer-2/document/lab-7/change-impact-analysis.md">change-impact-analysis.md</a><br><a href="file:///c:/Users/Cent/Desktop/Software-Engineer-2/document/srs.md">srs.md</a><br><a href="file:///c:/Users/Cent/Desktop/Software-Engineer-2/document/sds.md">sds.md</a><br><a href="file:///c:/Users/Cent/Desktop/Software-Engineer-2/document/sts.md">sts.md</a></td></tr>
+<tr><td><strong>Part B</strong></td><td><strong>Implementation and Regression-Safe Delivery</strong></td><td><code>TEST-RED-01</code><br><code>TEST-GRN-01</code><br><code>REG-L7-01</code><br><code>PR-L7-01</code></td><td><a href="file:///c:/Users/Cent/Desktop/Software-Engineer-2/document/lab-7/test-execution-report.md">test-execution-report.md</a><br>PR #70, PR #71, Issue #66</td></tr>
+<tr><td><strong>Part C</strong></td><td><strong>Objective Engineering Metrics</strong></td><td><code>METRICS-L7-01</code><br><code>REC-M01-01</code><br><code>REC-M02-01</code></td><td><a href="file:///c:/Users/Cent/Desktop/Software-Engineer-2/document/lab-7/engineering-metrics.md">engineering-metrics.md</a><br>Git Log, GitHub Actions Runs</td></tr>
+<tr><td><strong>Part D</strong></td><td><strong>Release Readiness and Retrospective</strong></td><td><code>CHK-L7-01</code><br><code>DEBT-L7-01</code><br><code>RETRO-L7-01</code></td><td><a href="file:///c:/Users/Cent/Desktop/Software-Engineer-2/document/lab-7/release-readiness.md">release-readiness.md</a><br><a href="file:///c:/Users/Cent/Desktop/Software-Engineer-2/document/lab-7/retrospective.md">retrospective.md</a></td></tr>
+<tr><td><strong>Appendix</strong></td><td><strong>Team Contributions, AI Declaration & Limitations</strong></td><td><code>APP-L7-01</code></td><td>Contribution Table & AI Declaration</td></tr>
+</table>
+
+<hr class="divider" />
+
+<h1 class="doc-h1">Part A — Change Impact and Updated Contract</h1>
+
+<h3 class="doc-h3">Evidence ID: <code>CR-L7-01</code> (Approved Change Request)</h3>
+<li><strong>Parent Issue:</strong> #65 / #72</li>
+<li><strong>Branch:</strong> <code>docs/lab7-change-analysis</code> (Merged via PR #69 into <code>lab-7</code> at commit <code>0497f35</code>)</li>
+<li><strong>Status:</strong> <strong>APPROVED</strong> (Instructor / TA Approved)</li>
+<li><strong>Change Type:</strong> Sprint 1 Bounded Maintenance Behavior Change</li>
+
+<h4 class="doc-h4">Original Behavior (Sprint 1 Baseline <code>v0.2.3</code>):</h4>
+<p>Under the accepted Sprint 1 contract (SRS FR-05, BR-06), a Requester was permitted to edit a purchase request only when it was in <code>DRAFT</code> or after an assigned Reviewer returned it (<code>RETURNED</code>). If a request was currently <code>PENDING_REVIEW</code>, edits were prohibited and returned HTTP 409 (<code>INVALID_STATE_TRANSITION</code>). Requester-generated <code>EDITED</code> entries were hidden from Reviewers. Furthermore, Requesters had no mechanism to withdraw or stop a request once submitted.</p>
+
+<h4 class="doc-h4">Proposed Maintained Behavior:</h4>
+<p>The owning Requester may edit or withdraw their purchase request while it is in <code>PENDING_REVIEW</code> status.</p>
+<li><strong>Pending Edit:</strong> An edit to a <code>PENDING_REVIEW</code> request retains <code>PENDING_REVIEW</code> status without resetting the review queue. The updated request parameters and an <code>EDITED</code> revision history entry are visible to both the owning Requester and the assigned Reviewer.</li>
+<li><strong>Pending Withdrawal:</strong> An owning Requester may withdraw a <code>PENDING_REVIEW</code> request via <code>POST /api/requests/:id/withdraw</code>. This transitions the request to terminal <code>WITHDRAWN</code> status and appends a <code>WITHDRAWN</code> event to the audit trail. A withdrawn request cannot be edited, reviewed, or withdrawn again.</li>
+<li><strong>Preserved Boundaries:</strong> Draft, approved, and rejected behaviors remain untouched. Returned request editing and resubmission rules remain strictly intact.</li>
+
+<hr class="divider" />
+
+<h3 class="doc-h3">Evidence ID: <code>CIA-L7-01</code> (Traceable Impact Matrix)</h3>
+
+<table class="report-table">
+<tr><th>Architecture / Contract Area</th><th>Nature of Impact</th><th>Contract Revisions & Verification Path</th></tr>
+<tr><td><strong>Requirements (SRS)</strong></td><td>FR-05, BR-06, BR-07 modified; AC-13 added; AD-10 supersedes AD-05. FR-06 clarifies revision history visibility.</td><td>Defined eligible statuses for editing/withdrawal, unchanged review state on edit, participant visibility, and terminal withdrawal behavior.</td></tr>
+<tr><td><strong>System Design (SDS)</strong></td><td>Enums <code>RequestStatus</code> and <code>HistoryAction</code> gain <code>WITHDRAWN</code>; request edit endpoint (<code>PATCH /api/requests/:id</code>) authorization expanded; new withdrawal endpoint (<code>POST /api/requests/:id/withdraw</code>) added; state machine diagram updated.</td><td>Preserved transactional integrity, immutable audit history, role scoping, and non-self-approval rules.</td></tr>
+<tr><td><strong>Acceptance Criteria</strong></td><td>Existing AC-07 preserved for returned flows; new AC-13 introduced for pending edit/withdrawal.</td><td>Verified both new behavior and non-regression of existing boundaries.</td></tr>
+<tr><td><strong>Test Specification (STS)</strong></td><td><code>TEST-INT-07</code> and <code>TEST-E2E-06</code> specified for pending edit/withdraw, role visibility, and terminal restrictions.</td><td>Specification documented in Lab 7.1; automated tests implemented in Lab 7.3 (<code>test/lab7-maintenance-change</code>).</td></tr>
+<tr><td><strong>Traceability (RTM)</strong></td><td>FR-05, BR-06, BR-07, and AC-13 mapped to <code>FEAT-08</code> and corresponding tests.</td><td>Marked <code>CHANGE SPECIFIED</code> in 7.1; updated to <code>PASSED</code> upon 7.3 verification.</td></tr>
+<tr><td><strong>Code & Data Modules</strong></td><td><code>server/src/routes/requests.ts</code>, <code>server/src/services/historyService.ts</code>, client UI components, Prisma schema.</td><td>Implemented in Lab 7.2 (PR #70) with zero test tampering.</td></tr>
+</table>
+
+<hr class="divider" />
+
+<h3 class="doc-h3">Evidence ID: <code>REV-L7-01</code> (Contract Revision Excerpts)</h3>
+
+<h4 class="doc-h4">Revised SRS Excerpt (Section 4 & 5):</h4>
+<blockquote><strong>FR-05: Request Updates</strong></blockquote>
+<blockquote>- The system shall allow Requesters to edit their own requests while they are <code>DRAFT</code>, <code>PENDING_REVIEW</code>, or <code>RETURNED</code>.</blockquote>
+<blockquote>- Editing a <code>PENDING_REVIEW</code> request shall leave it pending review; the updated request details shall be visible to its Requester and assigned Reviewer.</blockquote>
+<blockquote>- The system shall allow Requesters to withdraw their own requests while they are <code>PENDING_REVIEW</code>; a withdrawn request cannot be reviewed or edited further.</blockquote>
+<blockquote>- The system shall prevent Requesters from editing requests that are <code>APPROVED</code>, <code>REJECTED</code>, or <code>WITHDRAWN</code>, and from withdrawing requests outside <code>PENDING_REVIEW</code>.</blockquote>
+<blockquote></blockquote>
+<blockquote><strong>BR-06:</strong> A Requester may edit their own <code>DRAFT</code>, <code>PENDING_REVIEW</code>, or <code>RETURNED</code> request. A pending edit keeps the request in <code>PENDING_REVIEW</code> and is visible to the Requester and assigned Reviewer.</blockquote>
+<blockquote><strong>BR-07:</strong> Valid status transitions: <code>DRAFT -> PENDING_REVIEW</code>, <code>PENDING_REVIEW -> APPROVED</code>, <code>PENDING_REVIEW -> REJECTED</code>, <code>PENDING_REVIEW -> RETURNED</code>, <code>RETURNED -> PENDING_REVIEW</code>, and <code>PENDING_REVIEW -> WITHDRAWN</code>.</blockquote>
+
+<h4 class="doc-h4">Teammate Review Sign-Off:</h4>
+<li><strong>Reviewer:</strong> Punnawich S. (<code>SaintCrois</code>)</li>
+<li><strong>Review Commit:</strong> <code>a881038</code> (docs: approve changes)</li>
+<li><strong>Review Finding:</strong> "Contract updates in SRS, SDS, and STS accurately reflect the approved change request. Boundaries for returned requests and reviewer access remain intact. Approved to proceed with implementation."</li>
+
+<hr class="divider" />
+
+<h1 class="doc-h1">Part B — Implementation and Regression-Safe Delivery</h1>
+
+<h3 class="doc-h3">Evidence ID: <code>TEST-RED-01</code> (Meaningful Failure on Old Code)</h3>
+<p>To satisfy test-first discipline, the updated verification suite was executed against the pre-change implementation commit:</p>
+<li><strong>Tested Commit:</strong> <code>cb84325c5dae1b975e74a92ef554331d349bf35c</code> (Merge PR #71; contains isolated fixture fix, prior to feature PR #70)</li>
+<li><strong>Execution Command:</strong> <code>npm run test:server</code></li>
+<li><strong>Output:</strong></li>
+<pre><code class="language-text">
+  Test Files  2 failed | 1 passed (3)
+       Tests  7 failed | 48 passed | 4 todo (59)
+    Duration  8.97s
+</code></pre>
+<li><strong>Analysis of Failures:</strong></li>
+<li><code>TEST-INT-07</code> > <code>permits owning Requester to edit a PENDING_REVIEW request</code>: Expected <code>200 OK</code>, received <code>409 Conflict</code> (<code>INVALID_STATE_TRANSITION</code>). Proves old code actively rejected pending edits.</li>
+<li><code>TEST-INT-07</code> > <code>permits owning Requester to withdraw a PENDING_REVIEW request</code>: Expected <code>403</code> / <code>200</code>, received <code>404 Not Found</code> (endpoint did not exist).</li>
+<li><code>TEST-INT-07</code> > <code>enforces WITHDRAWN as a terminal status</code>: Expected <code>200</code>, received <code>404 Not Found</code>.</li>
+<li><code>TEST-UNIT-03</code> > <code>permits valid lifecycle status transitions</code>: Assertion <code>Expected transition PENDING_REVIEW -> WITHDRAWN to be valid</code> failed (<code>expected false to be true</code>).</li>
+<li><code>TEST-UNIT-03</code> > <code>enforces WITHDRAWN as a terminal status with no allowed outgoing transitions</code>: Failed because <code>VALID_STATUS_TRANSITIONS.WITHDRAWN</code> was undefined.</li>
+
+<hr class="divider" />
+
+<h3 class="doc-h3">Evidence ID: <code>TEST-GRN-01</code> (Implementation Passing All Changed Behaviors)</h3>
+<p>The bounded implementation was completed in branch <code>feat/pending-request-edit-withdrawal</code> and merged via PR #70 into <code>lab-7</code>.</p>
+<li><strong>Implementation Commit:</strong> <code>7ddc741fcd6440b6658d1bd8ece913a57852896b</code></li>
+<li><strong>Execution Command:</strong> <code>npm run test:server</code></li>
+<li><strong>Output:</strong></li>
+<pre><code class="language-text">
+  Test Files  3 passed (3)
+       Tests  55 passed | 4 todo (59)
+    Duration  10.16s
+</code></pre>
+<li><strong>Verification Confirmation:</strong> All 7 previously failing tests passed cleanly. Pending edits preserve <code>PENDING_REVIEW</code> status, record <code>EDITED</code> events, and display updated details to both participants. Withdrawal transitions status to <code>WITHDRAWN</code> and completely blocks subsequent reviews, edits, or repeats.</li>
+
+<hr class="divider" />
+
+<h3 class="doc-h3">Evidence ID: <code>REG-L7-01</code> (Comprehensive Regression Suite Results)</h3>
+
+<table class="report-table">
+<tr><th>Test Suite</th><th>Command</th><th>Executed Tests</th><th>Passed</th><th>Failed</th><th>Skipped / Todo</th><th>Execution Time</th><th>Status</th></tr>
+<tr><td><strong>Client Components & Session</strong></td><td><code>npm run test:client</code></td><td>22</td><td>22</td><td>0</td><td>0</td><td>4.52s</td><td><strong>PASSED</strong></td></tr>
+<tr><td><strong>Server Unit & Integration</strong></td><td><code>npm run test:server</code></td><td>55</td><td>55</td><td>0</td><td>4 todo</td><td>10.16s</td><td><strong>PASSED</strong></td></tr>
+<tr><td><strong>Combined Vitest Suites</strong></td><td><code>npm run test</code></td><td>77</td><td>77</td><td>0</td><td>4 todo</td><td>10.54s</td><td><strong>PASSED</strong></td></tr>
+<tr><td><strong>Playwright End-to-End</strong></td><td><code>npm run test:e2e</code></td><td>4</td><td>4</td><td>0</td><td>2 skipped</td><td>19.70s</td><td><strong>PASSED</strong></td></tr>
+<tr><td><strong>Production Build & Types</strong></td><td><code>npm run build</code></td><td>2 packages</td><td>2</td><td>0</td><td>0</td><td>1.72s</td><td><strong>PASSED</strong></td></tr>
+</table>
+
+<h4 class="doc-h4">Playwright E2E Breakdown (<code>tests/e2e/purchase-approval.spec.ts</code>):</h4>
+<li><code>TEST-E2E-01</code> (Draft $\rightarrow$ return $\rightarrow$ edit $\rightarrow$ resubmit $\rightarrow$ approve): <strong>PASSED</strong> (7.4s)</li>
+<li><code>TEST-E2E-02</code> (Rejection requires reason and is terminal): <strong>PASSED</strong> (2.2s)</li>
+<li><code>TEST-E2E-03</code> (Direct routes, cross-user isolation, self-review blocked): <strong>PASSED</strong> (2.0s)</li>
+<li><code>TEST-E2E-04</code> (Multi-criteria filter and reports journey): <strong>SKIPPED</strong> (<code>fixme</code>: Sprint 2)</li>
+<li><code>TEST-E2E-05</code> (Cross-viewport responsive design verification): <strong>SKIPPED</strong> (<code>fixme</code>: Sprint 3)</li>
+<li><code>TEST-E2E-06</code> (Pending edit, reviewer queue visibility, withdrawal): <strong>PASSED</strong> (4.5s)</li>
+
+<hr class="divider" />
+
+<h3 class="doc-h3">Evidence ID: <code>PR-L7-01</code> (Peer Review, Integration, and CI Gate)</h3>
+<li><strong>Pull Request #70 (<code>feat/pending-request-edit-withdrawal</code>):</strong></li>
+<li>Implemented route authorization for pending edits and withdrawal endpoint in <code>server/src/routes/requests.ts</code>.</li>
+<li>Updated timeline visibility in <code>server/src/services/historyService.ts</code> and <code>client/src/components/HistoryTimeline.tsx</code>.</li>
+<li>Reviewed and merged by <code>SaintCrois</code> on Fri Nov 27 02:39:11 2026 +0700.</li>
+<li><strong>Pull Request #71 (<code>fix/test-false-positive-...</code>):</strong></li>
+<li>Corrected fixture coupling in <code>createPendingRequest</code> helper to isolate test cases. Merged at commit <code>cb84325</code>.</li>
+<li><strong>CI Pipeline Status:</strong></li>
+<li>GitHub Actions workflow <code>auto-test.yml</code> and <code>ci-docker.yml</code> passed on commit <code>7ddc741</code>.</li>
+
+<hr class="divider" />
+
+<h1 class="doc-h1">Part C — Objective Engineering Metrics</h1>
+
+<h3 class="doc-h3">Evidence ID: <code>METRICS-L7-01</code> (Dated Engineering Metrics Table)</h3>
+
+<table class="report-table">
+<tr><th>Metric ID</th><th>Metric Name</th><th>Scope</th><th>Observation Window</th><th>Measured Value</th><th>Evidence Source</th><th>Relevant Run / PR / Issue</th></tr>
+<tr><td><strong>M-01</strong></td><td>Completed GitHub Issues</td><td>Core Repo</td><td>2026-11-02 to 2026-11-27</td><td><strong>12 completed</strong> (80.0% completion)</td><td>GitHub Issue Tracker / Git Log</td><td>Issues #2, #4, #5, #6, #30, #35, #40, #46, #60, #65, #68, #71</td></tr>
+<tr><td><strong>M-02</strong></td><td>Merged Pull Requests</td><td>All Branches</td><td>2026-11-04 to 2026-11-27</td><td><strong>24 PRs merged</strong> (3 in Lab 7)</td><td>Git PR Merge Log (<code>git log</code>)</td><td>PRs #12 through #70</td></tr>
+<tr><td><strong>M-03</strong></td><td>Automated Test Pass Rate</td><td>Maintained Scope</td><td>Snapshot 2026-11-27</td><td><strong>100% active pass</strong> (81 passed / 81 total)</td><td>Test Reports TR-L7-01, TR-L7-02</td><td>Vitest (77 passed, 4 todo); Playwright (4 passed, 2 fixme)</td></tr>
+<tr><td><strong>M-04</strong></td><td>UAT Defect Resolution Rate</td><td>Sprint 1 UAT</td><td>2026-11-24 to 2026-11-25</td><td><strong>100% resolved</strong> (3/3 closed)</td><td><code>document/lab-6/resolution.md</code></td><td>F-01 (High), F-02 (Med), F-03 (Low)</td></tr>
+<tr><td><strong>M-05</strong></td><td>CI Pipeline Success Rate</td><td>PR Gate Workflows</td><td>2026-11-25 to 2026-11-27</td><td><strong>83.3% initial, 100% merged</strong></td><td>GitHub Actions Run Logs</td><td>Workflows <code>auto-test.yml</code>, <code>ci-docker.yml</code></td></tr>
+</table>
+
+<hr class="divider" />
+
+<h3 class="doc-h3">Evidence ID: <code>REC-M01-01</code> & <code>REC-M02-01</code> (Embedded Reconciliation Evidence)</h3>
+
+<h4 class="doc-h4">Reconciliation Table 1: Closed GitHub Issues (Metric M-01)</h4>
+<li>Sprint 1 Foundations: Issue #2 (Docs, 2026-11-04), Issue #4 (Auth, 2026-11-04), Issue #5 (Domain, 2026-11-05), Issue #6 (Tests, 2026-11-07).</li>
+<li>Lab 5 Deployment: Issue #30 (Docker, 2026-11-19), Issue #35 (CI/CD, 2026-11-19).</li>
+<li>Lab 6 Independent UAT: Issue #40 (Handoff, 2026-11-23), Issue #46 (Partner UAT, 2026-11-24), Issue #60 (Defects, 2026-11-24).</li>
+<li>Lab 7 Maintenance: Issue #65 (Change Analysis, 2026-11-27), Issue #68 (Implementation, 2026-11-27), Issue #71 (Fixture Isolation, 2026-11-27).</li>
+<li><em>Pending / Active Issues (3):</em> Issue #66 (Lab 7.3 verification), Issue #67 (Lab 7.4 report), Issue #72 (Lab 7 parent).</li>
+<div class="math-block">$$\text{Formula: } \frac{12 \text{ Closed}}{15 \text{ Tracked}} = 80.0\%$$</div>
+
+<h4 class="doc-h4">Reconciliation Table 2: Merged Pull Requests (Metric M-02)</h4>
+<li>Sprint 1 (PR #12, #14, #16, #17, #18 into <code>sprint-1</code>; PR #19 into <code>main</code>).</li>
+<li>Lab 5 (PR #32, #33, #34, #37 into <code>lab-5</code>; PR #38, #39 into <code>main</code>).</li>
+<li>Lab 6 (PR #44, #47, #61, #62, #64 into <code>lab-6</code>; PR #45, #63 into <code>main</code>).</li>
+<li>Sprint 2 Feature Staging (PR #57, #58 into <code>sprint-2</code>).</li>
+<li>Lab 7 Maintenance (PR #69, #71, #70 into <code>lab-7</code>). Total verified: 24 PRs.</li>
+
+<hr class="divider" />
+
+<h3 class="doc-h3">Evidence-Based Metrics Interpretation ($\le 100$ Words)</h3>
+
+<p>The metrics demonstrate strong delivery velocity (24 merged PRs, 12 completed issues, 100% UAT resolution) and zero regressions across 81 automated tests. However, CI outcomes reveal a critical engineering risk: shared test fixtures created false-positive failures during parallel branch execution (PR #71), threatening pipeline integrity. To prevent future verification stalls, the team will refactor database test seeds to enforce unique ephemeral IDs per test case, eliminating cross-case state bleeding. Owner: SaintCrois. Target Milestone: Sprint 2 Final Delivery (29 November 2026). <em>(77 words)</em></p>
+
+<hr class="divider" />
+
+<h1 class="doc-h1">Part D — Release Readiness and Retrospective</h1>
+
+<h3 class="doc-h3">Evidence ID: <code>CHK-L7-01</code> (Release Readiness Checklist)</h3>
+
+<table class="report-table">
+<tr><th>Category</th><th>Required Evidence</th><th>Measured Finding</th><th>Status</th><th>Corrective Action & Owner</th></tr>
+<tr><td><strong>Release Version</strong></td><td>Deployed commit/version</td><td>Baseline tag <code>v0.2.3</code> (<code>71080af</code>) deployed. Maintenance change on <code>lab-7</code> (<code>7ddc741</code>) pending merge to <code>main</code>.</td><td><strong>NOT READY</strong></td><td>Merge Lab 7.3 and <code>lab-7</code> into <code>main</code> (Owner: bravefe)</td></tr>
+<tr><td><strong>Defects</strong></td><td>Open/closed by severity</td><td>0 open defects. 3/3 closed from Lab 6 UAT (F-01 High, F-02 Medium, F-03 Low).</td><td><strong>READY</strong></td><td>Maintain active regression guards (Owner: SaintCrois)</td></tr>
+<tr><td><strong>Automated Tests</strong></td><td>Results & failures</td><td>77 Vitest passed (4 todo); 4 Playwright passed (2 fixme). 0 failures across 81 active tests.</td><td><strong>READY</strong></td><td>Expand coverage in Sprint 2 (Owner: SaintCrois)</td></tr>
+<tr><td><strong>User Testing</strong></td><td>Partner UAT results</td><td>Lab 6 UAT passed 5/5 cases on revision <code>bqw67</code>. Post-maintenance UAT staged.</td><td><strong>NOT READY</strong></td><td>Conduct post-deployment live UAT (Owner: SaintCrois)</td></tr>
+<tr><td><strong>Technical Debt</strong></td><td>Known debt register</td><td>React Router warnings (Low), Sprint 2/3 test stubs (Med), single-reviewer schema (Low).</td><td><strong>READY</strong></td><td>Scheduled for Sprint 2/3 resolution (Owner: bravefe)</td></tr>
+<tr><td><strong>Configuration</strong></td><td>Environment & secrets</td><td>Standard env vars configured. Keyless GCP WIF used. Zero secrets in Git or client.</td><td><strong>READY</strong></td><td>Maintain secret hygiene in GCP Secret Manager</td></tr>
+<tr><td><strong>Documentation</strong></td><td>Setup & run instructions</td><td>SRS, SDS, STS, RTM, README, and Lab 7 impact documents fully synchronized.</td><td><strong>READY</strong></td><td>Keep operational guides updated with release tags</td></tr>
+<tr><td><strong>Deployment</strong></td><td>GCP service status</td><td>Cloud Run active on baseline. Maintenance commit <code>7ddc741</code> not yet deployed to GCP.</td><td><strong>NOT READY</strong></td><td>Trigger <code>deploy.yml</code> on main merge (Owner: bravefe)</td></tr>
+</table>
+
+<hr class="divider" />
+
+<h3 class="doc-h3">Evidence ID: <code>DEBT-L7-01</code> (Technical Debt Register)</h3>
+<li><strong>TD-01 (React Router Deprecation Warnings):</strong> Future-flag warnings (<code>v7_startTransition</code>, <code>v7_relativeSplatPath</code>) appear during component testing. Impact: cosmetic. Priority: Low. Action: Add flags to <code>BrowserRouter</code> in Sprint 3.</li>
+<li><strong>TD-02 (Sprint 2/3 Stubs in Test Runners):</strong> 4 <code>todo</code> and 2 <code>fixme</code> stubs appear in test outputs. Impact: low. Priority: Medium. Action: Implement corresponding test logic in Deliverable 2.</li>
+<li><strong>TD-03 (Single-Reviewer Schema Constraint):</strong> Purchase requests support a single assigned reviewer foreign key (<code>reviewerId</code>). Documented as intentional Sprint 1 scope (BR-10, AMB-01). Priority: Low.</li>
+
+<hr class="divider" />
+
+<h3 class="doc-h3">Final Release Decision</h3>
+
+<h3 class="doc-h3">Final Status: <strong>NOT READY</strong></h3>
+
+<p><strong>Justification:</strong>  </p>
+<p>Under strict software engineering discipline, a release cannot be declared READY while critical integration steps remain unperformed:</p>
+<li><strong>Parallel Verification Pending:</strong> Verification branch <code>test/lab7-maintenance-change</code> (Issue #66, commit <code>10800ca</code>) is pending pull-request merge into <code>lab-7</code>.</li>
+<li><strong>Main Branch Integration Pending:</strong> Commits on <code>lab-7</code> have not been merged into <code>main</code>.</li>
+<li><strong>GCP Production Deployment Pending:</strong> The live Cloud Run service remains at baseline <code>v0.2.3</code>. Automated deployment via <code>deploy.yml</code> has not run for maintenance commit <code>7ddc741</code>.</li>
+<p>The release will transition to <strong>READY</strong> immediately upon merging Lab 7.3, deploying to GCP, and confirming smoke tests.</p>
+
+<hr class="divider" />
+
+<h3 class="doc-h3">Evidence ID: <code>RETRO-L7-01</code> (Engineering Retrospective)</h3>
+
+<h4 class="doc-h4">1. What helped the maintenance work?</h4>
+<p>Having comprehensive contract-first documentation (Lab 7.1 change impact analysis) and existing integration tests (<code>TEST-INT-07</code>) in place clearly defined the exact state-machine boundaries and API contracts before touching any implementation code. This allowed us to immediately detect the intended behavioral difference (HTTP 409 versus HTTP 200) via automated runners without guesswork.</p>
+
+<h4 class="doc-h4">2. What made the maintenance work difficult?</h4>
+<p>Shared test fixture coupling caused unexpected false-positive failures during test execution: multiple test cases previously asserted against the same seeded pending request record, so state modifications in one test unexpectedly broke downstream assertions in another. This required diagnosing and merging a separate fixture isolation fix (PR #71) before the maintenance feature could cleanly integrate.</p>
+
+<h4 class="doc-h4">3. What will the team change before Final Delivery?</h4>
+<p>Before Final Delivery, the team will refactor test data setup across all integration suites so that every test case generates an isolated, ephemeral request fixture with a distinct ID, eliminating test pollution. Additionally, we will incorporate automated Playwright E2E checks directly into the GitHub Actions pull-request gate to catch regression issues prior to branch merge rather than relying on manual post-merge execution.</p>
+
+<hr class="divider" />
+
+<h1 class="doc-h1">Appendix — Compliance, AI Declaration & Limitations</h1>
+
+<h3 class="doc-h3">Evidence ID: <code>APP-L7-01</code></h3>
+
+<h4 class="doc-h4">Team Contribution Table</h4>
+<table class="report-table">
+<tr><th>Team Member</th><th>Lab 7 Responsibilities & Contributions</th><th>Pair Review Work</th></tr>
+<tr><td><strong>Patcharak Paipatcharakun</strong> (<code>@bravefe</code>)</td><td>Author of Lab 7.1 Change Request (#65), Implementation of pending edit and withdrawal in Lab 7.2 (#68), Fixture isolation fix (#71), Metrics collection (#67).</td><td>Reviewed and approved Lab 7.3 test suite updates (<code>10800ca</code>).</td></tr>
+<tr><td><strong>Punnawich S.</strong> (<code>@SaintCrois</code>)</td><td>Substantive review of Lab 7.1 Contract changes (<code>a881038</code>), Review and merge of PR #70 (<code>7ddc741</code>), Author of Lab 7.3 Verification & Regression tests (#66), Release readiness checklist (#67).</td><td>Reviewed and verified change impact analysis and release readiness checklist.</td></tr>
+</table>
+
+<h4 class="doc-h4">AI-Use Declaration</h4>
+<p>AI assistance (Claude / Gemini agents) was utilized in accordance with course policy to assist in drafting impact documentation, structuring verification matrices, generating Playwright PDF formatting templates, and collating git commit logs. All requirements, code changes, database constraints, test executions, and release decisions were verified, triaged, and decided by human team members.</p>
+
+<h4 class="doc-h4">Known Limitations</h4>
+<li><strong>Single-Reviewer Routing (BR-10):</strong> The system enforces single-reviewer assignments and does not support multi-tier hierarchical approvals.</li>
+<li><strong>Pending GCP Live Verification:</strong> Maintenance features are verified locally in Docker and Vitest/Playwright, but live GCP URL verification awaits merge to <code>main</code>.</li>
+<li><strong>No Financial Vendor Integration:</strong> Payment settlement and vendor procurement remain explicitly excluded from product scope.</li>
+
+</body>
+</html>
