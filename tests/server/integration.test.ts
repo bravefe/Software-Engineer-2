@@ -842,9 +842,35 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         });
       expect(resInvalidDecimal.status).toBe(400);
       expect(resInvalidDecimal.body.fieldErrors?.amount).toBeDefined();
+
+      const resNegativeAmount = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "Valid description",
+          amount: -10.5,
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resNegativeAmount.status).toBe(400);
+      expect(resNegativeAmount.body.fieldErrors?.amount).toBeDefined();
+
+      const resOverMaxAmount = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "Valid description",
+          amount: "10000000000.00",
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resOverMaxAmount.status).toBe(400);
+      expect(resOverMaxAmount.body.fieldErrors?.amount).toBeDefined();
     });
 
-    it("accepts title, text, and amount boundary values", async () => {
+    it("accepts title, text, and amount boundary values and enforces bounds on PATCH edit", async () => {
       const loginRes = await request(app)
         .post("/api/auth/login")
         .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
@@ -866,6 +892,52 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(res.body.request?.title).toHaveLength(150);
       expect(res.body.request?.description).toHaveLength(2000);
       expect(res.body.request?.justification).toHaveLength(2000);
+
+      // Minimum title (3 chars) and maximum amount (9999999999.99)
+      const minTitleMaxAmountRes = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "ABC",
+          description: "D",
+          amount: "9999999999.99",
+          justification: "J",
+          reviewerId: seededUsers.reviewer1.id,
+          status: "DRAFT",
+        });
+      expect(minTitleMaxAmountRes.status).toBe(201);
+      const draftId = (minTitleMaxAmountRes.body.request || minTitleMaxAmountRes.body).id;
+      expect(minTitleMaxAmountRes.body.request?.title).toBe("ABC");
+      expect(minTitleMaxAmountRes.body.request?.amount).toBe("9999999999.99");
+
+      // PATCH validation boundary checks
+      const patchBadTitle = await request(app)
+        .patch(`/api/requests/${draftId}`)
+        .set("Cookie", cookie)
+        .send({ title: "T".repeat(151) });
+      expect(patchBadTitle.status).toBe(400);
+      expect(patchBadTitle.body.fieldErrors?.title).toBeDefined();
+
+      const patchBadAmount = await request(app)
+        .patch(`/api/requests/${draftId}`)
+        .set("Cookie", cookie)
+        .send({ amount: "10000000000.00" });
+      expect(patchBadAmount.status).toBe(400);
+      expect(patchBadAmount.body.fieldErrors?.amount).toBeDefined();
+
+      const patchBadDesc = await request(app)
+        .patch(`/api/requests/${draftId}`)
+        .set("Cookie", cookie)
+        .send({ description: "D".repeat(2001) });
+      expect(patchBadDesc.status).toBe(400);
+      expect(patchBadDesc.body.fieldErrors?.description).toBeDefined();
+
+      const patchBadReason = await request(app)
+        .patch(`/api/requests/${draftId}`)
+        .set("Cookie", cookie)
+        .send({ title: "Valid Updated Title", reason: "R".repeat(2001) });
+      expect(patchBadReason.status).toBe(400);
+      expect(patchBadReason.body.code).toBe("VALIDATION_ERROR");
     });
   });
 

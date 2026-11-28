@@ -230,6 +230,12 @@ describe("Unit tests", () => {
 
   describe("TEST-UNIT-05: input validation and boundary checks", () => {
     it("enforces title minimum and maximum boundaries", () => {
+      expect(validateRequestTitle("")).toBe(
+        "Title must be at least 3 characters",
+      );
+      expect(validateRequestTitle("   ")).toBe(
+        "Title must be at least 3 characters",
+      );
       expect(validateRequestTitle("AB")).toBe(
         "Title must be at least 3 characters",
       );
@@ -240,10 +246,22 @@ describe("Unit tests", () => {
       );
     });
 
-    it("enforces description and justification maximum boundaries", () => {
+    it("enforces description and justification required and maximum boundaries", () => {
+      expect(validateRequestText("", "Description")).toBe(
+        "Description is required",
+      );
+      expect(validateRequestText("   ", "Description")).toBe(
+        "Description is required",
+      );
       expect(validateRequestText("A".repeat(2000), "Description")).toBeNull();
       expect(validateRequestText("A".repeat(2001), "Description")).toBe(
         "Description must not exceed 2000 characters",
+      );
+      expect(validateRequestText("", "Justification")).toBe(
+        "Justification is required",
+      );
+      expect(validateRequestText("   ", "Justification")).toBe(
+        "Justification is required",
       );
       expect(validateRequestText("A".repeat(2000), "Justification")).toBeNull();
       expect(validateRequestText("A".repeat(2001), "Justification")).toBe(
@@ -252,6 +270,8 @@ describe("Unit tests", () => {
     });
 
     it("accepts valid amount boundaries and rejects invalid amounts", () => {
+      expect(parsePositiveAmount("").amount).toBeNull();
+      expect(parsePositiveAmount("   ").amount).toBeNull();
       expect(parsePositiveAmount("0.00").amount).toBeNull();
       expect(parsePositiveAmount("-10.50").amount).toBeNull();
       expect(parsePositiveAmount("0.01")).toEqual({
