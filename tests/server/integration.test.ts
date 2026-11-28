@@ -1813,8 +1813,22 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(summaryRes.status).toBe(200);
       expect(summaryRes.body.totalCount).toBe(0);
       expect(summaryRes.body.totalAmount).toBe("0.00");
-      expect(Object.values(summaryRes.body.statusCounts)).toEqual([0, 0, 0, 0, 0]);
-      expect(Object.values(summaryRes.body.statusAmounts)).toEqual(["0.00", "0.00", "0.00", "0.00", "0.00"]);
+      expect(summaryRes.body.statusCounts).toEqual({
+        DRAFT: 0,
+        PENDING_REVIEW: 0,
+        APPROVED: 0,
+        REJECTED: 0,
+        RETURNED: 0,
+        WITHDRAWN: 0,
+      });
+      expect(summaryRes.body.statusAmounts).toEqual({
+        DRAFT: "0.00",
+        PENDING_REVIEW: "0.00",
+        APPROVED: "0.00",
+        REJECTED: "0.00",
+        RETURNED: "0.00",
+        WITHDRAWN: "0.00",
+      });
       expect(requestsRes.status).toBe(200);
       expect(requestsRes.body.requests).toEqual([]);
     });
