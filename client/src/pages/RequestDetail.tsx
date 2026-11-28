@@ -7,6 +7,7 @@ import {
   RequestHistoryEntry,
   reviewPurchaseRequest,
   submitPurchaseRequest,
+  withdrawPurchaseRequest,
 } from "../api/requests";
 import { HistoryTimeline } from "../components/HistoryTimeline";
 import { ReviewDecisionModal } from "../components/ReviewDecisionModal";
@@ -27,6 +28,7 @@ export default function RequestDetail() {
   // Review modal state
   const [activeDecision, setActiveDecision] = useState<"APPROVE" | "REJECT" | "RETURN" | null>(null);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
 
   const requestId = Number(id);
 
@@ -89,6 +91,25 @@ export default function RequestDetail() {
     }
   };
 
+  const handleWithdraw = async () => {
+    if (!window.confirm("Withdraw this pending request? The reviewer will no longer be able to review it.")) {
+      return;
+    }
+
+    setIsWithdrawing(true);
+    setErrorMessage(null);
+    try {
+      const updated = await withdrawPurchaseRequest(requestId);
+      setRequest(updated);
+      setHistory(await fetchRequestHistory(requestId));
+      setSuccessMessage("Request withdrawn successfully.");
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to withdraw request");
+    } finally {
+      setIsWithdrawing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="container py-5 text-center">
@@ -119,7 +140,8 @@ export default function RequestDetail() {
   const isRequesterOwner = user?.id === request.requesterId;
   const isAssignedReviewer = user?.id === request.reviewerId && user?.role === "REVIEWER";
   const canReview = isAssignedReviewer && request.status === "PENDING_REVIEW";
-  const canEdit = isRequesterOwner && request.status === "RETURNED";
+  const canEdit = isRequesterOwner && (request.status === "DRAFT" || request.status === "PENDING_REVIEW" || request.status === "RETURNED");
+  const canWithdraw = isRequesterOwner && request.status === "PENDING_REVIEW";
   const canSubmitDraft = isRequesterOwner && request.status === "DRAFT";
 
   return (
@@ -169,8 +191,23 @@ export default function RequestDetail() {
             <div className="d-flex flex-wrap gap-2">
               {canEdit && (
                 <Link to={`/requests/${request.id}/edit`} className="btn btn-warning">
-                  Edit & Resubmit
+                  {request.status === "DRAFT"
+                    ? "Edit Draft"
+                    : request.status === "RETURNED"
+                      ? "Edit & Resubmit"
+                      : "Edit Request"}
                 </Link>
+              )}
+
+              {canWithdraw && (
+                <button
+                  type="button"
+                  className="btn btn-outline-danger"
+                  onClick={handleWithdraw}
+                  disabled={isWithdrawing}
+                >
+                  {isWithdrawing ? "Withdrawing…" : "Withdraw Request"}
+                </button>
               )}
 
               {canSubmitDraft && (

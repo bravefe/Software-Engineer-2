@@ -29,6 +29,10 @@ export function StatusBadge({ status }: StatusBadgeProps) {
       badgeClass += "bg-warning text-dark";
       label = "Returned";
       break;
+    case "WITHDRAWN":
+      badgeClass += "bg-secondary";
+      label = "Withdrawn";
+      break;
     default:
       badgeClass += "bg-secondary";
       label = status;

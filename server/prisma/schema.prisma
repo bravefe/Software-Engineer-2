@@ -18,6 +18,7 @@ enum PurchaseRequestStatus {
   APPROVED
   REJECTED
   RETURNED
+  WITHDRAWN
 }
 
 enum RequestHistoryAction {
@@ -28,6 +29,7 @@ enum RequestHistoryAction {
   APPROVED
   REJECTED
   RETURNED
+  WITHDRAWN
 }
 
 model User {

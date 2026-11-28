@@ -64,15 +64,18 @@ For this project, the team focuses on Macau678 purchase requests.
 - The system shall allow assigned Reviewers to return requests with a reason.
 
 **FR-05: Request Updates**
-- The system shall allow Requesters to edit requests that have been returned to them.
-- The system shall prevent Requesters from editing requests that are pending review or have been approved or rejected.
+- The system shall allow Requesters to edit their own requests while they are `DRAFT`, `PENDING_REVIEW`, or `RETURNED`.
+- Editing a `PENDING_REVIEW` request shall leave it pending review; the updated request details shall be visible to its Requester and assigned Reviewer.
+- The system shall allow Requesters to withdraw their own requests while they are `PENDING_REVIEW`; a withdrawn request cannot be reviewed or edited further.
+- The system shall prevent Requesters from editing requests that are `APPROVED`, `REJECTED`, or `WITHDRAWN`, and from withdrawing requests outside `PENDING_REVIEW`. Drafts remain editable and may be saved or submitted by their owner.
 
 **FR-06: Request History**
 - The system shall record request creation and submission.
 - The system shall record review decisions, reasons, timestamps, and the user responsible.
 - The system shall allow authorized users to view request history.
 - Requester history shall include `CREATED`, `SUBMITTED`, and Requester-generated `EDITED` records. This applies to direct submission as well as saving a draft first. For direct submission, `CREATED` records request creation and `SUBMITTED` records the transition to review; the Reviewer history omits `CREATED` and requester-generated `EDITED` records while retaining `SUBMITTED` and review events.
-- When a Requester resubmits a returned request, the `RESUBMITTED` note shown to the Reviewer shall combine the Requester's edit notes recorded since the latest `RETURNED` event, in chronological order. The final note entered during the resubmit must not be duplicated. Individual `EDITED` records remain in Requester history and stay hidden from Reviewers.
+- When a Requester resubmits a returned request, the `RESUBMITTED` note shown to the Reviewer shall combine the Requester's edit notes recorded since the latest `RETURNED` event, in chronological order. The final note entered during the resubmit must not be duplicated. Individual edits made while `RETURNED` remain in Requester history and stay hidden from Reviewers; edits made while `PENDING_REVIEW` are visible to the Requester and assigned Reviewer.
+- When a Requester edits a pending request, history shall record the edit and its revision note; the Requester and assigned Reviewer shall be able to see the current details and the revision event. A `WITHDRAWN` event shall be visible in the request history to authorized participants.
 - Submission of a draft shall be shown to Reviewers as `SUBMITTED` with the transition `None → Pending Review`; `PENDING_REVIEW` shall be displayed as “Pending Review”.
 
 **FR-07: Request Assignment**
@@ -97,7 +100,7 @@ For this project, the team focuses on Macau678 purchase requests.
 
 **BR-05:** A Reviewer must provide a reason when rejecting or returning a request.
 
-**BR-06:** A Requester can only edit a request when it has been returned.
+**BR-06:** A Requester may edit their own `DRAFT`, `PENDING_REVIEW`, or `RETURNED` request. A pending edit keeps the request in `PENDING_REVIEW` and is visible to the Requester and assigned Reviewer.
 
 **BR-07:** A request must follow valid status transitions:
 - Draft → Pending Review
@@ -105,6 +108,7 @@ For this project, the team focuses on Macau678 purchase requests.
 - Pending Review → Rejected
 - Pending Review → Returned
 - Returned → Pending Review
+- Pending Review → Withdrawn (Requester withdrawal)
 
 **BR-08:** Every review decision and status change must be recorded in the request history.
 
@@ -149,7 +153,9 @@ For this project, the team focuses on Macau678 purchase requests.
 
 **AD-04:** A Reviewer cannot approve or review their own request.
 
-**AD-05:** Requesters can edit requests only after they have been returned.
+**AD-05 (superseded by AD-10):** The original Sprint 1 rule allowed editing only after return.
+
+**AD-10:** A Requester may revise or withdraw their own request while it is pending review. A pending revision does not restart the review lifecycle; the assigned Reviewer sees the latest details. Withdrawal ends review of that request. The status name `WITHDRAWN` is used for this terminal state.
 
 **AD-06:** Rejection and return decisions require a reason.
 
@@ -186,3 +192,5 @@ For this project, the team focuses on Macau678 purchase requests.
 **AC-11:** The system records review decisions and status changes in the request history.
 
 **AC-12:** Authorized users can filter requests and view basic request summaries.
+
+**AC-13:** While a request is `PENDING_REVIEW`, its Requester can edit its details and withdraw it. An edit keeps the status pending and is visible to both the Requester and assigned Reviewer; a withdrawn request is no longer reviewable or editable. The owner can edit and submit a `DRAFT`; approved and rejected request rules remain unchanged.
