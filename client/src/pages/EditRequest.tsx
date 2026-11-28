@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   fetchRequestById,
@@ -18,6 +18,7 @@ export default function EditRequest() {
   const [reviewers, setReviewers] = useState<UserSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
@@ -69,9 +70,10 @@ export default function EditRequest() {
   const isFormValid =
     isTitleValid && isDescriptionValid && isAmountValid && isJustificationValid && isReviewerValid;
 
-  const handleSave = async (shouldResubmit: boolean) => {
-    if (!isFormValid || isSubmitting) return;
+  const handleSave = async (shouldSubmit: boolean) => {
+    if (!isFormValid || isSubmitting || isSubmittingRef.current) return;
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setErrorMessage(null);
 
@@ -85,14 +87,18 @@ export default function EditRequest() {
         reason: editReason.trim() || undefined,
       });
 
-      if (shouldResubmit) {
-        await submitPurchaseRequest(requestId, editReason.trim() || "Resubmitted after modification");
+      if (shouldSubmit) {
+        const submitReason =
+          editReason.trim() ||
+          (request?.status === "DRAFT" ? undefined : "Resubmitted after modification");
+        await submitPurchaseRequest(requestId, submitReason);
       }
 
       navigate(`/requests/${requestId}`);
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to update request");
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -302,7 +308,7 @@ export default function EditRequest() {
                   <button
                     type="button"
                     className="btn btn-primary"
-                    onClick={() => handleSave(isReturnedEdit)}
+                    onClick={() => handleSave(isReturnedEdit || isDraftEdit)}
                     disabled={!isFormValid || isSubmitting}
                   >
                     {isSubmitting ? (
