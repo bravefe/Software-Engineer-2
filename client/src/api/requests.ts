@@ -12,7 +12,7 @@ export interface PurchaseRequest {
   description: string;
   amount: string | number;
   justification: string;
-  status: "DRAFT" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "RETURNED";
+  status: "DRAFT" | "PENDING_REVIEW" | "APPROVED" | "REJECTED" | "RETURNED" | "WITHDRAWN";
   requesterId: number;
   reviewerId: number;
   submittedAt: string | null;
@@ -26,7 +26,7 @@ export interface RequestHistoryEntry {
   id: number;
   requestId: number;
   actorId: number;
-  action: "CREATED" | "SUBMITTED" | "RESUBMITTED" | "EDITED" | "APPROVED" | "REJECTED" | "RETURNED";
+  action: "CREATED" | "SUBMITTED" | "RESUBMITTED" | "EDITED" | "APPROVED" | "REJECTED" | "RETURNED" | "WITHDRAWN";
   fromStatus: string | null;
   toStatus: string | null;
   reason: string | null;
@@ -127,6 +127,20 @@ export async function updatePurchaseRequest(
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     throw new Error(data.error || "Failed to update purchase request");
+  }
+  return data.request;
+}
+
+export async function withdrawPurchaseRequest(id: number): Promise<PurchaseRequest> {
+  const res = await fetch(`/api/requests/${id}/withdraw`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({}),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || "Failed to withdraw purchase request");
   }
   return data.request;
 }

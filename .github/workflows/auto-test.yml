@@ -8,6 +8,8 @@ on:
       - sprint-2
       - sprint-3
       - lab-5
+      - lab-6
+      - lab-7
     types:
       - opened
       - synchronize

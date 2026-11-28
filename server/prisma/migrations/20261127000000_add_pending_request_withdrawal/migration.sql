@@ -1,0 +1,2 @@
+ALTER TYPE "PurchaseRequestStatus" ADD VALUE 'WITHDRAWN';
+ALTER TYPE "RequestHistoryAction" ADD VALUE 'WITHDRAWN';

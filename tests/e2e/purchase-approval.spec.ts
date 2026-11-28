@@ -189,12 +189,33 @@ test("TEST-E2E-01: draft to return to resubmit to approval, with persisted histo
   await signIn(page, users.requester1);
   const requestId = await createRequest(page, title, users.reviewer1.id, false);
   await expectStatus(page, "draft");
+  await expect(page.getByTestId("action-badge-CREATED")).toBeVisible();
+  await signOut(page);
+
+  for (const reviewer of [users.reviewer1, users.reviewer2]) {
+    await signIn(page, reviewer);
+    await page.goto("/reviewer/queue");
+    await expect(page.getByText(title)).toHaveCount(0);
+    const directAccess = await page.request.get(`/api/requests/${requestId}`);
+    expect(directAccess.status()).toBe(403);
+    await page.goto(`/requests/${requestId}`);
+    await expect(page.getByText(/access denied/i)).toBeVisible();
+    await signOut(page);
+  }
+
+  await signIn(page, users.requester1);
+  await page.goto(`/requests/${requestId}`);
+  await expect(page.getByTestId("action-badge-CREATED")).toBeVisible();
   await page.getByRole("button", { name: "Submit for Review" }).click();
   await expectStatus(page, "pending_review");
+  await expect(page.getByTestId("action-badge-CREATED")).toBeVisible();
+  await expect(page.getByTestId("action-badge-SUBMITTED")).toBeVisible();
   await signOut(page);
 
   await signIn(page, users.reviewer1);
   await openQueueRequest(page, title);
+  await expect(page.getByTestId("action-badge-SUBMITTED")).toBeVisible();
+  await expect(page.getByTestId("action-badge-CREATED")).toHaveCount(0);
   await page.getByRole("button", { name: "Return", exact: true }).click();
   const returnDialog = page.getByRole("dialog");
   await returnDialog
@@ -208,15 +229,30 @@ test("TEST-E2E-01: draft to return to resubmit to approval, with persisted histo
   await signIn(page, users.requester1);
   await page.goto(`/requests/${requestId}`);
   await page.getByRole("link", { name: "Edit & Resubmit" }).click();
+  await page.locator("#edit-notes").fill("Reviewed returned request; no field changes.");
+  await page.getByRole("button", { name: "Save Changes" }).click();
+
+  await page.getByRole("link", { name: "Edit & Resubmit" }).click();
+  await page.locator("#edit-notes").fill("Confirmed no further changes in this save.");
+  await page.getByRole("button", { name: "Save Changes" }).click();
+
+  await page.getByRole("link", { name: "Edit & Resubmit" }).click();
   await page.locator("#edit-amount").fill("1450.00");
-  await page.locator("#edit-notes").fill("Updated quote amount.");
+  await page.locator("#edit-notes").fill("Updated quote amount and attached the quote.");
   await page.getByRole("button", { name: "Save & Resubmit for Review" }).click();
   await expectStatus(page, "pending_review");
+  await expect(page.getByTestId("action-badge-EDITED")).toHaveCount(3);
   await expect(page.getByTestId("action-badge-RESUBMITTED")).toBeVisible();
   await signOut(page);
 
   await signIn(page, users.reviewer1);
   await openQueueRequest(page, title);
+  await expect(page.getByTestId("action-badge-CREATED")).toHaveCount(0);
+  await expect(page.getByTestId("action-badge-EDITED")).toHaveCount(0);
+  await expect(page.getByText(/Requester changes since return:/)).toBeVisible();
+  await expect(page.getByText(/Reviewed returned request; no field changes\./)).toBeVisible();
+  await expect(page.getByText(/Confirmed no further changes in this save\./)).toBeVisible();
+  await expect(page.getByText(/Updated quote amount and attached the quote\./)).toBeVisible();
   await page.getByRole("button", { name: "Approve", exact: true }).click();
   await page
     .getByRole("dialog")
@@ -239,6 +275,8 @@ test("TEST-E2E-01: draft to return to resubmit to approval, with persisted histo
     "SUBMITTED",
     "RETURNED",
     "EDITED",
+    "EDITED",
+    "EDITED",
     "RESUBMITTED",
     "APPROVED",
   ]);
@@ -249,10 +287,15 @@ test("TEST-E2E-02: rejection requires a reason and remains terminal", async ({ p
 
   await signIn(page, users.requester1);
   const requestId = await createRequest(page, title, users.reviewer1.id, true);
+  await page.goto(`/requests/${requestId}`);
+  await expect(page.getByTestId("action-badge-CREATED")).toBeVisible();
+  await expect(page.getByTestId("action-badge-SUBMITTED")).toBeVisible();
   await signOut(page);
 
   await signIn(page, users.reviewer1);
   await openQueueRequest(page, title);
+  await expect(page.getByTestId("action-badge-CREATED")).toHaveCount(0);
+  await expect(page.getByTestId("action-badge-SUBMITTED")).toBeVisible();
   await page.getByRole("button", { name: "Reject", exact: true }).click();
   const rejectDialog = page.getByRole("dialog");
   const confirmRejection = rejectDialog.getByRole("button", { name: "Confirm Rejection" });
@@ -419,18 +462,37 @@ test("TEST-E2E-04: multi-criteria filter and search across requester and reviewe
   // 4. Reviewer Reports filtering updates both the request list and summary metrics
   await page.goto("/reports");
   await expect(page.getByRole("heading", { name: "Purchase Request Reports" })).toBeVisible();
-  await page.locator("#report-status").selectOption("DRAFT");
+  // Drafts are private to the Requester: no DRAFT filter option or status card for Reviewers.
+  await expect(page.locator("#report-status option[value='DRAFT']")).toHaveCount(0);
+  await expect(page.getByTestId("report-status-DRAFT")).toHaveCount(0);
+  await expect(page.getByTestId("report-status-WITHDRAWN")).toBeVisible();
+  // Unfiltered report table lists the assigned pending request but not the assigned draft.
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleA })).toHaveCount(0);
+
+  // Backend: an explicit DRAFT report filter returns nothing, with zero counts and "0.00" amounts.
+  const draftSummary = await page.request.get("/api/reports/summary?status=DRAFT");
+  expect(draftSummary.status()).toBe(200);
+  const draftSummaryBody = await draftSummary.json();
+  expect(draftSummaryBody.totalCount).toBe(0);
+  expect(draftSummaryBody.totalAmount).toBe("0.00");
+  expect(draftSummaryBody.statusCounts.DRAFT).toBe(0);
+  expect(draftSummaryBody.statusAmounts.DRAFT).toBe("0.00");
+  const draftRows = await page.request.get("/api/reports/requests?status=DRAFT");
+  expect((await draftRows.json()).requests).toEqual([]);
+  const allRows = await (await page.request.get("/api/reports/requests")).json();
+  expect(allRows.requests.some((r: { status: string }) => r.status === "DRAFT")).toBe(false);
+
+  // Filtering by an allowed status and today's date still updates table and summary.
+  await page.locator("#report-status").selectOption("PENDING_REVIEW");
   const reportDate = new Date().toISOString().slice(0, 10);
   await page.locator("#report-start-date").fill(reportDate);
   await page.locator("#report-end-date").fill(reportDate);
   await page.locator("#report-filter-submit").click();
-  await expect(page.getByRole("row").filter({ hasText: titleA })).toBeVisible();
-  await expect(page.getByRole("row").filter({ hasText: titleB })).toHaveCount(0);
-  await expect(page.getByTestId("report-total-count")).toHaveText("1");
-  await expect(page.getByTestId("report-total-amount")).toHaveText("$1500.00");
-  await expect(page.getByTestId("report-status-DRAFT")).toHaveText("1");
-  await expect(page.getByTestId("report-amount-DRAFT")).toHaveText("$1500.00");
-  await expect(page.getByTestId("report-status-PENDING_REVIEW")).toHaveText("0");
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleA })).toHaveCount(0);
+  await expect(page.getByTestId("report-status-PENDING_REVIEW")).not.toHaveText("0");
+  await expect(page.getByTestId("report-status-APPROVED")).toHaveText("0");
 
   await page.locator("#report-start-date").fill("2099-01-01");
   await page.locator("#report-end-date").fill("2099-01-31");
@@ -440,7 +502,8 @@ test("TEST-E2E-04: multi-criteria filter and search across requester and reviewe
   await expect(page.getByTestId("report-total-amount")).toHaveText("$0.00");
 
   await page.locator("#report-filter-clear").click();
-  await expect(page.getByRole("row").filter({ hasText: titleA })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleA })).toHaveCount(0);
   await signOut(page);
 });
 
@@ -448,3 +511,91 @@ test.fixme(
   "TEST-E2E-05: cross-viewport responsive design verification (outside Issue 6 scope)",
   async () => {},
 );
+
+test("TEST-E2E-06: pending request edit, reviewer visibility, withdrawal, and terminal protection", async ({
+  page,
+}) => {
+  const title = `Issue 66 Pending Edit & Withdraw Journey ${runId}`;
+
+  // 1. Requester signs in and submits a new request
+  await signIn(page, users.requester1);
+  const requestId = await createRequest(page, title, users.reviewer1.id, true);
+  await expectStatus(page, "pending_review");
+  await expect(page.getByTestId("action-badge-SUBMITTED")).toBeVisible();
+
+  // 2. Requester edits the pending request
+  await page.getByRole("link", { name: "Edit Request" }).click();
+  await expect(page.getByRole("heading", { name: "Edit Pending Request" })).toBeVisible();
+  await page.locator("#edit-amount").fill("1750.00");
+  await page.locator("#edit-notes").fill("Adjusted pricing following vendor discount update.");
+  await page.getByRole("button", { name: "Save Changes" }).click();
+
+  // Confirm navigated back to request detail, status remains pending_review
+  await expect(page.getByRole("heading", { name: title })).toBeVisible();
+  await expectStatus(page, "pending_review");
+  await expect(page.getByText("$1750.00")).toBeVisible();
+  await expect(page.getByTestId("action-badge-EDITED")).toBeVisible();
+  await expect(page.getByText("Adjusted pricing following vendor discount update.")).toBeVisible();
+  await signOut(page);
+
+  // 3. Assigned Reviewer signs in: sees updated details and EDITED history
+  await signIn(page, users.reviewer1);
+  await openQueueRequest(page, title);
+  await expectStatus(page, "pending_review");
+  await expect(page.getByText("$1750.00")).toBeVisible();
+  await expect(page.getByTestId("action-badge-EDITED")).toBeVisible();
+  await expect(page.getByText("Adjusted pricing following vendor discount update.")).toBeVisible();
+  await signOut(page);
+
+  // 4. Unassigned Reviewer is blocked
+  await signIn(page, users.reviewer2);
+  const directAccess = await page.request.get(`/api/requests/${requestId}`);
+  expect(directAccess.status()).toBe(403);
+  await page.goto(`/requests/${requestId}`);
+  await expect(page.getByRole("alert")).toContainText("Access denied");
+  await signOut(page);
+
+  // 5. Requester withdraws the request
+  await signIn(page, users.requester1);
+  await page.goto(`/requests/${requestId}`);
+  page.on("dialog", (dialog) => dialog.accept());
+  await page.getByRole("button", { name: "Withdraw Request" }).click();
+  await expectStatus(page, "withdrawn");
+  await expect(page.getByTestId("action-badge-WITHDRAWN")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Withdraw Request" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Edit Request" })).toHaveCount(0);
+
+  // Confirm requester cannot edit withdrawn request via URL
+  await page.goto(`/requests/${requestId}/edit`);
+  await expect(page.getByRole("heading", { name: "Editing Not Allowed" })).toBeVisible();
+  await signOut(page);
+
+  // 6. Assigned Reviewer confirms withdrawn request is not actionable
+  await signIn(page, users.reviewer1);
+  await page.goto(`/requests/${requestId}`);
+  await expectStatus(page, "withdrawn");
+  await expect(page.getByRole("button", { name: "Approve" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Reject" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Return" })).toHaveCount(0);
+
+  const blockedReview = await page.context().request.post(
+    new URL(`/api/requests/${requestId}/review`, page.url()).toString(),
+    { data: { decision: "APPROVE" } },
+  );
+  expect(blockedReview.status()).toBe(409);
+  expect((await blockedReview.json()).code).toBe("INVALID_STATE_TRANSITION");
+  await signOut(page);
+
+  // 7. Verify unaffected workflows: another pending request can still be approved
+  const unaffectedTitle = `Issue 66 Unaffected Workflow ${runId}`;
+  await signIn(page, users.requester1);
+  await createRequest(page, unaffectedTitle, users.reviewer1.id, true);
+  await signOut(page);
+
+  await signIn(page, users.reviewer1);
+  await openQueueRequest(page, unaffectedTitle);
+  await page.getByRole("button", { name: "Approve", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Confirm Approval" }).click();
+  await expectStatus(page, "approved");
+  await signOut(page);
+});

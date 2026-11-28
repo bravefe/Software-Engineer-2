@@ -2,7 +2,16 @@ import { describe, expect, it, vi } from "vitest";
 import { requireRole } from "../../server/src/middleware/auth";
 import { hashPassword, verifyPassword } from "../../server/src/utils/auth";
 import { aggregateReportMetrics } from "../../server/src/utils/reports";
-import { isValidTransition } from "../../server/src/utils/workflow";
+import {
+  parsePositiveAmount,
+  validateRequestText,
+  validateRequestTitle,
+} from "../../server/src/utils/requestValidation";
+
+import {
+  isValidTransition,
+  VALID_STATUS_TRANSITIONS,
+} from "../../server/src/utils/workflow";
 
 describe("Unit tests", () => {
   describe("TEST-UNIT-01: password hashing and salt verification", () => {
@@ -12,7 +21,9 @@ describe("Unit tests", () => {
 
       expect(hash).toBeDefined();
       expect(hash).not.toEqual(plaintext);
-      expect(hash.startsWith("$2b$10$") || hash.startsWith("$2a$10$")).toBe(true);
+      expect(hash.startsWith("$2b$10$") || hash.startsWith("$2a$10$")).toBe(
+        true,
+      );
 
       const isMatch = await verifyPassword(plaintext, hash);
       expect(isMatch).toBe(true);
@@ -30,7 +41,14 @@ describe("Unit tests", () => {
   describe("TEST-UNIT-02: role-based authorization guard logic", () => {
     it("denies access with HTTP 403 when user role is not permitted", () => {
       const middleware = requireRole(["REVIEWER"]);
-      const req = { user: { id: 1, email: "req@macau678.com", name: "Req", role: "REQUESTER" as const } } as any;
+      const req = {
+        user: {
+          id: 1,
+          email: "req@macau678.com",
+          name: "Req",
+          role: "REQUESTER" as const,
+        },
+      } as any;
       const statusFn = vi.fn().mockReturnThis();
       const jsonFn = vi.fn();
       const res = { status: statusFn, json: jsonFn } as any;
@@ -49,7 +67,14 @@ describe("Unit tests", () => {
 
     it("calls next() when user has the permitted role", () => {
       const middleware = requireRole(["REVIEWER"]);
-      const req = { user: { id: 2, email: "rev@macau678.com", name: "Rev", role: "REVIEWER" as const } } as any;
+      const req = {
+        user: {
+          id: 2,
+          email: "rev@macau678.com",
+          name: "Rev",
+          role: "REVIEWER" as const,
+        },
+      } as any;
       const res = { status: vi.fn().mockReturnThis(), json: vi.fn() } as any;
       const next = vi.fn();
 
@@ -83,13 +108,28 @@ describe("Unit tests", () => {
       reason?: string;
     }) {
       if (params.requesterId === params.actorId) {
-        return { allowed: false, code: "SELF_REVIEW_FORBIDDEN", error: "Cannot review own request" };
+        return {
+          allowed: false,
+          code: "SELF_REVIEW_FORBIDDEN",
+          error: "Cannot review own request",
+        };
       }
       if (params.reviewerId !== params.actorId) {
-        return { allowed: false, code: "ACCESS_DENIED", error: "Not assigned reviewer" };
+        return {
+          allowed: false,
+          code: "ACCESS_DENIED",
+          error: "Not assigned reviewer",
+        };
       }
-      if ((params.decision === "REJECT" || params.decision === "RETURN") && (!params.reason || !params.reason.trim())) {
-        return { allowed: false, code: "VALIDATION_ERROR", error: "Reason required" };
+      if (
+        (params.decision === "REJECT" || params.decision === "RETURN") &&
+        (!params.reason || !params.reason.trim())
+      ) {
+        return {
+          allowed: false,
+          code: "VALIDATION_ERROR",
+          error: "Reason required",
+        };
       }
       return { allowed: true };
     }
@@ -143,6 +183,7 @@ describe("Unit tests", () => {
         { from: "PENDING_REVIEW", to: "APPROVED" },
         { from: "PENDING_REVIEW", to: "REJECTED" },
         { from: "PENDING_REVIEW", to: "RETURNED" },
+        { from: "PENDING_REVIEW", to: "WITHDRAWN" },
         { from: "RETURNED", to: "PENDING_REVIEW" },
       ];
 
@@ -159,14 +200,23 @@ describe("Unit tests", () => {
         { from: "DRAFT", to: "APPROVED" },
         { from: "DRAFT", to: "RETURNED" },
         { from: "DRAFT", to: "REJECTED" },
+        { from: "DRAFT", to: "WITHDRAWN" },
         { from: "APPROVED", to: "PENDING_REVIEW" },
         { from: "APPROVED", to: "REJECTED" },
         { from: "APPROVED", to: "RETURNED" },
+        { from: "APPROVED", to: "WITHDRAWN" },
         { from: "REJECTED", to: "RETURNED" },
         { from: "REJECTED", to: "PENDING_REVIEW" },
+        { from: "REJECTED", to: "WITHDRAWN" },
         { from: "RETURNED", to: "APPROVED" },
         { from: "RETURNED", to: "REJECTED" },
+        { from: "RETURNED", to: "WITHDRAWN" },
         { from: "PENDING_REVIEW", to: "DRAFT" },
+        { from: "WITHDRAWN", to: "PENDING_REVIEW" },
+        { from: "WITHDRAWN", to: "APPROVED" },
+        { from: "WITHDRAWN", to: "REJECTED" },
+        { from: "WITHDRAWN", to: "RETURNED" },
+        { from: "WITHDRAWN", to: "DRAFT" },
       ];
 
       for (const { from, to } of invalidTransitions) {
@@ -178,7 +228,69 @@ describe("Unit tests", () => {
     });
   });
 
-  it.todo("TEST-UNIT-05: input validation and boundary checks");
+  describe("TEST-UNIT-05: input validation and boundary checks", () => {
+    it("enforces title minimum and maximum boundaries", () => {
+      expect(validateRequestTitle("")).toBe(
+        "Title must be at least 3 characters",
+      );
+      expect(validateRequestTitle("   ")).toBe(
+        "Title must be at least 3 characters",
+      );
+      expect(validateRequestTitle("AB")).toBe(
+        "Title must be at least 3 characters",
+      );
+      expect(validateRequestTitle("ABC")).toBeNull();
+      expect(validateRequestTitle("A".repeat(150))).toBeNull();
+      expect(validateRequestTitle("A".repeat(151))).toBe(
+        "Title must not exceed 150 characters",
+      );
+    });
+
+    it("enforces description and justification required and maximum boundaries", () => {
+      expect(validateRequestText("", "Description")).toBe(
+        "Description is required",
+      );
+      expect(validateRequestText("   ", "Description")).toBe(
+        "Description is required",
+      );
+      expect(validateRequestText("A".repeat(2000), "Description")).toBeNull();
+      expect(validateRequestText("A".repeat(2001), "Description")).toBe(
+        "Description must not exceed 2000 characters",
+      );
+      expect(validateRequestText("", "Justification")).toBe(
+        "Justification is required",
+      );
+      expect(validateRequestText("   ", "Justification")).toBe(
+        "Justification is required",
+      );
+      expect(validateRequestText("A".repeat(2000), "Justification")).toBeNull();
+      expect(validateRequestText("A".repeat(2001), "Justification")).toBe(
+        "Justification must not exceed 2000 characters",
+      );
+    });
+
+    it("accepts valid amount boundaries and rejects invalid amounts", () => {
+      expect(parsePositiveAmount("").amount).toBeNull();
+      expect(parsePositiveAmount("   ").amount).toBeNull();
+      expect(parsePositiveAmount("0.00").amount).toBeNull();
+      expect(parsePositiveAmount("-10.50").amount).toBeNull();
+      expect(parsePositiveAmount("0.01")).toEqual({
+        amount: 0.01,
+        error: null,
+      });
+      expect(parsePositiveAmount("1000000.00")).toEqual({
+        amount: 1000000,
+        error: null,
+      });
+      expect(parsePositiveAmount("450abc").amount).toBeNull();
+      expect(parsePositiveAmount("450.001").amount).toBeNull();
+      expect(parsePositiveAmount("9999999999.99")).toEqual({
+        amount: 9999999999.99,
+        error: null,
+      });
+      expect(parsePositiveAmount("10000000000.00").amount).toBeNull();
+    });
+  });
 
   describe("TEST-UNIT-06: financial aggregation and status metrics math", () => {
     it("counts request statuses and adds decimal amounts without rounding errors", () => {
@@ -188,16 +300,18 @@ describe("Unit tests", () => {
         { status: "APPROVED", amount: "300.00" },
         { status: "PENDING_REVIEW", amount: "150.00" },
         { status: "REJECTED", amount: "100.00" },
+        { status: "WITHDRAWN", amount: "75.00" },
       ]);
 
       expect(metrics).toEqual({
-        totalCount: 5,
+        totalCount: 6,
         statusCounts: {
           DRAFT: 0,
           PENDING_REVIEW: 1,
           APPROVED: 3,
           REJECTED: 1,
           RETURNED: 0,
+          WITHDRAWN: 1,
         },
         statusAmounts: {
           DRAFT: "0.00",
@@ -205,8 +319,9 @@ describe("Unit tests", () => {
           APPROVED: "1000.00",
           REJECTED: "100.00",
           RETURNED: "0.00",
+          WITHDRAWN: "75.00",
         },
-        totalAmount: "1250.00",
+        totalAmount: "1325.00",
       });
     });
 
@@ -219,6 +334,7 @@ describe("Unit tests", () => {
           APPROVED: 0,
           REJECTED: 0,
           RETURNED: 0,
+          WITHDRAWN: 0,
         },
         statusAmounts: {
           DRAFT: "0.00",
@@ -226,6 +342,7 @@ describe("Unit tests", () => {
           APPROVED: "0.00",
           REJECTED: "0.00",
           RETURNED: "0.00",
+          WITHDRAWN: "0.00",
         },
         totalAmount: "0.00",
       });

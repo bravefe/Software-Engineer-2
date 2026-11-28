@@ -8,6 +8,11 @@ export default defineConfig({
   use: {
     baseURL: "http://localhost:5173",
     trace: "on-first-retry",
+    video: {
+      mode: "on",
+      size: { width: 1280, height: 720 },
+    },
+    viewport: { width: 1280, height: 720 },
   },
   webServer: [
     {

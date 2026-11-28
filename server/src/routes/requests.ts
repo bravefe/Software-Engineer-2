@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth, requireRole } from "../middleware/auth";
 import { prisma } from "../prisma";
+import { parsePositiveAmount, validateRequestText, validateRequestTitle } from "../utils/requestValidation";
 import { isValidTransition } from "../utils/workflow";
 
 const router = Router();
@@ -44,7 +45,7 @@ router.get("/", async (req, res): Promise<void> => {
   };
 
   // Validate status filter if provided
-  const validStatuses = ["DRAFT", "PENDING_REVIEW", "APPROVED", "REJECTED", "RETURNED"];
+  const validStatuses = ["DRAFT", "PENDING_REVIEW", "APPROVED", "REJECTED", "RETURNED", "WITHDRAWN"];
   if (status && !validStatuses.includes(status)) {
     res.status(400).json({
       error: `Invalid status filter. Valid values: ${validStatuses.join(", ")}`,
@@ -97,13 +98,20 @@ router.get("/", async (req, res): Promise<void> => {
     const ownershipClause =
       currentUser.role === "REQUESTER"
         ? { requesterId: currentUser.id }
-        : { reviewerId: currentUser.id };
+        : { reviewerId: currentUser.id, status: { not: "DRAFT" as const } };
+
+    // Drafts are private to their Requester; a Reviewer asking for DRAFT gets nothing.
+    if (currentUser.role === "REVIEWER" && status === "DRAFT") {
+      res.status(200).json({ requests: [] });
+      return;
+    }
 
     // Build dynamic filter predicates on top of mandatory authorization scope
     const whereClause: Record<string, unknown> = { ...ownershipClause };
 
     if (status) {
-      whereClause.status = status;
+      // AND keeps the ownership clause (incl. Reviewer `status: { not: "DRAFT" }`) intact.
+      whereClause.AND = [{ status }];
     }
 
     if (parsedStartDate || parsedEndDate) {
@@ -144,39 +152,43 @@ router.post("/", requireRole(["REQUESTER"]), async (req, res): Promise<void> => 
   const currentUser = req.user!;
   const { title, description, amount, justification, reviewerId, status } = req.body || {};
 
-  // Title validation: 3 to 150 characters
-  if (!title || typeof title !== "string" || title.trim().length < 3 || title.trim().length > 150) {
+  const titleError = validateRequestTitle(title);
+  if (titleError) {
     res.status(400).json({
-      error: "Title must be between 3 and 150 characters",
+      error: titleError,
       code: "VALIDATION_ERROR",
+      fieldErrors: { title: titleError },
     });
     return;
   }
 
-  // Description validation: mandatory, up to 2000 characters
-  if (!description || typeof description !== "string" || description.trim().length === 0 || description.trim().length > 2000) {
+  const descriptionError = validateRequestText(description, "Description");
+  if (descriptionError) {
     res.status(400).json({
-      error: "Description is required and must not exceed 2000 characters",
+      error: descriptionError,
       code: "VALIDATION_ERROR",
+      fieldErrors: { description: descriptionError },
     });
     return;
   }
 
-  // Amount validation: positive decimal > 0.00
-  const parsedAmount = Number.parseFloat(amount);
-  if (amount === undefined || amount === null || Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+  const parsedAmountResult = parsePositiveAmount(amount);
+  if (parsedAmountResult.amount === null) {
     res.status(400).json({
-      error: "Amount must be a positive number greater than 0.00",
+      error: parsedAmountResult.error,
       code: "VALIDATION_ERROR",
+      fieldErrors: { amount: parsedAmountResult.error },
     });
     return;
   }
+  const parsedAmount: number = parsedAmountResult.amount;
 
-  // Justification validation: mandatory, up to 2000 characters
-  if (!justification || typeof justification !== "string" || justification.trim().length === 0 || justification.trim().length > 2000) {
+  const justificationError = validateRequestText(justification, "Justification");
+  if (justificationError) {
     res.status(400).json({
-      error: "Justification is required and must not exceed 2000 characters",
+      error: justificationError,
       code: "VALIDATION_ERROR",
+      fieldErrors: { justification: justificationError },
     });
     return;
   }
@@ -235,12 +247,25 @@ router.post("/", requireRole(["REQUESTER"]), async (req, res): Promise<void> => 
         data: {
           requestId: createdRequest.id,
           actorId: currentUser.id,
-          action: targetStatus === "DRAFT" ? "CREATED" : "SUBMITTED",
+          action: "CREATED",
           fromStatus: null,
-          toStatus: targetStatus,
-          reason: targetStatus === "DRAFT" ? "Draft purchase request created" : "Purchase request submitted for review",
+          toStatus: targetStatus === "DRAFT" ? "DRAFT" : null,
+          reason: targetStatus === "DRAFT" ? "Draft purchase request created" : "Purchase request created",
         },
       });
+
+      if (targetStatus === "PENDING_REVIEW") {
+        await tx.requestHistory.create({
+          data: {
+            requestId: createdRequest.id,
+            actorId: currentUser.id,
+            action: "SUBMITTED",
+            fromStatus: null,
+            toStatus: "PENDING_REVIEW",
+            reason: "Purchase request submitted for review",
+          },
+        });
+      }
 
       return createdRequest;
     });
@@ -281,6 +306,15 @@ router.get("/:id", async (req, res): Promise<void> => {
       return;
     }
 
+    // Drafts are private to their owner, even when assigned to this reviewer.
+    if (currentUser.role === "REVIEWER" && request.status === "DRAFT") {
+      res.status(403).json({
+        error: "Access denied: draft requests are visible only to their requester",
+        code: "ACCESS_DENIED",
+      });
+      return;
+    }
+
     // Requester can only access own request (BR-09, AC-10)
     if (currentUser.role === "REQUESTER" && request.requesterId !== currentUser.id) {
       res.status(403).json({
@@ -308,7 +342,7 @@ router.get("/:id", async (req, res): Promise<void> => {
   }
 });
 
-// PATCH /api/requests/:id - edit request (strictly permitted when status is RETURNED)
+// PATCH /api/requests/:id - edit an owned pending or returned request
 router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void> => {
   const requestId = Number.parseInt(String(req.params.id), 10);
   if (Number.isNaN(requestId)) {
@@ -336,10 +370,10 @@ router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void>
       return;
     }
 
-    // BR-06 / FR-05: Requesters can only edit requests in RETURNED status
-    if (existing.status !== "RETURNED") {
+    // BR-06 / FR-05: owners can edit drafts, pending requests, and returned requests.
+    if (existing.status !== "DRAFT" && existing.status !== "RETURNED" && existing.status !== "PENDING_REVIEW") {
       res.status(409).json({
-        error: "Editing is permitted only when request is in RETURNED status",
+        error: "Editing is permitted only when a request is DRAFT, PENDING_REVIEW, or RETURNED",
         code: "INVALID_STATE_TRANSITION",
       });
       return;
@@ -349,10 +383,12 @@ router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void>
     const updateData: any = {};
 
     if (title !== undefined) {
-      if (typeof title !== "string" || title.trim().length < 3 || title.trim().length > 150) {
+      const titleError = validateRequestTitle(title);
+      if (titleError) {
         res.status(400).json({
-          error: "Title must be between 3 and 150 characters",
+          error: titleError,
           code: "VALIDATION_ERROR",
+          fieldErrors: { title: titleError },
         });
         return;
       }
@@ -360,10 +396,12 @@ router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void>
     }
 
     if (description !== undefined) {
-      if (typeof description !== "string" || description.trim().length === 0 || description.trim().length > 2000) {
+      const descriptionError = validateRequestText(description, "Description");
+      if (descriptionError) {
         res.status(400).json({
-          error: "Description is required and must not exceed 2000 characters",
+          error: descriptionError,
           code: "VALIDATION_ERROR",
+          fieldErrors: { description: descriptionError },
         });
         return;
       }
@@ -371,29 +409,33 @@ router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void>
     }
 
     if (amount !== undefined) {
-      const parsedAmount = Number.parseFloat(amount);
-      if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      const parsedAmountResult = parsePositiveAmount(amount);
+      if (parsedAmountResult.amount === null) {
         res.status(400).json({
-          error: "Amount must be a positive number greater than 0.00",
+          error: parsedAmountResult.error,
           code: "VALIDATION_ERROR",
+          fieldErrors: { amount: parsedAmountResult.error },
         });
         return;
       }
-      updateData.amount = parsedAmount.toFixed(2);
+      updateData.amount = parsedAmountResult.amount.toFixed(2);
     }
 
     if (justification !== undefined) {
-      if (typeof justification !== "string" || justification.trim().length === 0 || justification.trim().length > 2000) {
+      const justificationError = validateRequestText(justification, "Justification");
+      if (justificationError) {
         res.status(400).json({
-          error: "Justification is required and must not exceed 2000 characters",
+          error: justificationError,
           code: "VALIDATION_ERROR",
+          fieldErrors: { justification: justificationError },
         });
         return;
       }
       updateData.justification = justification.trim();
     }
 
-    if (reviewerId !== undefined) {
+    // Keep assignment stable while a Reviewer is actively reviewing the request.
+    if (reviewerId !== undefined && existing.status !== "PENDING_REVIEW") {
       const parsedReviewerId = Number.parseInt(reviewerId, 10);
       const reviewer = await prisma.user.findFirst({
         where: { id: parsedReviewerId, role: "REVIEWER", isActive: true },
@@ -408,15 +450,29 @@ router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void>
       updateData.reviewerId = parsedReviewerId;
     }
 
-    const updated = await prisma.$transaction(async (tx) => {
-      const updatedRequest = await tx.purchaseRequest.update({
-        where: { id: requestId },
-        data: updateData,
-        include: {
-          requester: { select: { id: true, name: true, email: true } },
-          reviewer: { select: { id: true, name: true, email: true } },
-        },
+    if (Object.keys(updateData).length === 0) {
+      res.status(400).json({
+        error: "At least one request detail must be provided",
+        code: "VALIDATION_ERROR",
       });
+      return;
+    }
+
+    const editReason = req.body?.reason;
+    if (editReason !== undefined && (typeof editReason !== "string" || editReason.trim().length > 2000)) {
+      res.status(400).json({
+        error: "Revision note must be a string of at most 2000 characters",
+        code: "VALIDATION_ERROR",
+      });
+      return;
+    }
+
+    const updated = await prisma.$transaction(async (tx) => {
+      const result = await tx.purchaseRequest.updateMany({
+        where: { id: requestId, requesterId: currentUser.id, status: existing.status },
+        data: updateData,
+      });
+      if (result.count !== 1) return null;
 
       await tx.requestHistory.create({
         data: {
@@ -425,17 +481,106 @@ router.patch("/:id", requireRole(["REQUESTER"]), async (req, res): Promise<void>
           action: "EDITED",
           fromStatus: existing.status,
           toStatus: existing.status,
-          reason: req.body.reason?.trim() || "Request details updated by requester",
+          reason: editReason?.trim() || "Request details updated by requester",
         },
       });
 
-      return updatedRequest;
+      return tx.purchaseRequest.findUnique({
+        where: { id: requestId },
+        include: {
+          requester: { select: { id: true, name: true, email: true } },
+          reviewer: { select: { id: true, name: true, email: true } },
+        },
+      });
     });
+
+    if (!updated) {
+      res.status(409).json({
+        error: "Request status changed before the update could be saved",
+        code: "INVALID_STATE_TRANSITION",
+      });
+      return;
+    }
 
     res.status(200).json({ request: updated });
   } catch (error) {
     res.status(500).json({
       error: "Failed to update purchase request",
+      code: "INTERNAL_SERVER_ERROR",
+    });
+  }
+});
+
+// POST /api/requests/:id/withdraw - withdraw an owned pending request
+router.post("/:id/withdraw", requireRole(["REQUESTER"]), async (req, res): Promise<void> => {
+  const requestId = Number.parseInt(String(req.params.id), 10);
+  if (Number.isNaN(requestId)) {
+    res.status(400).json({ error: "Invalid request ID", code: "VALIDATION_ERROR" });
+    return;
+  }
+
+  const currentUser = req.user!;
+
+  try {
+    const existing = await prisma.purchaseRequest.findUnique({ where: { id: requestId } });
+    if (!existing) {
+      res.status(404).json({ error: "Purchase request not found", code: "NOT_FOUND" });
+      return;
+    }
+    if (existing.requesterId !== currentUser.id) {
+      res.status(403).json({
+        error: "Access denied: you can only withdraw your own requests",
+        code: "ACCESS_DENIED",
+      });
+      return;
+    }
+    if (existing.status !== "PENDING_REVIEW") {
+      res.status(409).json({
+        error: "Only requests in PENDING_REVIEW status can be withdrawn",
+        code: "INVALID_STATE_TRANSITION",
+      });
+      return;
+    }
+
+    const withdrawn = await prisma.$transaction(async (tx) => {
+      const result = await tx.purchaseRequest.updateMany({
+        where: { id: requestId, requesterId: currentUser.id, status: "PENDING_REVIEW" },
+        data: { status: "WITHDRAWN" },
+      });
+      if (result.count !== 1) return null;
+
+      await tx.requestHistory.create({
+        data: {
+          requestId,
+          actorId: currentUser.id,
+          action: "WITHDRAWN",
+          fromStatus: "PENDING_REVIEW",
+          toStatus: "WITHDRAWN",
+          reason: "Request withdrawn by requester",
+        },
+      });
+
+      return tx.purchaseRequest.findUnique({
+        where: { id: requestId },
+        include: {
+          requester: { select: { id: true, name: true, email: true } },
+          reviewer: { select: { id: true, name: true, email: true } },
+        },
+      });
+    });
+
+    if (!withdrawn) {
+      res.status(409).json({
+        error: "Request is no longer pending review",
+        code: "INVALID_STATE_TRANSITION",
+      });
+      return;
+    }
+
+    res.status(200).json({ request: withdrawn });
+  } catch (error) {
+    res.status(500).json({
+      error: "Failed to withdraw purchase request",
       code: "INTERNAL_SERVER_ERROR",
     });
   }
@@ -492,14 +637,43 @@ router.post("/:id/submit", requireRole(["REQUESTER"]), async (req, res): Promise
         },
       });
 
+      let historyReason = req.body?.reason?.trim();
+      if (action === "RESUBMITTED") {
+        const lastReturn = await tx.requestHistory.findFirst({
+          where: { requestId: existing.id, action: "RETURNED" },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        });
+        const editsSinceReturn = await tx.requestHistory.findMany({
+          where: {
+            requestId: existing.id,
+            actorId: currentUser.id,
+            action: "EDITED",
+            ...(lastReturn ? { createdAt: { gte: lastReturn.createdAt } } : {}),
+          },
+          orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+        });
+        const editNotes = editsSinceReturn
+          .map((entry) => entry.reason?.trim())
+          .filter((reason): reason is string => Boolean(reason));
+
+        // The edit form sends its final note with both PATCH and submit. Include
+        // it only once, while retaining every earlier edit note in the summary.
+        if (historyReason && historyReason !== editNotes[editNotes.length - 1]) {
+          editNotes.push(historyReason);
+        }
+        if (editNotes.length > 0) {
+          historyReason = `Requester changes since return: ${editNotes.join(" | ")}`.slice(0, 2000);
+        }
+      }
+
       await tx.requestHistory.create({
         data: {
           requestId: existing.id,
           actorId: currentUser.id,
           action,
-          fromStatus: existing.status,
+          fromStatus: action === "SUBMITTED" ? null : existing.status,
           toStatus: "PENDING_REVIEW",
-          reason: req.body?.reason?.trim() || (action === "RESUBMITTED" ? "Request resubmitted after modifications" : "Draft submitted for review"),
+          reason: historyReason || (action === "RESUBMITTED" ? "Request resubmitted after modifications" : "Draft submitted for review"),
         },
       });
 
@@ -597,14 +771,11 @@ router.post("/:id/review", requireRole(["REVIEWER"]), async (req, res): Promise<
     }
 
     const updated = await prisma.$transaction(async (tx) => {
-      const updatedRequest = await tx.purchaseRequest.update({
-        where: { id: requestId },
+      const result = await tx.purchaseRequest.updateMany({
+        where: { id: requestId, reviewerId: currentUser.id, status: "PENDING_REVIEW" },
         data: { status: nextStatus },
-        include: {
-          requester: { select: { id: true, name: true, email: true } },
-          reviewer: { select: { id: true, name: true, email: true } },
-        },
       });
+      if (result.count !== 1) return null;
 
       await tx.requestHistory.create({
         data: {
@@ -617,8 +788,22 @@ router.post("/:id/review", requireRole(["REVIEWER"]), async (req, res): Promise<
         },
       });
 
-      return updatedRequest;
+      return tx.purchaseRequest.findUnique({
+        where: { id: requestId },
+        include: {
+          requester: { select: { id: true, name: true, email: true } },
+          reviewer: { select: { id: true, name: true, email: true } },
+        },
+      });
     });
+
+    if (!updated) {
+      res.status(409).json({
+        error: "Request is no longer pending review",
+        code: "INVALID_STATE_TRANSITION",
+      });
+      return;
+    }
 
     res.status(200).json({ request: updated });
   } catch (error) {
@@ -666,12 +851,30 @@ router.get("/:id/history", async (req, res): Promise<void> => {
       return;
     }
 
+    if (currentUser.role === "REVIEWER" && request.status === "DRAFT") {
+      res.status(403).json({
+        error: "Access denied: draft requests are visible only to their requester",
+        code: "ACCESS_DENIED",
+      });
+      return;
+    }
+
     const history = await prisma.requestHistory.findMany({
-      where: { requestId },
+      where: {
+        requestId,
+        ...(currentUser.role === "REVIEWER"
+          ? {
+              OR: [
+                { action: { notIn: ["CREATED", "EDITED"] } },
+                { action: "EDITED", fromStatus: "PENDING_REVIEW" },
+              ],
+            }
+          : {}),
+      },
       include: {
         actor: { select: { id: true, name: true, email: true, role: true } },
       },
-      orderBy: { createdAt: "asc" },
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
     });
 
     res.status(200).json({ history });

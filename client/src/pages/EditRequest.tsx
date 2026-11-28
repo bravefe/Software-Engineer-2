@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   fetchRequestById,
@@ -18,6 +18,7 @@ export default function EditRequest() {
   const [reviewers, setReviewers] = useState<UserSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
@@ -36,8 +37,9 @@ export default function EditRequest() {
       return;
     }
 
-    Promise.all([fetchRequestById(requestId), fetchReviewers()])
-      .then(([reqData, revData]) => {
+    fetchRequestById(requestId)
+      .then(async (reqData) => {
+        const revData = reqData.status === "DRAFT" || reqData.status === "RETURNED" ? await fetchReviewers() : [];
         setRequest(reqData);
         setReviewers(revData);
 
@@ -56,21 +58,33 @@ export default function EditRequest() {
   }, [requestId]);
 
   const trimmedTitle = title.trim();
-  const isTitleValid = trimmedTitle.length >= 3 && trimmedTitle.length <= 150;
+  const isTitleValid = trimmedTitle.length >= 3 && title.length <= 150;
   const trimmedDescription = description.trim();
-  const isDescriptionValid = trimmedDescription.length > 0 && trimmedDescription.length <= 2000;
-  const parsedAmount = Number.parseFloat(amount);
-  const isAmountValid = !Number.isNaN(parsedAmount) && parsedAmount > 0;
+  const isDescriptionValid = trimmedDescription.length > 0 && description.length <= 2000;
+  const parsedAmount = Number(amount);
+  const isAmountValid =
+    amount.trim() !== "" &&
+    /^(?:\d+(?:\.\d{1,2})?|\.\d{1,2})$/.test(amount.trim()) &&
+    Number.isFinite(parsedAmount) &&
+    parsedAmount > 0 &&
+    parsedAmount <= 9999999999.99;
   const trimmedJustification = justification.trim();
-  const isJustificationValid = trimmedJustification.length > 0 && trimmedJustification.length <= 2000;
+  const isJustificationValid = trimmedJustification.length > 0 && justification.length <= 2000;
+  const isEditReasonValid = editReason.length <= 2000;
   const isReviewerValid = reviewerId !== "" && !Number.isNaN(Number(reviewerId));
 
   const isFormValid =
-    isTitleValid && isDescriptionValid && isAmountValid && isJustificationValid && isReviewerValid;
+    isTitleValid &&
+    isDescriptionValid &&
+    isAmountValid &&
+    isJustificationValid &&
+    isEditReasonValid &&
+    isReviewerValid;
 
-  const handleSave = async (shouldResubmit: boolean) => {
-    if (!isFormValid || isSubmitting) return;
+  const handleSave = async (shouldSubmit: boolean) => {
+    if (!isFormValid || isSubmitting || isSubmittingRef.current) return;
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setErrorMessage(null);
 
@@ -84,14 +98,18 @@ export default function EditRequest() {
         reason: editReason.trim() || undefined,
       });
 
-      if (shouldResubmit) {
-        await submitPurchaseRequest(requestId, editReason.trim() || "Resubmitted after modification");
+      if (shouldSubmit) {
+        const submitReason =
+          editReason.trim() ||
+          (request?.status === "DRAFT" ? undefined : "Resubmitted after modification");
+        await submitPurchaseRequest(requestId, submitReason);
       }
 
       navigate(`/requests/${requestId}`);
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to update request");
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -116,14 +134,18 @@ export default function EditRequest() {
     );
   }
 
-  if (request.status !== "RETURNED") {
+  const isPendingEdit = request.status === "PENDING_REVIEW";
+  const isReturnedEdit = request.status === "RETURNED";
+  const isDraftEdit = request.status === "DRAFT";
+
+  if (!isPendingEdit && !isReturnedEdit && !isDraftEdit) {
     return (
       <div className="container py-5">
         <div className="card shadow-sm border-danger">
           <div className="card-body text-center py-5">
             <h3 className="h4 text-danger mb-3">Editing Not Allowed</h3>
             <p className="lead mb-4">
-              Only requests in <strong>RETURNED</strong> status can be edited. Current status is{" "}
+              Only draft, pending, or returned requests can be edited. Current status is{" "}
               <StatusBadge status={request.status} />.
             </p>
             <button
@@ -146,7 +168,9 @@ export default function EditRequest() {
           <div className="card shadow-sm border-0">
             <div className="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
               <div>
-                <h2 className="h4 mb-0">Edit Returned Request</h2>
+                <h2 className="h4 mb-0">
+                  {isDraftEdit ? "Edit Draft Request" : isPendingEdit ? "Edit Pending Request" : "Edit Returned Request"}
+                </h2>
                 <small className="text-muted">{request.requestNumber}</small>
               </div>
               <StatusBadge status={request.status} />
@@ -177,12 +201,17 @@ export default function EditRequest() {
                     id="edit-title"
                     name="title"
                     type="text"
-                    className={`form-control ${title.length > 0 && !isTitleValid ? "is-invalid" : ""}`}
+                    className={`form-control ${!isTitleValid ? "is-invalid" : ""}`}
                     value={title}
                     maxLength={150}
                     onChange={(e) => setTitle(e.target.value)}
                     required
                   />
+                  {!isTitleValid && (
+                    <div className="invalid-feedback d-block">
+                      Title must be at least 3 characters and at most 150 characters.
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-3">
@@ -195,14 +224,19 @@ export default function EditRequest() {
                     type="number"
                     step="0.01"
                     min="0.01"
-                    className={`form-control ${amount.length > 0 && !isAmountValid ? "is-invalid" : ""}`}
+                    className={`form-control ${!isAmountValid ? "is-invalid" : ""}`}
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     required
                   />
+                  {!isAmountValid && (
+                    <div className="invalid-feedback d-block">
+                      Amount must be a positive number greater than 0.00, have no more than 2 decimal places, and not exceed 9999999999.99.
+                    </div>
+                  )}
                 </div>
 
-                <div className="mb-3">
+                {(isReturnedEdit || isDraftEdit) && <div className="mb-3">
                   <label htmlFor="edit-reviewer" className="form-label">
                     Assigned Reviewer <span className="text-danger">*</span>
                   </label>
@@ -220,7 +254,7 @@ export default function EditRequest() {
                       </option>
                     ))}
                   </select>
-                </div>
+                </div>}
 
                 <div className="mb-3">
                   <div className="d-flex justify-content-between align-items-center">
@@ -232,13 +266,18 @@ export default function EditRequest() {
                   <textarea
                     id="edit-description"
                     name="description"
-                    className="form-control"
+                    className={`form-control ${!isDescriptionValid ? "is-invalid" : ""}`}
                     rows={4}
                     maxLength={2000}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     required
                   />
+                  {!isDescriptionValid && (
+                    <div className="invalid-feedback d-block">
+                      Description is required and must not exceed 2000 characters.
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-3">
@@ -251,28 +290,42 @@ export default function EditRequest() {
                   <textarea
                     id="edit-justification"
                     name="justification"
-                    className="form-control"
+                    className={`form-control ${!isJustificationValid ? "is-invalid" : ""}`}
                     rows={3}
                     maxLength={2000}
                     value={justification}
                     onChange={(e) => setJustification(e.target.value)}
                     required
                   />
+                  {!isJustificationValid && (
+                    <div className="invalid-feedback d-block">
+                      Business justification is required and must not exceed 2000 characters.
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-4">
-                  <label htmlFor="edit-notes" className="form-label">
-                    Modification Summary / Revision Notes
-                  </label>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <label htmlFor="edit-notes" className="form-label">
+                      Modification Summary / Revision Notes
+                    </label>
+                    <span className="small text-muted">{editReason.length} / 2000</span>
+                  </div>
                   <input
                     id="edit-notes"
                     name="notes"
                     type="text"
-                    className="form-control"
+                    className={`form-control ${!isEditReasonValid ? "is-invalid" : ""}`}
+                    maxLength={2000}
                     placeholder="Briefly explain what was modified or attached..."
                     value={editReason}
                     onChange={(e) => setEditReason(e.target.value)}
                   />
+                  {!isEditReasonValid && (
+                    <div className="invalid-feedback d-block">
+                      Revision notes must not exceed 2000 characters.
+                    </div>
+                  )}
                 </div>
 
                 <div className="d-flex justify-content-end gap-2">
@@ -284,18 +337,18 @@ export default function EditRequest() {
                   >
                     Cancel
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => handleSave(false)}
-                    disabled={!isFormValid || isSubmitting}
-                  >
-                    Save Changes
-                  </button>
+                  {(isReturnedEdit || isDraftEdit) && <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => handleSave(false)}
+                      disabled={!isFormValid || isSubmitting}
+                    >
+                      {isDraftEdit ? "Save Draft" : "Save Changes"}
+                    </button>}
                   <button
                     type="button"
                     className="btn btn-primary"
-                    onClick={() => handleSave(true)}
+                    onClick={() => handleSave(isReturnedEdit || isDraftEdit)}
                     disabled={!isFormValid || isSubmitting}
                   >
                     {isSubmitting ? (
@@ -304,7 +357,11 @@ export default function EditRequest() {
                         Saving...
                       </>
                     ) : (
-                      "Save & Resubmit for Review"
+                      isPendingEdit
+                        ? "Save Changes"
+                        : isDraftEdit
+                          ? "Save & Submit for Review"
+                          : "Save & Resubmit for Review"
                     )}
                   </button>
                 </div>

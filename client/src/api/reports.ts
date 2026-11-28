@@ -6,6 +6,7 @@ export const REPORT_STATUSES = [
   { value: "APPROVED", label: "Approved" },
   { value: "REJECTED", label: "Rejected" },
   { value: "RETURNED", label: "Returned" },
+  { value: "WITHDRAWN", label: "Withdrawn" },
 ] as const;
 
 export type ReportStatus = (typeof REPORT_STATUSES)[number]["value"];

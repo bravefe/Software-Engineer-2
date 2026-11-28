@@ -20,6 +20,29 @@ describe("Integration and API tests: Authentication & Authorization", () => {
     seededRequests = data.requests;
   });
 
+  async function createPendingRequest(title: string): Promise<number> {
+    const requesterLogin = await request(app)
+      .post("/api/auth/login")
+      .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+    expect(requesterLogin.status).toBe(200);
+
+    const response = await request(app)
+      .post("/api/requests")
+      .set("Cookie", requesterLogin.headers["set-cookie"][0])
+      .send({
+        title,
+        description: "Integration test request",
+        amount: 100,
+        justification: "Isolated test fixture",
+        reviewerId: seededUsers.reviewer1.id,
+      });
+
+    expect(response.status).toBe(201);
+    const created = response.body.request || response.body;
+    expect(created.status).toBe("PENDING_REVIEW");
+    return created.id;
+  }
+
   afterAll(async () => {
     await disconnectPrisma();
   });
@@ -435,10 +458,12 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
       const cookie = loginRes.headers["set-cookie"][0];
+      const missingReasonRequestId = await createPendingRequest("Reject Missing Reason");
+      const whitespaceReasonRequestId = await createPendingRequest("Reject Whitespace Reason");
 
       // Missing reason
       const resNoReason = await request(app)
-        .post(`/api/requests/${seededRequests.requestForReject.id}/review`)
+        .post(`/api/requests/${missingReasonRequestId}/review`)
         .set("Cookie", cookie)
         .send({ decision: "REJECT" });
 
@@ -447,7 +472,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
 
       // Whitespace reason
       const resWhitespace = await request(app)
-        .post(`/api/requests/${seededRequests.requestForReject.id}/review`)
+        .post(`/api/requests/${whitespaceReasonRequestId}/review`)
         .set("Cookie", cookie)
         .send({ decision: "REJECT", reason: "   " });
 
@@ -460,10 +485,12 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
       const cookie = loginRes.headers["set-cookie"][0];
+      const missingReasonRequestId = await createPendingRequest("Return Missing Reason");
+      const whitespaceReasonRequestId = await createPendingRequest("Return Whitespace Reason");
 
       // Missing reason
       const resNoReason = await request(app)
-        .post(`/api/requests/${seededRequests.requestForReturn.id}/review`)
+        .post(`/api/requests/${missingReasonRequestId}/review`)
         .set("Cookie", cookie)
         .send({ decision: "RETURN" });
 
@@ -472,7 +499,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
 
       // Whitespace reason
       const resWhitespace = await request(app)
-        .post(`/api/requests/${seededRequests.requestForReturn.id}/review`)
+        .post(`/api/requests/${whitespaceReasonRequestId}/review`)
         .set("Cookie", cookie)
         .send({ decision: "RETURN", reason: "   " });
 
@@ -485,9 +512,10 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
       const cookie = loginRes.headers["set-cookie"][0];
+      const requestId = await createPendingRequest("Valid Reject Reason");
 
       const res = await request(app)
-        .post(`/api/requests/${seededRequests.requestForReject.id}/review`)
+        .post(`/api/requests/${requestId}/review`)
         .set("Cookie", cookie)
         .send({ decision: "REJECT", reason: "Budget exhausted for current fiscal year." });
 
@@ -495,7 +523,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(res.body.request.status).toBe("REJECTED");
 
       const history = await prisma.requestHistory.findFirst({
-        where: { requestId: seededRequests.requestForReject.id, action: "REJECTED" },
+        where: { requestId, action: "REJECTED" },
       });
       expect(history).toBeDefined();
       expect(history?.reason).toBe("Budget exhausted for current fiscal year.");
@@ -507,9 +535,10 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
       const cookie = loginRes.headers["set-cookie"][0];
+      const requestId = await createPendingRequest("Valid Return Reason");
 
       const res = await request(app)
-        .post(`/api/requests/${seededRequests.requestForReturn.id}/review`)
+        .post(`/api/requests/${requestId}/review`)
         .set("Cookie", cookie)
         .send({ decision: "RETURN", reason: "Please upload official quote before approval." });
 
@@ -517,7 +546,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(res.body.request.status).toBe("RETURNED");
 
       const history = await prisma.requestHistory.findFirst({
-        where: { requestId: seededRequests.requestForReturn.id, action: "RETURNED" },
+        where: { requestId, action: "RETURNED" },
       });
       expect(history).toBeDefined();
       expect(history?.reason).toBe("Please upload official quote before approval.");
@@ -529,9 +558,10 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         .post("/api/auth/login")
         .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
       const cookie = loginRes.headers["set-cookie"][0];
+      const requestId = await createPendingRequest("Valid Approval");
 
       const res = await request(app)
-        .post(`/api/requests/${seededRequests.request1.id}/review`)
+        .post(`/api/requests/${requestId}/review`)
         .set("Cookie", cookie)
         .send({ decision: "APPROVE" });
 
@@ -539,7 +569,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(res.body.request.status).toBe("APPROVED");
 
       const history = await prisma.requestHistory.findFirst({
-        where: { requestId: seededRequests.request1.id, action: "APPROVED" },
+        where: { requestId, action: "APPROVED" },
       });
       expect(history).toBeDefined();
       expect(history?.actorId).toBe(seededUsers.reviewer1.id);
@@ -586,6 +616,22 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(history).toBeDefined();
       expect(history?.actorId).toBe(seededUsers.requester1.id);
       expect(history?.toStatus).toBe("PENDING_REVIEW");
+
+      const requesterHistory = await request(app)
+        .get(`/api/requests/${reqData.id}/history`)
+        .set("Cookie", cookie);
+      expect(requesterHistory.body.history.map(({ action }: { action: string }) => action)).toEqual(["CREATED", "SUBMITTED"]);
+      expect(requesterHistory.body.history[0].toStatus).toBeNull();
+
+      const reviewerLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
+      const reviewerHistory = await request(app)
+        .get(`/api/requests/${reqData.id}/history`)
+        .set("Cookie", reviewerLogin.headers["set-cookie"][0]);
+      expect(reviewerHistory.body.history.map(({ action }: { action: string }) => action)).toEqual(["SUBMITTED"]);
+      expect(reviewerHistory.body.history[0].fromStatus).toBeNull();
+      expect(reviewerHistory.body.history[0].toStatus).toBe("PENDING_REVIEW");
     });
 
     it("allows saving a request as DRAFT without immediate submission", async () => {
@@ -616,6 +662,63 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       });
       expect(history).toBeDefined();
       expect(history?.toStatus).toBe("DRAFT");
+    });
+
+    it("keeps drafts private to the requester in lists, detail, and history", async () => {
+      const requesterCookie = (await request(app).post("/api/auth/login").send({
+        email: seededUsers.requester1.email, password: seededUsers.requester1.password,
+      })).headers["set-cookie"][0];
+      const assignedCookie = (await request(app).post("/api/auth/login").send({
+        email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password,
+      })).headers["set-cookie"][0];
+      const unassignedCookie = (await request(app).post("/api/auth/login").send({
+        email: seededUsers.reviewer2.email, password: seededUsers.reviewer2.password,
+      })).headers["set-cookie"][0];
+      const created = await request(app).post("/api/requests").set("Cookie", requesterCookie).send({
+        title: "Private Draft Visibility", description: "Draft detail", amount: 10,
+        justification: "Draft justification", reviewerId: seededUsers.reviewer1.id, status: "DRAFT",
+      });
+      const draftId = created.body.request.id;
+
+      const requesterList = await request(app).get("/api/requests").set("Cookie", requesterCookie);
+      expect(requesterList.body.requests.some((item: { id: number }) => item.id === draftId)).toBe(true);
+      for (const cookie of [assignedCookie, unassignedCookie]) {
+        const list = await request(app).get("/api/requests").set("Cookie", cookie);
+        expect(list.body.requests.some((item: { id: number }) => item.id === draftId)).toBe(false);
+        const detail = await request(app).get(`/api/requests/${draftId}`).set("Cookie", cookie);
+        expect(detail.status).toBe(403);
+        expect(detail.body.code).toBe("ACCESS_DENIED");
+        const history = await request(app).get(`/api/requests/${draftId}/history`).set("Cookie", cookie);
+        expect(history.status).toBe(403);
+      }
+
+      const requesterHistory = await request(app).get(`/api/requests/${draftId}/history`).set("Cookie", requesterCookie);
+      expect(requesterHistory.status).toBe(200);
+      expect(requesterHistory.body.history.map(({ action }: { action: string }) => action)).toEqual(["CREATED"]);
+    });
+
+    it("shows reviewers SUBMITTED but not CREATED after a draft is submitted", async () => {
+      const requesterCookie = (await request(app).post("/api/auth/login").send({
+        email: seededUsers.requester1.email, password: seededUsers.requester1.password,
+      })).headers["set-cookie"][0];
+      const reviewerCookie = (await request(app).post("/api/auth/login").send({
+        email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password,
+      })).headers["set-cookie"][0];
+      const created = await request(app).post("/api/requests").set("Cookie", requesterCookie).send({
+        title: "Submitted Draft Timeline", description: "Timeline detail", amount: 10,
+        justification: "Timeline justification", reviewerId: seededUsers.reviewer1.id, status: "DRAFT",
+      });
+      const draftId = created.body.request.id;
+      await request(app).post(`/api/requests/${draftId}/submit`).set("Cookie", requesterCookie).send({});
+
+      const reviewerHistory = await request(app).get(`/api/requests/${draftId}/history`).set("Cookie", reviewerCookie);
+      expect(reviewerHistory.status).toBe(200);
+      expect(reviewerHistory.body.history.map(({ action }: { action: string }) => action)).toEqual(["SUBMITTED"]);
+      expect(reviewerHistory.body.history[0].fromStatus).toBeNull();
+      expect(reviewerHistory.body.history[0].toStatus).toBe("PENDING_REVIEW");
+
+      const requesterHistory = await request(app).get(`/api/requests/${draftId}/history`).set("Cookie", requesterCookie);
+      expect(requesterHistory.body.history.map(({ action }: { action: string }) => action)).toEqual(["CREATED", "SUBMITTED"]);
     });
 
     it("retrieves active reviewers list via GET /api/users/reviewers", async () => {
@@ -672,6 +775,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
           reviewerId: seededUsers.reviewer1.id,
         });
       expect(resShortTitle.status).toBe(400);
+      expect(resShortTitle.body.fieldErrors?.title).toBeDefined();
 
       // Non-positive amount
       const resZeroAmount = await request(app)
@@ -685,23 +789,468 @@ describe("Integration and API tests: Authentication & Authorization", () => {
           reviewerId: seededUsers.reviewer1.id,
         });
       expect(resZeroAmount.status).toBe(400);
-    });
-  });
+      expect(resZeroAmount.body.fieldErrors?.amount).toBeDefined();
 
-  describe("TEST-INT-07: Request modification and resubmission enforcement (FEAT-08, FR-05, BR-06, BR-07, AC-07)", () => {
-    it("blocks editing requests that are currently in PENDING_REVIEW status (BR-06)", async () => {
+      const resOverTitle = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "T".repeat(151),
+          description: "Valid description",
+          amount: 100.0,
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resOverTitle.status).toBe(400);
+      expect(resOverTitle.body.fieldErrors?.title).toBeDefined();
+
+      const resOverText = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "D".repeat(2001),
+          amount: 100.0,
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resOverText.status).toBe(400);
+      expect(resOverText.body.fieldErrors?.description).toBeDefined();
+
+      const resOverJustification = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "Valid description",
+          amount: 100.0,
+          justification: "J".repeat(2001),
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resOverJustification.status).toBe(400);
+      expect(resOverJustification.body.fieldErrors?.justification).toBeDefined();
+
+      const resInvalidDecimal = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "Valid description",
+          amount: "450.001",
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resInvalidDecimal.status).toBe(400);
+      expect(resInvalidDecimal.body.fieldErrors?.amount).toBeDefined();
+
+      const resNegativeAmount = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "Valid description",
+          amount: -10.5,
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resNegativeAmount.status).toBe(400);
+      expect(resNegativeAmount.body.fieldErrors?.amount).toBeDefined();
+
+      const resOverMaxAmount = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "Valid description",
+          amount: "10000000000.00",
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resOverMaxAmount.status).toBe(400);
+      expect(resOverMaxAmount.body.fieldErrors?.amount).toBeDefined();
+    });
+
+    it("accepts title, text, and amount boundary values and enforces bounds on PATCH edit", async () => {
       const loginRes = await request(app)
         .post("/api/auth/login")
         .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
       const cookie = loginRes.headers["set-cookie"][0];
 
       const res = await request(app)
-        .patch(`/api/requests/${seededRequests.request1.id}`)
+        .post("/api/requests")
         .set("Cookie", cookie)
-        .send({ amount: 999.0 });
+        .send({
+          title: "T".repeat(150),
+          description: "D".repeat(2000),
+          amount: "0.01",
+          justification: "J".repeat(2000),
+          reviewerId: seededUsers.reviewer1.id,
+          status: "DRAFT",
+        });
 
-      expect(res.status).toBe(409);
-      expect(res.body.code).toBe("INVALID_STATE_TRANSITION");
+      expect(res.status).toBe(201);
+      expect(res.body.request?.title).toHaveLength(150);
+      expect(res.body.request?.description).toHaveLength(2000);
+      expect(res.body.request?.justification).toHaveLength(2000);
+
+      // Minimum title (3 chars) and maximum amount (9999999999.99)
+      const minTitleMaxAmountRes = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "ABC",
+          description: "D",
+          amount: "9999999999.99",
+          justification: "J",
+          reviewerId: seededUsers.reviewer1.id,
+          status: "DRAFT",
+        });
+      expect(minTitleMaxAmountRes.status).toBe(201);
+      const draftId = (minTitleMaxAmountRes.body.request || minTitleMaxAmountRes.body).id;
+      expect(minTitleMaxAmountRes.body.request?.title).toBe("ABC");
+      expect(minTitleMaxAmountRes.body.request?.amount).toBe("9999999999.99");
+
+      // PATCH validation boundary checks
+      const patchBadTitle = await request(app)
+        .patch(`/api/requests/${draftId}`)
+        .set("Cookie", cookie)
+        .send({ title: "T".repeat(151) });
+      expect(patchBadTitle.status).toBe(400);
+      expect(patchBadTitle.body.fieldErrors?.title).toBeDefined();
+
+      const patchBadAmount = await request(app)
+        .patch(`/api/requests/${draftId}`)
+        .set("Cookie", cookie)
+        .send({ amount: "10000000000.00" });
+      expect(patchBadAmount.status).toBe(400);
+      expect(patchBadAmount.body.fieldErrors?.amount).toBeDefined();
+
+      const patchBadDesc = await request(app)
+        .patch(`/api/requests/${draftId}`)
+        .set("Cookie", cookie)
+        .send({ description: "D".repeat(2001) });
+      expect(patchBadDesc.status).toBe(400);
+      expect(patchBadDesc.body.fieldErrors?.description).toBeDefined();
+
+      const patchBadReason = await request(app)
+        .patch(`/api/requests/${draftId}`)
+        .set("Cookie", cookie)
+        .send({ title: "Valid Updated Title", reason: "R".repeat(2001) });
+      expect(patchBadReason.status).toBe(400);
+      expect(patchBadReason.body.code).toBe("VALIDATION_ERROR");
+    });
+  });
+
+  describe("TEST-INT-07: Request modification, withdrawal & resubmission enforcement (FEAT-08, FR-05, FR-06, BR-06, BR-07, AC-07, AC-13)", () => {
+    it("permits owning Requester to edit a PENDING_REVIEW request, keeping status PENDING_REVIEW and recording history visible to Requester and Reviewer (FR-05, BR-06, AC-13)", async () => {
+      const requesterLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const requesterCookie = requesterLogin.headers["set-cookie"][0];
+      const pendingRequestId = await createPendingRequest("Pending Edit Success Test");
+
+      const editRes = await request(app)
+        .patch(`/api/requests/${pendingRequestId}`)
+        .set("Cookie", requesterCookie)
+        .send({
+          title: "Updated Pending Title",
+          amount: 850.0,
+          justification: "Updated justification for pending request",
+          reason: "Revised scope and attached updated budget",
+        });
+
+      expect(editRes.status).toBe(200);
+      expect(editRes.body.request.status).toBe("PENDING_REVIEW");
+      expect(editRes.body.request.title).toBe("Updated Pending Title");
+      expect(Number(editRes.body.request.amount)).toBe(850.0);
+
+      // Requester fetches details and history
+      const reqDetail = await request(app)
+        .get(`/api/requests/${pendingRequestId}`)
+        .set("Cookie", requesterCookie);
+      expect(reqDetail.status).toBe(200);
+      expect(reqDetail.body.request.status).toBe("PENDING_REVIEW");
+      expect(reqDetail.body.request.title).toBe("Updated Pending Title");
+
+      const reqHistory = await request(app)
+        .get(`/api/requests/${pendingRequestId}/history`)
+        .set("Cookie", requesterCookie);
+      expect(reqHistory.status).toBe(200);
+      const editEntry = reqHistory.body.history.find(
+        (h: any) => h.action === "EDITED" && h.fromStatus === "PENDING_REVIEW",
+      );
+      expect(editEntry).toBeDefined();
+      expect(editEntry.reason).toBe("Revised scope and attached updated budget");
+      expect(editEntry.actorId).toBe(seededUsers.requester1.id);
+      expect(editEntry.toStatus).toBe("PENDING_REVIEW");
+
+      // Assigned reviewer fetches details and history
+      const reviewerLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
+      const reviewerCookie = reviewerLogin.headers["set-cookie"][0];
+
+      const revDetail = await request(app)
+        .get(`/api/requests/${pendingRequestId}`)
+        .set("Cookie", reviewerCookie);
+      expect(revDetail.status).toBe(200);
+      expect(revDetail.body.request.title).toBe("Updated Pending Title");
+      expect(Number(revDetail.body.request.amount)).toBe(850.0);
+
+      const revHistory = await request(app)
+        .get(`/api/requests/${pendingRequestId}/history`)
+        .set("Cookie", reviewerCookie);
+      expect(revHistory.status).toBe(200);
+      const revEditEntry = revHistory.body.history.find(
+        (h: any) => h.action === "EDITED" && h.fromStatus === "PENDING_REVIEW",
+      );
+      expect(revEditEntry).toBeDefined();
+      expect(revEditEntry.reason).toBe("Revised scope and attached updated budget");
+
+      // Unassigned reviewer cannot view request or history
+      const unassignedLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.reviewer2.email, password: seededUsers.reviewer2.password });
+      const unassignedCookie = unassignedLogin.headers["set-cookie"][0];
+
+      const unassignedDetail = await request(app)
+        .get(`/api/requests/${pendingRequestId}`)
+        .set("Cookie", unassignedCookie);
+      expect(unassignedDetail.status).toBe(403);
+      expect(unassignedDetail.body.code).toBe("ACCESS_DENIED");
+
+      const unassignedHistory = await request(app)
+        .get(`/api/requests/${pendingRequestId}/history`)
+        .set("Cookie", unassignedCookie);
+      expect(unassignedHistory.status).toBe(403);
+      expect(unassignedHistory.body.code).toBe("ACCESS_DENIED");
+    });
+
+    it("blocks unauthorized users from editing another requester's request (BR-06, BR-09, AC-10)", async () => {
+      const pendingRequestId = await createPendingRequest("Unauthorized Edit Guard Test");
+
+      const requester2Login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester2.email, password: seededUsers.requester2.password });
+      const requester2Cookie = requester2Login.headers["set-cookie"][0];
+
+      const resOtherRequester = await request(app)
+        .patch(`/api/requests/${pendingRequestId}`)
+        .set("Cookie", requester2Cookie)
+        .send({ amount: 999.0 });
+      expect(resOtherRequester.status).toBe(403);
+      expect(resOtherRequester.body.code).toBe("ACCESS_DENIED");
+
+      const reviewerLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
+      const reviewerCookie = reviewerLogin.headers["set-cookie"][0];
+
+      const resReviewer = await request(app)
+        .patch(`/api/requests/${pendingRequestId}`)
+        .set("Cookie", reviewerCookie)
+        .send({ amount: 999.0 });
+      expect(resReviewer.status).toBe(403);
+      expect(resReviewer.body.code).toBe("ACCESS_DENIED");
+    });
+
+    it("permits owning Requester to withdraw a PENDING_REVIEW request, transitioning to WITHDRAWN and recording audit history (FR-05, BR-07, AD-10, AC-13)", async () => {
+      const pendingRequestId = await createPendingRequest("Pending Withdrawal Success Test");
+
+      // Unauthorized withdrawal attempts
+      const requester2Login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester2.email, password: seededUsers.requester2.password });
+      const resReq2 = await request(app)
+        .post(`/api/requests/${pendingRequestId}/withdraw`)
+        .set("Cookie", requester2Login.headers["set-cookie"][0]);
+      expect(resReq2.status).toBe(403);
+      expect(resReq2.body.code).toBe("ACCESS_DENIED");
+
+      const reviewerLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
+      const resRev = await request(app)
+        .post(`/api/requests/${pendingRequestId}/withdraw`)
+        .set("Cookie", reviewerLogin.headers["set-cookie"][0]);
+      expect(resRev.status).toBe(403);
+      expect(resRev.body.code).toBe("ACCESS_DENIED");
+
+      // Owning requester withdraws
+      const requesterLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const requesterCookie = requesterLogin.headers["set-cookie"][0];
+
+      const withdrawRes = await request(app)
+        .post(`/api/requests/${pendingRequestId}/withdraw`)
+        .set("Cookie", requesterCookie);
+      expect(withdrawRes.status).toBe(200);
+      expect(withdrawRes.body.request.status).toBe("WITHDRAWN");
+
+      // Verify audit history for requester
+      const reqHistory = await request(app)
+        .get(`/api/requests/${pendingRequestId}/history`)
+        .set("Cookie", requesterCookie);
+      expect(reqHistory.status).toBe(200);
+      const withdrawEntry = reqHistory.body.history.find((h: any) => h.action === "WITHDRAWN");
+      expect(withdrawEntry).toBeDefined();
+      expect(withdrawEntry.fromStatus).toBe("PENDING_REVIEW");
+      expect(withdrawEntry.toStatus).toBe("WITHDRAWN");
+      expect(withdrawEntry.actorId).toBe(seededUsers.requester1.id);
+
+      // Verify audit history for assigned reviewer
+      const revHistory = await request(app)
+        .get(`/api/requests/${pendingRequestId}/history`)
+        .set("Cookie", reviewerLogin.headers["set-cookie"][0]);
+      expect(revHistory.status).toBe(200);
+      const revWithdrawEntry = revHistory.body.history.find((h: any) => h.action === "WITHDRAWN");
+      expect(revWithdrawEntry).toBeDefined();
+      expect(revWithdrawEntry.toStatus).toBe("WITHDRAWN");
+    });
+
+    it("enforces WITHDRAWN as a terminal status blocking subsequent edit, review, or withdrawal attempts (FR-05, BR-07, AC-13)", async () => {
+      const requesterLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const requesterCookie = requesterLogin.headers["set-cookie"][0];
+      const pendingRequestId = await createPendingRequest("Terminal Withdrawn Action Guard");
+
+      const withdrawRes = await request(app)
+        .post(`/api/requests/${pendingRequestId}/withdraw`)
+        .set("Cookie", requesterCookie);
+      expect(withdrawRes.status).toBe(200);
+      expect(withdrawRes.body.request.status).toBe("WITHDRAWN");
+
+      // Requester edit blocked
+      const editRes = await request(app)
+        .patch(`/api/requests/${pendingRequestId}`)
+        .set("Cookie", requesterCookie)
+        .send({ amount: 999.0 });
+      expect(editRes.status).toBe(409);
+      expect(editRes.body.code).toBe("INVALID_STATE_TRANSITION");
+
+      // Requester repeat withdraw blocked
+      const repeatWithdraw = await request(app)
+        .post(`/api/requests/${pendingRequestId}/withdraw`)
+        .set("Cookie", requesterCookie);
+      expect(repeatWithdraw.status).toBe(409);
+      expect(repeatWithdraw.body.code).toBe("INVALID_STATE_TRANSITION");
+
+      // Requester resubmit blocked
+      const submitRes = await request(app)
+        .post(`/api/requests/${pendingRequestId}/submit`)
+        .set("Cookie", requesterCookie)
+        .send({ reason: "Attempting to resubmit withdrawn" });
+      expect(submitRes.status).toBe(409);
+      expect(submitRes.body.code).toBe("INVALID_STATE_TRANSITION");
+
+      // Reviewer actions blocked
+      const reviewerLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
+      const reviewerCookie = reviewerLogin.headers["set-cookie"][0];
+
+      const approveRes = await request(app)
+        .post(`/api/requests/${pendingRequestId}/review`)
+        .set("Cookie", reviewerCookie)
+        .send({ decision: "APPROVE" });
+      expect(approveRes.status).toBe(409);
+      expect(approveRes.body.code).toBe("INVALID_STATE_TRANSITION");
+
+      const rejectRes = await request(app)
+        .post(`/api/requests/${pendingRequestId}/review`)
+        .set("Cookie", reviewerCookie)
+        .send({ decision: "REJECT", reason: "Attempt reject withdrawn" });
+      expect(rejectRes.status).toBe(409);
+      expect(rejectRes.body.code).toBe("INVALID_STATE_TRANSITION");
+
+      const returnRes = await request(app)
+        .post(`/api/requests/${pendingRequestId}/review`)
+        .set("Cookie", reviewerCookie)
+        .send({ decision: "RETURN", reason: "Attempt return withdrawn" });
+      expect(returnRes.status).toBe(409);
+      expect(returnRes.body.code).toBe("INVALID_STATE_TRANSITION");
+    });
+
+    it("blocks withdrawal of non-pending requests and protects terminal states (FR-05, BR-06, BR-07, AC-13)", async () => {
+      const requesterLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const requesterCookie = requesterLogin.headers["set-cookie"][0];
+
+      // DRAFT request: withdrawal blocked, edit allowed
+      const draftRes = await request(app)
+        .post("/api/requests")
+        .set("Cookie", requesterCookie)
+        .send({
+          title: "Draft State Guard Test",
+          description: "Draft request description",
+          amount: 250.0,
+          justification: "Draft test justification",
+          reviewerId: seededUsers.reviewer1.id,
+          status: "DRAFT",
+        });
+      expect(draftRes.status).toBe(201);
+      const draftId = (draftRes.body.request || draftRes.body).id;
+
+      const withdrawDraft = await request(app)
+        .post(`/api/requests/${draftId}/withdraw`)
+        .set("Cookie", requesterCookie);
+      expect(withdrawDraft.status).toBe(409);
+      expect(withdrawDraft.body.code).toBe("INVALID_STATE_TRANSITION");
+
+      const editDraft = await request(app)
+        .patch(`/api/requests/${draftId}`)
+        .set("Cookie", requesterCookie)
+        .send({ amount: 350.0 });
+      expect(editDraft.status).toBe(200);
+      expect(editDraft.body.request.status).toBe("DRAFT");
+
+      // APPROVED request: edit and withdraw blocked
+      const approvedReqId = await createPendingRequest("Approved Guard Test");
+      const reviewerLogin = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
+      const reviewerCookie = reviewerLogin.headers["set-cookie"][0];
+
+      await request(app)
+        .post(`/api/requests/${approvedReqId}/review`)
+        .set("Cookie", reviewerCookie)
+        .send({ decision: "APPROVE" });
+
+      const editApproved = await request(app)
+        .patch(`/api/requests/${approvedReqId}`)
+        .set("Cookie", requesterCookie)
+        .send({ amount: 999.0 });
+      expect(editApproved.status).toBe(409);
+      expect(editApproved.body.code).toBe("INVALID_STATE_TRANSITION");
+
+      const withdrawApproved = await request(app)
+        .post(`/api/requests/${approvedReqId}/withdraw`)
+        .set("Cookie", requesterCookie);
+      expect(withdrawApproved.status).toBe(409);
+      expect(withdrawApproved.body.code).toBe("INVALID_STATE_TRANSITION");
+
+      // REJECTED request: edit and withdraw blocked
+      const rejectedReqId = await createPendingRequest("Rejected Guard Test");
+      await request(app)
+        .post(`/api/requests/${rejectedReqId}/review`)
+        .set("Cookie", reviewerCookie)
+        .send({ decision: "REJECT", reason: "Budget cut" });
+
+      const editRejected = await request(app)
+        .patch(`/api/requests/${rejectedReqId}`)
+        .set("Cookie", requesterCookie)
+        .send({ amount: 999.0 });
+      expect(editRejected.status).toBe(409);
+      expect(editRejected.body.code).toBe("INVALID_STATE_TRANSITION");
+
+      const withdrawRejected = await request(app)
+        .post(`/api/requests/${rejectedReqId}/withdraw`)
+        .set("Cookie", requesterCookie);
+      expect(withdrawRejected.status).toBe(409);
+      expect(withdrawRejected.body.code).toBe("INVALID_STATE_TRANSITION");
     });
 
     it("permits editing and resubmitting a RETURNED request", async () => {
@@ -738,24 +1287,26 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(returnRes.status).toBe(200);
       expect(returnRes.body.request.status).toBe("RETURNED");
 
-      // 3. Requester edits the RETURNED request
-      const editRes = await request(app)
-        .patch(`/api/requests/${targetReqId}`)
-        .set("Cookie", requesterCookie)
-        .send({
-          amount: 550.0,
-          justification: "Vendor quotation attached: $550",
-          reason: "Updated amount based on revised quote",
-        });
-
-      expect(editRes.status).toBe(200);
-      expect(editRes.body.request.status).toBe("RETURNED");
+      // 3. Requester makes several saves before resubmitting.
+      const editNotes = [
+        { amount: 500.0, reason: "No changes in this save" },
+        { justification: "Initial justification", reason: "Still no changes" },
+        { amount: 550.0, justification: "Vendor quotation attached: $550", reason: "Updated amount based on revised quote" },
+      ];
+      for (const edit of editNotes) {
+        const editRes = await request(app)
+          .patch(`/api/requests/${targetReqId}`)
+          .set("Cookie", requesterCookie)
+          .send(edit);
+        expect(editRes.status).toBe(200);
+        expect(editRes.body.request.status).toBe("RETURNED");
+      }
 
       // 4. Requester resubmits the request
       const submitRes = await request(app)
         .post(`/api/requests/${targetReqId}/submit`)
         .set("Cookie", requesterCookie)
-        .send({ reason: "Resubmitting with attached quotation" });
+        .send({ reason: "Updated amount based on revised quote" });
 
       expect(submitRes.status).toBe(200);
       expect(submitRes.body.request.status).toBe("PENDING_REVIEW");
@@ -771,6 +1322,26 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       });
       expect(resubmitHistory).toBeDefined();
       expect(resubmitHistory?.toStatus).toBe("PENDING_REVIEW");
+      expect(resubmitHistory?.reason).toContain("No changes in this save");
+      expect(resubmitHistory?.reason).toContain("Still no changes");
+      expect(resubmitHistory?.reason).toContain("Updated amount based on revised quote");
+      expect(resubmitHistory?.reason?.match(/Updated amount based on revised quote/g)).toHaveLength(1);
+
+      const requesterHistory = await request(app)
+        .get(`/api/requests/${targetReqId}/history`)
+        .set("Cookie", requesterCookie);
+      const requesterEdits = requesterHistory.body.history.filter(({ action }: { action: string }) => action === "EDITED");
+      expect(requesterEdits).toHaveLength(3);
+      const requesterEdit = requesterEdits[2];
+      expect(requesterEdit.actorId).toBe(seededUsers.requester1.id);
+      expect(requesterEdit.createdAt).toBeDefined();
+      expect(requesterEdit.fromStatus).toBe("RETURNED");
+      expect(requesterEdit.toStatus).toBe("RETURNED");
+      expect(requesterEdit.reason).toBe("Updated amount based on revised quote");
+      const reviewerHistory = await request(app)
+        .get(`/api/requests/${targetReqId}/history`)
+        .set("Cookie", reviewerCookie);
+      expect(reviewerHistory.body.history.some(({ action }: { action: string }) => action === "EDITED")).toBe(false);
     });
   });
 
@@ -1119,6 +1690,69 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(rev2Ids).not.toContain(filterReqApproved.id);
     });
 
+    it("filters WITHDRAWN requests for Requester and Reviewer, and returns an empty array for Reviewer ?status=DRAFT", async () => {
+      const withdrawn = await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: "PR-2026-FIL05",
+          title: "Special Filtering Delta Withdrawn Webcam",
+          description: "Withdrawn by requester",
+          amount: "80.00",
+          justification: "No longer needed",
+          status: "WITHDRAWN",
+          requesterId: seededUsers.requester1.id,
+          reviewerId: seededUsers.reviewer1.id,
+          createdAt: new Date("2026-04-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-04-15T10:00:00.000Z"),
+        },
+      });
+
+      try {
+        const reqRes = await request(app)
+          .get("/api/requests?status=WITHDRAWN")
+          .set("Cookie", requester1Cookie);
+        expect(reqRes.status).toBe(200);
+        const reqIds = reqRes.body.requests.map((r: any) => r.id);
+        expect(reqIds).toContain(withdrawn.id);
+        expect(reqRes.body.requests.every((r: any) => r.status === "WITHDRAWN")).toBe(true);
+
+        const revRes = await request(app)
+          .get("/api/requests?status=WITHDRAWN")
+          .set("Cookie", reviewer1Cookie);
+        expect(revRes.status).toBe(200);
+        expect(revRes.body.requests.map((r: any) => r.id)).toContain(withdrawn.id);
+        expect(revRes.body.requests.every((r: any) => r.status === "WITHDRAWN")).toBe(true);
+
+        // Another reviewer must not see it.
+        const otherRevRes = await request(app)
+          .get("/api/requests?status=WITHDRAWN")
+          .set("Cookie", reviewer2Cookie);
+        expect(otherRevRes.status).toBe(200);
+        expect(otherRevRes.body.requests.map((r: any) => r.id)).not.toContain(withdrawn.id);
+
+        // Reviewer explicitly asking for DRAFT gets an empty list, never assigned drafts.
+        const draftRes = await request(app)
+          .get("/api/requests?status=DRAFT")
+          .set("Cookie", reviewer1Cookie);
+        expect(draftRes.status).toBe(200);
+        expect(draftRes.body).toEqual({ requests: [] });
+
+        const draftSearchRes = await request(app)
+          .get("/api/requests?status=DRAFT&search=Standing%20Desk")
+          .set("Cookie", reviewer1Cookie);
+        expect(draftSearchRes.status).toBe(200);
+        expect(draftSearchRes.body).toEqual({ requests: [] });
+
+        // The Requester still sees their own draft with the same filter.
+        const ownDraftRes = await request(app)
+          .get("/api/requests?status=DRAFT")
+          .set("Cookie", requester1Cookie);
+        expect(ownDraftRes.status).toBe(200);
+        expect(ownDraftRes.body.requests.map((r: any) => r.id)).toContain(filterReqDraft.id);
+      } finally {
+        await prisma.purchaseRequest.delete({ where: { id: withdrawn.id } });
+      }
+    });
+
     it("rejects invalid status filter with 400 VALIDATION_ERROR", async () => {
       const res = await request(app)
         .get("/api/requests?status=INVALID_STATUS")
@@ -1215,6 +1849,22 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         },
       });
 
+      // Private draft assigned to this reviewer: must never appear in any Reviewer report.
+      await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: `${requestPrefix}-assigned-draft`,
+          title: "Reporting Fixture Private Draft",
+          description: "Drafts are private to the Requester.",
+          amount: "777.77",
+          justification: "Integration test fixture.",
+          status: "DRAFT",
+          requesterId: seededUsers.requester1.id,
+          reviewerId: reportReviewer.id,
+          createdAt: new Date("2026-04-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-04-15T10:00:00.000Z"),
+        },
+      });
+
       const login = await request(app)
         .post("/api/auth/login")
         .send({ email: reportReviewer.email, password: reportPassword });
@@ -1231,6 +1881,41 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       }
     });
 
+    it("excludes assigned drafts from Reviewer report summary and request list, including explicit DRAFT filters", async () => {
+      // Unfiltered: the $777.77 assigned draft is absent from counts, totals, and rows.
+      const summaryRes = await request(app)
+        .get("/api/reports/summary")
+        .set("Cookie", reportReviewerCookie);
+      expect(summaryRes.status).toBe(200);
+      expect(summaryRes.body.totalCount).toBe(5);
+      expect(summaryRes.body.totalAmount).toBe("1250.00");
+      expect(summaryRes.body.statusCounts.DRAFT).toBe(0);
+      expect(summaryRes.body.statusAmounts.DRAFT).toBe("0.00");
+
+      const listRes = await request(app)
+        .get("/api/reports/requests")
+        .set("Cookie", reportReviewerCookie);
+      expect(listRes.status).toBe(200);
+      expect(listRes.body.requests).toHaveLength(5);
+      expect(listRes.body.requests.some((item: { status: string }) => item.status === "DRAFT")).toBe(false);
+
+      // Explicit DRAFT filter: empty results, zero counts and "0.00" amounts.
+      const draftSummary = await request(app)
+        .get("/api/reports/summary?status=DRAFT")
+        .set("Cookie", reportReviewerCookie);
+      expect(draftSummary.status).toBe(200);
+      expect(draftSummary.body.totalCount).toBe(0);
+      expect(draftSummary.body.totalAmount).toBe("0.00");
+      expect(Object.values(draftSummary.body.statusCounts)).toEqual([0, 0, 0, 0, 0, 0]);
+      expect(Object.values(draftSummary.body.statusAmounts)).toEqual(["0.00", "0.00", "0.00", "0.00", "0.00", "0.00"]);
+
+      const draftList = await request(app)
+        .get("/api/reports/requests?status=DRAFT&startDate=2026-04-01&endDate=2026-04-30")
+        .set("Cookie", reportReviewerCookie);
+      expect(draftList.status).toBe(200);
+      expect(draftList.body.requests).toEqual([]);
+    });
+
     it("returns exact total, all status counts, and only the authenticated reviewer's requests", async () => {
       const res = await request(app)
         .get("/api/reports/summary")
@@ -1245,6 +1930,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
           APPROVED: 3,
           REJECTED: 1,
           RETURNED: 0,
+          WITHDRAWN: 0,
         },
         statusAmounts: {
           DRAFT: "0.00",
@@ -1252,6 +1938,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
           APPROVED: "1000.00",
           REJECTED: "100.00",
           RETURNED: "0.00",
+          WITHDRAWN: "0.00",
         },
         totalAmount: "1250.00",
       });
@@ -1284,6 +1971,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
           APPROVED: 3,
           REJECTED: 0,
           RETURNED: 0,
+          WITHDRAWN: 0,
         },
         statusAmounts: {
           DRAFT: "0.00",
@@ -1291,6 +1979,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
           APPROVED: "1000.00",
           REJECTED: "0.00",
           RETURNED: "0.00",
+          WITHDRAWN: "0.00",
         },
         totalAmount: "1000.00",
       });
@@ -1310,8 +1999,22 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(summaryRes.status).toBe(200);
       expect(summaryRes.body.totalCount).toBe(0);
       expect(summaryRes.body.totalAmount).toBe("0.00");
-      expect(Object.values(summaryRes.body.statusCounts)).toEqual([0, 0, 0, 0, 0]);
-      expect(Object.values(summaryRes.body.statusAmounts)).toEqual(["0.00", "0.00", "0.00", "0.00", "0.00"]);
+      expect(summaryRes.body.statusCounts).toEqual({
+        DRAFT: 0,
+        PENDING_REVIEW: 0,
+        APPROVED: 0,
+        REJECTED: 0,
+        RETURNED: 0,
+        WITHDRAWN: 0,
+      });
+      expect(summaryRes.body.statusAmounts).toEqual({
+        DRAFT: "0.00",
+        PENDING_REVIEW: "0.00",
+        APPROVED: "0.00",
+        REJECTED: "0.00",
+        RETURNED: "0.00",
+        WITHDRAWN: "0.00",
+      });
       expect(requestsRes.status).toBe(200);
       expect(requestsRes.body.requests).toEqual([]);
     });
