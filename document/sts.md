@@ -130,7 +130,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   2. Test amount bounds: `0.00` (fail), `-10.50` (fail), `0.01` (pass), `1000000.00` (pass).
   3. Test description/justification: 2000 chars (pass), 2001 chars (fail).
 - **Expected Result:** Boundaries are strictly enforced matching SDS constraints.
-- **Status:** `PLANNED` (Sprint 2)
+- **Status:** `PASSED` (Verified in `tests/server/unit.test.ts`)
 
 ### TEST-UNIT-06: Financial Aggregation & Status Metrics Math
 
@@ -145,7 +145,7 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   3. Assert total request count equals 5.
   4. Assert approved monetary sum equals $1000.00 without floating point rounding error.
 - **Expected Result:** Counts and decimal sums match expected mathematical aggregates.
-- **Status:** `PLANNED` (Sprint 2)
+- **Status:** `PASSED` (Verified in `tests/server/unit.test.ts`)
 
 ---
 
@@ -281,19 +281,29 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 - **Expected Result:** Full historical progression is accurately retrieved in chronological order.
 - **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
-### TEST-INT-09: Request Filtering by Status and Date Range
+### TEST-INT-09: Request Filtering by Status, Date Range, and Keyword Search
 
 - **Test ID:** `TEST-INT-09`
-- **Test Objective:** Verify requests can be filtered by lifecycle status and creation date range.
-- **Related Requirements:** FR-08, AC-12
+- **Test Objective:** Verify requests can be filtered by lifecycle status, start date, end date, and keyword search while strictly preserving requester ownership and reviewer assignment boundaries.
+- **Related Requirements:** FR-08, AC-12, BR-04, BR-09, AC-09, AC-10
 - **Related Features:** `FEAT-10`
-- **Preconditions:** Database populated with requests spanning different dates and statuses.
+- **Preconditions:** Database populated with requests spanning different dates, statuses, and users.
 - **Test Steps:**
-  1. Send `GET /api/requests?status=APPROVED`. Assert all returned items have status `APPROVED`.
-  2. Send `GET /api/requests?startDate=2026-11-01&endDate=2026-11-03`. Assert returned items fall strictly within date range.
-  3. Send `GET /api/requests?status=REJECTED&search=Office`. Assert items match both status and keyword filter.
-- **Expected Result:** Database queries dynamically apply filter predicates accurately.
-- **Status:** `PLANNED` (Sprint 2)
+  1. Send `GET /api/requests?status=APPROVED`. Assert all returned items have status `APPROVED` and match requester ownership.
+  2. Send `GET /api/requests?startDate=2026-02-01`. Assert returned items fall on or after start date.
+  3. Send `GET /api/requests?endDate=2026-01-31`. Assert returned items fall on or before end date.
+  4. Send `GET /api/requests?startDate=2026-02-01&endDate=2026-02-28`. Assert items fall strictly within date range.
+  5. Send `GET /api/requests?search=standing%20desk`. Assert items match title keyword case-insensitively.
+  6. Send `GET /api/requests?search=FIL03`. Assert items match requestNumber keyword.
+  7. Send `GET /api/requests?status=APPROVED&search=Laptop&startDate=2026-01-01&endDate=2026-01-31`. Assert combination returns matching item.
+  8. Send `GET /api/requests?search=NonExistentKeywordXYZ`. Assert 200 OK with empty array `[]`.
+  9. Send `GET /api/requests`. Assert full authorized list is restored when filters are omitted.
+  10. Verify Requester 1 filtering never returns requests belonging to Requester 2 (BR-09, AC-10).
+  11. Verify Reviewer 1 filtering never returns requests assigned to Reviewer 2 (BR-04, AC-09).
+  12. Send invalid status `GET /api/requests?status=INVALID_STATUS`. Assert 400 VALIDATION_ERROR.
+  13. Send invalid dates and invalid range (`startDate > endDate`). Assert 400 VALIDATION_ERROR.
+- **Expected Result:** Database queries dynamically apply filter predicates accurately and reject invalid parameters without leaking unauthorized data.
+- **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
 ### TEST-INT-10: Reporting Summary Aggregation Endpoint
 
@@ -307,8 +317,11 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   2. Send `GET /api/reports/summary`.
   3. Assert HTTP status `200 OK`.
   4. Verify JSON contains keys `totalCount`, `statusCounts` (with counts for each status), and `totalAmount`.
+  5. Verify status/date filters apply consistently to `/api/reports/summary` and `/api/reports/requests`.
+  6. Verify an empty result returns all status counts and total amount as zero.
+  7. Verify results are limited to requests assigned to the authenticated Reviewer.
 - **Expected Result:** Summary aggregates match database totals.
-- **Status:** `PLANNED` (Sprint 2)
+- **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
 ---
 
@@ -458,21 +471,31 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 - **Expected Result:** Unauthenticated, cross-owner, cross-reviewer, and self-review attempts are blocked without changing request state.
 - **Status:** `PASSED` (Verified in `tests/e2e/purchase-approval.spec.ts`)
 
-### TEST-E2E-04: Multi-Criteria Filter & Reports Journey
+### TEST-E2E-04: Multi-Criteria Filter & Search Journey Across Roles
 
 - **Test ID:** `TEST-E2E-04`
-- **Test Objective:** Validate dynamic filtering and aggregate reporting views in the browser.
-- **Related Requirements:** FR-08, AC-12
-- **Related Features:** `FEAT-10`, `FEAT-11`
-- **Preconditions:** Database populated with diverse requests across statuses and dates.
+- **Test Objective:** Validate dynamic multi-criteria filtering and keyword search in the browser across Requester and Reviewer roles without unauthorized data exposure.
+- **Related Requirements:** FR-08, AC-12, BR-04, BR-09, AC-09, AC-10
+- **Related Features:** `FEAT-10`
+- **Preconditions:** Database populated with test Requesters and Reviewers with distinct requests across statuses and ownership.
 - **Test Steps:**
-  1. Log in as Reviewer. Navigate to `/reports`.
-  2. Verify summary metric cards display total request count and financial sums.
-  3. Select Status filter "Approved". Verify list updates to display only approved items.
-  4. Enter Date Range inputs covering past 7 days. Verify counts update reactively.
-  5. Clear filters. Verify full dataset is restored.
-- **Expected Result:** Filter and report components update dynamically and display accurate aggregated data.
-- **Status:** `PLANNED` (Sprint 2)
+  1. Log in as Requester. Open `/requester/dashboard`.
+  2. Verify initial list displays only own requests.
+  3. Apply status filter `DRAFT` and verify table renders only draft requests.
+  4. Apply keyword search and verify table renders matching requests.
+  5. Combine status and keyword filters and verify combined filtering.
+  6. Apply keyword filter with no matches and verify empty-state UI displays "No matching purchase requests".
+  7. Attempt keyword search for another user's request and verify it is not returned.
+  8. Click "Clear Filters" and verify full authorized list returns.
+  9. Log in as Reviewer. Open `/reviewer/queue`.
+  10. Apply keyword filter and verify results match assigned requests.
+  11. Attempt keyword search for a request assigned to another reviewer and verify it is not returned.
+  12. Click "Clear Filters" and verify full authorized queue is restored.
+  13. Open `/reports` as Reviewer, filter by status and date range, and verify both result rows and summary metrics update.
+  14. Apply a date range with no matching requests and verify the empty state and zero-valued summary.
+  15. Clear report filters and verify the full authorized report is restored.
+- **Expected Result:** Filter controls dynamically update the UI across both roles, gracefully display empty states, restore full lists on reset, and never expose unauthorized requests.
+- **Status:** `PASSED` (Verified in `tests/e2e/purchase-approval.spec.ts`)
 
 ### TEST-E2E-05: Cross-Viewport Responsive Design Verification
 

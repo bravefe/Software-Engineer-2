@@ -58,17 +58,28 @@ export default function EditRequest() {
   }, [requestId]);
 
   const trimmedTitle = title.trim();
-  const isTitleValid = trimmedTitle.length >= 3 && trimmedTitle.length <= 150;
+  const isTitleValid = trimmedTitle.length >= 3 && title.length <= 150;
   const trimmedDescription = description.trim();
-  const isDescriptionValid = trimmedDescription.length > 0 && trimmedDescription.length <= 2000;
-  const parsedAmount = Number.parseFloat(amount);
-  const isAmountValid = !Number.isNaN(parsedAmount) && parsedAmount > 0;
+  const isDescriptionValid = trimmedDescription.length > 0 && description.length <= 2000;
+  const parsedAmount = Number(amount);
+  const isAmountValid =
+    amount.trim() !== "" &&
+    /^(?:\d+(?:\.\d{1,2})?|\.\d{1,2})$/.test(amount.trim()) &&
+    Number.isFinite(parsedAmount) &&
+    parsedAmount > 0 &&
+    parsedAmount <= 9999999999.99;
   const trimmedJustification = justification.trim();
-  const isJustificationValid = trimmedJustification.length > 0 && trimmedJustification.length <= 2000;
+  const isJustificationValid = trimmedJustification.length > 0 && justification.length <= 2000;
+  const isEditReasonValid = editReason.length <= 2000;
   const isReviewerValid = reviewerId !== "" && !Number.isNaN(Number(reviewerId));
 
   const isFormValid =
-    isTitleValid && isDescriptionValid && isAmountValid && isJustificationValid && isReviewerValid;
+    isTitleValid &&
+    isDescriptionValid &&
+    isAmountValid &&
+    isJustificationValid &&
+    isEditReasonValid &&
+    isReviewerValid;
 
   const handleSave = async (shouldSubmit: boolean) => {
     if (!isFormValid || isSubmitting || isSubmittingRef.current) return;
@@ -190,12 +201,17 @@ export default function EditRequest() {
                     id="edit-title"
                     name="title"
                     type="text"
-                    className={`form-control ${title.length > 0 && !isTitleValid ? "is-invalid" : ""}`}
+                    className={`form-control ${!isTitleValid ? "is-invalid" : ""}`}
                     value={title}
                     maxLength={150}
                     onChange={(e) => setTitle(e.target.value)}
                     required
                   />
+                  {!isTitleValid && (
+                    <div className="invalid-feedback d-block">
+                      Title must be at least 3 characters and at most 150 characters.
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-3">
@@ -208,11 +224,16 @@ export default function EditRequest() {
                     type="number"
                     step="0.01"
                     min="0.01"
-                    className={`form-control ${amount.length > 0 && !isAmountValid ? "is-invalid" : ""}`}
+                    className={`form-control ${!isAmountValid ? "is-invalid" : ""}`}
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     required
                   />
+                  {!isAmountValid && (
+                    <div className="invalid-feedback d-block">
+                      Amount must be a positive number greater than 0.00, have no more than 2 decimal places, and not exceed 9999999999.99.
+                    </div>
+                  )}
                 </div>
 
                 {(isReturnedEdit || isDraftEdit) && <div className="mb-3">
@@ -245,13 +266,18 @@ export default function EditRequest() {
                   <textarea
                     id="edit-description"
                     name="description"
-                    className="form-control"
+                    className={`form-control ${!isDescriptionValid ? "is-invalid" : ""}`}
                     rows={4}
                     maxLength={2000}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     required
                   />
+                  {!isDescriptionValid && (
+                    <div className="invalid-feedback d-block">
+                      Description is required and must not exceed 2000 characters.
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-3">
@@ -264,28 +290,42 @@ export default function EditRequest() {
                   <textarea
                     id="edit-justification"
                     name="justification"
-                    className="form-control"
+                    className={`form-control ${!isJustificationValid ? "is-invalid" : ""}`}
                     rows={3}
                     maxLength={2000}
                     value={justification}
                     onChange={(e) => setJustification(e.target.value)}
                     required
                   />
+                  {!isJustificationValid && (
+                    <div className="invalid-feedback d-block">
+                      Business justification is required and must not exceed 2000 characters.
+                    </div>
+                  )}
                 </div>
 
                 <div className="mb-4">
-                  <label htmlFor="edit-notes" className="form-label">
-                    Modification Summary / Revision Notes
-                  </label>
+                  <div className="d-flex justify-content-between align-items-center">
+                    <label htmlFor="edit-notes" className="form-label">
+                      Modification Summary / Revision Notes
+                    </label>
+                    <span className="small text-muted">{editReason.length} / 2000</span>
+                  </div>
                   <input
                     id="edit-notes"
                     name="notes"
                     type="text"
-                    className="form-control"
+                    className={`form-control ${!isEditReasonValid ? "is-invalid" : ""}`}
+                    maxLength={2000}
                     placeholder="Briefly explain what was modified or attached..."
                     value={editReason}
                     onChange={(e) => setEditReason(e.target.value)}
                   />
+                  {!isEditReasonValid && (
+                    <div className="invalid-feedback d-block">
+                      Revision notes must not exceed 2000 characters.
+                    </div>
+                  )}
                 </div>
 
                 <div className="d-flex justify-content-end gap-2">

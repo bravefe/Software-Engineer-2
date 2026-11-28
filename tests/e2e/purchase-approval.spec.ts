@@ -361,10 +361,151 @@ test("TEST-E2E-03: direct routes, ownership, assignment, and self-review are blo
   await expectStatus(page, "pending_review");
 });
 
-test.fixme(
-  "TEST-E2E-04: multi-criteria filter and reports journey (outside Issue 6 scope)",
-  async () => {},
-);
+test("TEST-E2E-04: multi-criteria filter and search across requester and reviewer roles", async ({
+  page,
+}) => {
+  const titleA = `Filter Alpha Keyboard ${runId}`;
+  const titleB = `Filter Beta Monitor ${runId}`;
+  const titleC = `Filter Gamma Secret ${runId}`;
+
+  // 1. Setup requests for Requester 1 and Requester 2
+  await signIn(page, users.requester1);
+  // Create Request A as DRAFT
+  await createRequest(page, titleA, users.reviewer1.id, false);
+  // Create Request B as PENDING_REVIEW
+  await createRequest(page, titleB, users.reviewer1.id, true);
+  await signOut(page);
+
+  // Requester 2 creates Request C as PENDING_REVIEW assigned to Reviewer 2
+  await signIn(page, users.requester2);
+  await createRequest(page, titleC, users.reviewer2.id, true);
+  await signOut(page);
+
+  // 2. Requester Dashboard Filtering Journey
+  await signIn(page, users.requester1);
+  await page.goto("/requester/dashboard");
+
+  // Initial dashboard view contains both of requester1's requests
+  await expect(page.getByRole("row").filter({ hasText: titleA })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toBeVisible();
+  // requester2's request must not be visible
+  await expect(page.getByRole("row").filter({ hasText: titleC })).toHaveCount(0);
+
+  // Filter by status: DRAFT
+  await page.locator("#filter-status").selectOption("DRAFT");
+  await page.locator("#filter-submit-btn").click();
+  await expect(page.getByRole("row").filter({ hasText: titleA })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toHaveCount(0);
+
+  // Filter by keyword search: "Monitor"
+  await page.locator("#filter-status").selectOption("");
+  await page.locator("#filter-search").fill("Monitor");
+  await page.locator("#filter-submit-btn").click();
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleA })).toHaveCount(0);
+
+  // Combined filter: status PENDING_REVIEW + keyword "Monitor"
+  await page.locator("#filter-status").selectOption("PENDING_REVIEW");
+  await page.locator("#filter-search").fill("Monitor");
+  await page.locator("#filter-submit-btn").click();
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleA })).toHaveCount(0);
+
+  // Filter yielding no matching results
+  await page.locator("#filter-search").fill("NonExistentXYZ999");
+  await page.locator("#filter-submit-btn").click();
+  await expect(page.getByText("No matching purchase requests")).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleA })).toHaveCount(0);
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toHaveCount(0);
+
+  // Security check: attempt keyword search for Requester 2's request ("Secret")
+  await page.locator("#filter-status").selectOption("");
+  await page.locator("#filter-search").fill("Secret");
+  await page.locator("#filter-submit-btn").click();
+  await expect(page.getByText("No matching purchase requests")).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleC })).toHaveCount(0);
+
+  // Clear filters and verify full authorized list returns
+  await page.locator("#filter-clear-btn").click();
+  await expect(page.getByRole("row").filter({ hasText: titleA })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toBeVisible();
+  await signOut(page);
+
+  // 3. Reviewer Queue Filtering Journey
+  await signIn(page, users.reviewer1);
+  await page.goto("/reviewer/queue");
+
+  // Reviewer 1 should see titleB (assigned to reviewer1), but NOT titleC (assigned to reviewer2)
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleC })).toHaveCount(0);
+
+  // Filter by keyword: "Monitor"
+  await page.locator("#reviewer-filter-search").fill("Monitor");
+  await page.locator("#reviewer-filter-submit-btn").click();
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toBeVisible();
+
+  // Filter yielding no matches
+  await page.locator("#reviewer-filter-search").fill("NonExistentXYZ999");
+  await page.locator("#reviewer-filter-submit-btn").click();
+  await expect(page.getByText("No matching purchase requests")).toBeVisible();
+
+  // Security check: Reviewer 1 searches for titleC assigned to Reviewer 2
+  await page.locator("#reviewer-filter-search").fill("Secret");
+  await page.locator("#reviewer-filter-submit-btn").click();
+  await expect(page.getByText("No matching purchase requests")).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleC })).toHaveCount(0);
+
+  // Clear filters and verify full authorized queue returns
+  await page.locator("#reviewer-filter-clear-btn").click();
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toBeVisible();
+
+  // 4. Reviewer Reports filtering updates both the request list and summary metrics
+  await page.goto("/reports");
+  await expect(page.getByRole("heading", { name: "Purchase Request Reports" })).toBeVisible();
+  // Drafts are private to the Requester: no DRAFT filter option or status card for Reviewers.
+  await expect(page.locator("#report-status option[value='DRAFT']")).toHaveCount(0);
+  await expect(page.getByTestId("report-status-DRAFT")).toHaveCount(0);
+  await expect(page.getByTestId("report-status-WITHDRAWN")).toBeVisible();
+  // Unfiltered report table lists the assigned pending request but not the assigned draft.
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleA })).toHaveCount(0);
+
+  // Backend: an explicit DRAFT report filter returns nothing, with zero counts and "0.00" amounts.
+  const draftSummary = await page.request.get("/api/reports/summary?status=DRAFT");
+  expect(draftSummary.status()).toBe(200);
+  const draftSummaryBody = await draftSummary.json();
+  expect(draftSummaryBody.totalCount).toBe(0);
+  expect(draftSummaryBody.totalAmount).toBe("0.00");
+  expect(draftSummaryBody.statusCounts.DRAFT).toBe(0);
+  expect(draftSummaryBody.statusAmounts.DRAFT).toBe("0.00");
+  const draftRows = await page.request.get("/api/reports/requests?status=DRAFT");
+  expect((await draftRows.json()).requests).toEqual([]);
+  const allRows = await (await page.request.get("/api/reports/requests")).json();
+  expect(allRows.requests.some((r: { status: string }) => r.status === "DRAFT")).toBe(false);
+
+  // Filtering by an allowed status and today's date still updates table and summary.
+  await page.locator("#report-status").selectOption("PENDING_REVIEW");
+  const reportDate = new Date().toISOString().slice(0, 10);
+  await page.locator("#report-start-date").fill(reportDate);
+  await page.locator("#report-end-date").fill(reportDate);
+  await page.locator("#report-filter-submit").click();
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleA })).toHaveCount(0);
+  await expect(page.getByTestId("report-status-PENDING_REVIEW")).not.toHaveText("0");
+  await expect(page.getByTestId("report-status-APPROVED")).toHaveText("0");
+
+  await page.locator("#report-start-date").fill("2099-01-01");
+  await page.locator("#report-end-date").fill("2099-01-31");
+  await page.locator("#report-filter-submit").click();
+  await expect(page.getByText("No matching purchase requests")).toBeVisible();
+  await expect(page.getByTestId("report-total-count")).toHaveText("0");
+  await expect(page.getByTestId("report-total-amount")).toHaveText("$0.00");
+
+  await page.locator("#report-filter-clear").click();
+  await expect(page.getByRole("row").filter({ hasText: titleB })).toBeVisible();
+  await expect(page.getByRole("row").filter({ hasText: titleA })).toHaveCount(0);
+  await signOut(page);
+});
 
 test.fixme(
   "TEST-E2E-05: cross-viewport responsive design verification (outside Issue 6 scope)",

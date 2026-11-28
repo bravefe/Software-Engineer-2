@@ -1,6 +1,6 @@
 {
   "name": "macau678-purchase-approval-system",
-  "version": "0.2.3",
+  "version": "0.3.0",
   "private": true,
   "workspaces": [
     "client",
@@ -20,6 +20,7 @@
     "test:video": "playwright test tests/e2e/sprint1-demo.video.spec.ts",
     "db:up": "docker compose -f database/docker-compose.yml up -d",
     "db:down": "docker compose -f database/docker-compose.yml down",
+    "db:reset": "npm run prisma:reset --workspace server",
     "db:generate": "npm run prisma:generate --workspace server",
     "db:seed": "npm run prisma:seed --workspace server",
     "db:migrate": "npm run prisma:migrate --workspace server",

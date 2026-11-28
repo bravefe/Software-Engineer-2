@@ -7,7 +7,7 @@ dotenv.config({ path: resolve(process.cwd(), "server/.env") });
 
 import { app } from "../../server/src/app";
 import { disconnectPrisma, prisma } from "../../server/src/prisma";
-import { COOKIE_NAME, createSessionToken, hashSessionToken } from "../../server/src/utils/auth";
+import { COOKIE_NAME, createSessionToken, hashPassword, hashSessionToken } from "../../server/src/utils/auth";
 import { resetAndSeedDatabase, type SeededTestRequests, type SeededTestUsers } from "../helpers/testDb";
 
 describe("Integration and API tests: Authentication & Authorization", () => {
@@ -775,6 +775,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
           reviewerId: seededUsers.reviewer1.id,
         });
       expect(resShortTitle.status).toBe(400);
+      expect(resShortTitle.body.fieldErrors?.title).toBeDefined();
 
       // Non-positive amount
       const resZeroAmount = await request(app)
@@ -788,6 +789,155 @@ describe("Integration and API tests: Authentication & Authorization", () => {
           reviewerId: seededUsers.reviewer1.id,
         });
       expect(resZeroAmount.status).toBe(400);
+      expect(resZeroAmount.body.fieldErrors?.amount).toBeDefined();
+
+      const resOverTitle = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "T".repeat(151),
+          description: "Valid description",
+          amount: 100.0,
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resOverTitle.status).toBe(400);
+      expect(resOverTitle.body.fieldErrors?.title).toBeDefined();
+
+      const resOverText = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "D".repeat(2001),
+          amount: 100.0,
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resOverText.status).toBe(400);
+      expect(resOverText.body.fieldErrors?.description).toBeDefined();
+
+      const resOverJustification = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "Valid description",
+          amount: 100.0,
+          justification: "J".repeat(2001),
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resOverJustification.status).toBe(400);
+      expect(resOverJustification.body.fieldErrors?.justification).toBeDefined();
+
+      const resInvalidDecimal = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "Valid description",
+          amount: "450.001",
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resInvalidDecimal.status).toBe(400);
+      expect(resInvalidDecimal.body.fieldErrors?.amount).toBeDefined();
+
+      const resNegativeAmount = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "Valid description",
+          amount: -10.5,
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resNegativeAmount.status).toBe(400);
+      expect(resNegativeAmount.body.fieldErrors?.amount).toBeDefined();
+
+      const resOverMaxAmount = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "Valid Title",
+          description: "Valid description",
+          amount: "10000000000.00",
+          justification: "Valid justification",
+          reviewerId: seededUsers.reviewer1.id,
+        });
+      expect(resOverMaxAmount.status).toBe(400);
+      expect(resOverMaxAmount.body.fieldErrors?.amount).toBeDefined();
+    });
+
+    it("accepts title, text, and amount boundary values and enforces bounds on PATCH edit", async () => {
+      const loginRes = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const cookie = loginRes.headers["set-cookie"][0];
+
+      const res = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "T".repeat(150),
+          description: "D".repeat(2000),
+          amount: "0.01",
+          justification: "J".repeat(2000),
+          reviewerId: seededUsers.reviewer1.id,
+          status: "DRAFT",
+        });
+
+      expect(res.status).toBe(201);
+      expect(res.body.request?.title).toHaveLength(150);
+      expect(res.body.request?.description).toHaveLength(2000);
+      expect(res.body.request?.justification).toHaveLength(2000);
+
+      // Minimum title (3 chars) and maximum amount (9999999999.99)
+      const minTitleMaxAmountRes = await request(app)
+        .post("/api/requests")
+        .set("Cookie", cookie)
+        .send({
+          title: "ABC",
+          description: "D",
+          amount: "9999999999.99",
+          justification: "J",
+          reviewerId: seededUsers.reviewer1.id,
+          status: "DRAFT",
+        });
+      expect(minTitleMaxAmountRes.status).toBe(201);
+      const draftId = (minTitleMaxAmountRes.body.request || minTitleMaxAmountRes.body).id;
+      expect(minTitleMaxAmountRes.body.request?.title).toBe("ABC");
+      expect(minTitleMaxAmountRes.body.request?.amount).toBe("9999999999.99");
+
+      // PATCH validation boundary checks
+      const patchBadTitle = await request(app)
+        .patch(`/api/requests/${draftId}`)
+        .set("Cookie", cookie)
+        .send({ title: "T".repeat(151) });
+      expect(patchBadTitle.status).toBe(400);
+      expect(patchBadTitle.body.fieldErrors?.title).toBeDefined();
+
+      const patchBadAmount = await request(app)
+        .patch(`/api/requests/${draftId}`)
+        .set("Cookie", cookie)
+        .send({ amount: "10000000000.00" });
+      expect(patchBadAmount.status).toBe(400);
+      expect(patchBadAmount.body.fieldErrors?.amount).toBeDefined();
+
+      const patchBadDesc = await request(app)
+        .patch(`/api/requests/${draftId}`)
+        .set("Cookie", cookie)
+        .send({ description: "D".repeat(2001) });
+      expect(patchBadDesc.status).toBe(400);
+      expect(patchBadDesc.body.fieldErrors?.description).toBeDefined();
+
+      const patchBadReason = await request(app)
+        .patch(`/api/requests/${draftId}`)
+        .set("Cookie", cookie)
+        .send({ title: "Valid Updated Title", reason: "R".repeat(2001) });
+      expect(patchBadReason.status).toBe(400);
+      expect(patchBadReason.body.code).toBe("VALIDATION_ERROR");
     });
   });
 
@@ -1264,7 +1414,622 @@ describe("Integration and API tests: Authentication & Authorization", () => {
     });
   });
 
-  // Sprint 2/3 reporting tests preserved as todo
-  it.todo("TEST-INT-09: request filtering by status and date range");
-  it.todo("TEST-INT-10: reporting summary aggregation endpoint");
+  describe("TEST-INT-09: Request filtering and search (FEAT-10, FR-08, AC-12)", () => {
+    let requester1Cookie: string;
+    let requester2Cookie: string;
+    let reviewer1Cookie: string;
+    let reviewer2Cookie: string;
+
+    let filterReqApproved: any;
+    let filterReqDraft: any;
+    let filterReqRejected: any;
+    let filterReqOtherUser: any;
+
+    beforeAll(async () => {
+      // Log in users
+      const req1Login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      requester1Cookie = req1Login.headers["set-cookie"][0];
+
+      const req2Login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester2.email, password: seededUsers.requester2.password });
+      requester2Cookie = req2Login.headers["set-cookie"][0];
+
+      const rev1Login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.reviewer1.email, password: seededUsers.reviewer1.password });
+      reviewer1Cookie = rev1Login.headers["set-cookie"][0];
+
+      const rev2Login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.reviewer2.email, password: seededUsers.reviewer2.password });
+      reviewer2Cookie = rev2Login.headers["set-cookie"][0];
+
+      // Create dedicated test requests with explicit dates and statuses
+      filterReqApproved = await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: "PR-2026-FIL01",
+          title: "Special Filtering Alpha Laptop",
+          description: "MacBook Pro for development",
+          amount: "2499.00",
+          justification: "High-spec machine",
+          status: "APPROVED",
+          requesterId: seededUsers.requester1.id,
+          reviewerId: seededUsers.reviewer1.id,
+          createdAt: new Date("2026-01-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-01-15T10:00:00.000Z"),
+        },
+      });
+
+      filterReqDraft = await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: "PR-2026-FIL02",
+          title: "Special Filtering Beta Standing Desk",
+          description: "Electric height adjustable desk",
+          amount: "650.00",
+          justification: "Ergonomics",
+          status: "DRAFT",
+          requesterId: seededUsers.requester1.id,
+          reviewerId: seededUsers.reviewer1.id,
+          createdAt: new Date("2026-02-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-02-15T10:00:00.000Z"),
+        },
+      });
+
+      filterReqRejected = await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: "PR-2026-FIL03",
+          title: "Special Filtering Gamma Gaming Monitor",
+          description: "Ultra-wide curved display",
+          amount: "899.00",
+          justification: "Visual design work",
+          status: "REJECTED",
+          requesterId: seededUsers.requester1.id,
+          reviewerId: seededUsers.reviewer1.id,
+          createdAt: new Date("2026-03-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-03-15T10:00:00.000Z"),
+        },
+      });
+
+      // Request belonging to Requester 2 and assigned to Reviewer 2
+      filterReqOtherUser = await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: "PR-2026-FIL04",
+          title: "Special Filtering Alpha Laptop Other User",
+          description: "Laptop for second user",
+          amount: "2100.00",
+          justification: "Project work",
+          status: "APPROVED",
+          requesterId: seededUsers.requester2.id,
+          reviewerId: seededUsers.reviewer2.id,
+          createdAt: new Date("2026-01-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-01-15T10:00:00.000Z"),
+        },
+      });
+    });
+
+    afterAll(async () => {
+      // Clean up dedicated filter requests
+      await prisma.purchaseRequest.deleteMany({
+        where: {
+          id: {
+            in: [
+              filterReqApproved.id,
+              filterReqDraft.id,
+              filterReqRejected.id,
+              filterReqOtherUser.id,
+            ],
+          },
+        },
+      });
+    });
+
+    it("filters requests by status correctly", async () => {
+      const res = await request(app)
+        .get("/api/requests?status=APPROVED")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.requests)).toBe(true);
+      expect(res.body.requests.length).toBeGreaterThanOrEqual(1);
+      for (const r of res.body.requests) {
+        expect(r.status).toBe("APPROVED");
+        expect(r.requesterId).toBe(seededUsers.requester1.id);
+      }
+      const found = res.body.requests.find((r: any) => r.id === filterReqApproved.id);
+      expect(found).toBeDefined();
+    });
+
+    it("filters requests by startDate correctly", async () => {
+      const res = await request(app)
+        .get("/api/requests?startDate=2026-02-01")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      for (const r of res.body.requests) {
+        expect(new Date(r.createdAt).getTime()).toBeGreaterThanOrEqual(
+          new Date("2026-02-01T00:00:00.000Z").getTime(),
+        );
+      }
+      const ids = res.body.requests.map((r: any) => r.id);
+      expect(ids).toContain(filterReqDraft.id);
+      expect(ids).toContain(filterReqRejected.id);
+      expect(ids).not.toContain(filterReqApproved.id);
+    });
+
+    it("filters requests by endDate correctly", async () => {
+      const res = await request(app)
+        .get("/api/requests?endDate=2026-01-31")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      for (const r of res.body.requests) {
+        expect(new Date(r.createdAt).getTime()).toBeLessThanOrEqual(
+          new Date("2026-01-31T23:59:59.999Z").getTime(),
+        );
+      }
+      const ids = res.body.requests.map((r: any) => r.id);
+      expect(ids).toContain(filterReqApproved.id);
+      expect(ids).not.toContain(filterReqDraft.id);
+      expect(ids).not.toContain(filterReqRejected.id);
+    });
+
+    it("filters requests by date range (startDate and endDate)", async () => {
+      const res = await request(app)
+        .get("/api/requests?startDate=2026-02-01&endDate=2026-02-28")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      const ids = res.body.requests.map((r: any) => r.id);
+      expect(ids).toContain(filterReqDraft.id);
+      expect(ids).not.toContain(filterReqApproved.id);
+      expect(ids).not.toContain(filterReqRejected.id);
+    });
+
+    it("searches requests by title keyword (case-insensitive)", async () => {
+      const res = await request(app)
+        .get("/api/requests?search=standing%20desk")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      const ids = res.body.requests.map((r: any) => r.id);
+      expect(ids).toContain(filterReqDraft.id);
+      expect(ids).not.toContain(filterReqApproved.id);
+      expect(ids).not.toContain(filterReqRejected.id);
+    });
+
+    it("searches requests by requestNumber keyword", async () => {
+      const res = await request(app)
+        .get("/api/requests?search=FIL03")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      expect(res.body.requests.length).toBe(1);
+      expect(res.body.requests[0].id).toBe(filterReqRejected.id);
+    });
+
+    it("combines multiple filters (status, search, date range)", async () => {
+      const res = await request(app)
+        .get("/api/requests?status=APPROVED&search=Laptop&startDate=2026-01-01&endDate=2026-01-31")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      expect(res.body.requests.length).toBe(1);
+      expect(res.body.requests[0].id).toBe(filterReqApproved.id);
+    });
+
+    it("returns empty array with 200 when no requests match the filter criteria", async () => {
+      const res = await request(app)
+        .get("/api/requests?search=NonExistentKeywordXYZ12345")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      expect(Array.isArray(res.body.requests)).toBe(true);
+      expect(res.body.requests.length).toBe(0);
+    });
+
+    it("clearing filters restores full authorized list", async () => {
+      const filteredRes = await request(app)
+        .get("/api/requests?status=DRAFT")
+        .set("Cookie", requester1Cookie);
+
+      const unfilteredRes = await request(app)
+        .get("/api/requests")
+        .set("Cookie", requester1Cookie);
+
+      expect(filteredRes.status).toBe(200);
+      expect(unfilteredRes.status).toBe(200);
+      expect(unfilteredRes.body.requests.length).toBeGreaterThan(filteredRes.body.requests.length);
+      const allIds = unfilteredRes.body.requests.map((r: any) => r.id);
+      expect(allIds).toContain(filterReqApproved.id);
+      expect(allIds).toContain(filterReqDraft.id);
+      expect(allIds).toContain(filterReqRejected.id);
+    });
+
+    it("strictly preserves requester ownership boundaries during search and filtering (BR-09, AC-10)", async () => {
+      // Requester 1 searches with a keyword matching Requester 2's request
+      const res = await request(app)
+        .get("/api/requests?search=Other%20User")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(200);
+      expect(res.body.requests.length).toBe(0);
+
+      // Verify Requester 2 can find their own request
+      const req2Res = await request(app)
+        .get("/api/requests?search=Other%20User")
+        .set("Cookie", requester2Cookie);
+
+      expect(req2Res.status).toBe(200);
+      expect(req2Res.body.requests.length).toBe(1);
+      expect(req2Res.body.requests[0].id).toBe(filterReqOtherUser.id);
+    });
+
+    it("strictly preserves reviewer assignment boundaries during search and filtering (BR-04, AC-09)", async () => {
+      // Reviewer 1 searches for approved requests
+      const rev1Res = await request(app)
+        .get("/api/requests?status=APPROVED&search=Special%20Filtering")
+        .set("Cookie", reviewer1Cookie);
+
+      expect(rev1Res.status).toBe(200);
+      const rev1Ids = rev1Res.body.requests.map((r: any) => r.id);
+      expect(rev1Ids).toContain(filterReqApproved.id);
+      // Reviewer 1 must NOT see request assigned to Reviewer 2
+      expect(rev1Ids).not.toContain(filterReqOtherUser.id);
+
+      // Reviewer 2 searches for approved requests
+      const rev2Res = await request(app)
+        .get("/api/requests?status=APPROVED&search=Special%20Filtering")
+        .set("Cookie", reviewer2Cookie);
+
+      expect(rev2Res.status).toBe(200);
+      const rev2Ids = rev2Res.body.requests.map((r: any) => r.id);
+      expect(rev2Ids).toContain(filterReqOtherUser.id);
+      expect(rev2Ids).not.toContain(filterReqApproved.id);
+    });
+
+    it("filters WITHDRAWN requests for Requester and Reviewer, and returns an empty array for Reviewer ?status=DRAFT", async () => {
+      const withdrawn = await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: "PR-2026-FIL05",
+          title: "Special Filtering Delta Withdrawn Webcam",
+          description: "Withdrawn by requester",
+          amount: "80.00",
+          justification: "No longer needed",
+          status: "WITHDRAWN",
+          requesterId: seededUsers.requester1.id,
+          reviewerId: seededUsers.reviewer1.id,
+          createdAt: new Date("2026-04-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-04-15T10:00:00.000Z"),
+        },
+      });
+
+      try {
+        const reqRes = await request(app)
+          .get("/api/requests?status=WITHDRAWN")
+          .set("Cookie", requester1Cookie);
+        expect(reqRes.status).toBe(200);
+        const reqIds = reqRes.body.requests.map((r: any) => r.id);
+        expect(reqIds).toContain(withdrawn.id);
+        expect(reqRes.body.requests.every((r: any) => r.status === "WITHDRAWN")).toBe(true);
+
+        const revRes = await request(app)
+          .get("/api/requests?status=WITHDRAWN")
+          .set("Cookie", reviewer1Cookie);
+        expect(revRes.status).toBe(200);
+        expect(revRes.body.requests.map((r: any) => r.id)).toContain(withdrawn.id);
+        expect(revRes.body.requests.every((r: any) => r.status === "WITHDRAWN")).toBe(true);
+
+        // Another reviewer must not see it.
+        const otherRevRes = await request(app)
+          .get("/api/requests?status=WITHDRAWN")
+          .set("Cookie", reviewer2Cookie);
+        expect(otherRevRes.status).toBe(200);
+        expect(otherRevRes.body.requests.map((r: any) => r.id)).not.toContain(withdrawn.id);
+
+        // Reviewer explicitly asking for DRAFT gets an empty list, never assigned drafts.
+        const draftRes = await request(app)
+          .get("/api/requests?status=DRAFT")
+          .set("Cookie", reviewer1Cookie);
+        expect(draftRes.status).toBe(200);
+        expect(draftRes.body).toEqual({ requests: [] });
+
+        const draftSearchRes = await request(app)
+          .get("/api/requests?status=DRAFT&search=Standing%20Desk")
+          .set("Cookie", reviewer1Cookie);
+        expect(draftSearchRes.status).toBe(200);
+        expect(draftSearchRes.body).toEqual({ requests: [] });
+
+        // The Requester still sees their own draft with the same filter.
+        const ownDraftRes = await request(app)
+          .get("/api/requests?status=DRAFT")
+          .set("Cookie", requester1Cookie);
+        expect(ownDraftRes.status).toBe(200);
+        expect(ownDraftRes.body.requests.map((r: any) => r.id)).toContain(filterReqDraft.id);
+      } finally {
+        await prisma.purchaseRequest.delete({ where: { id: withdrawn.id } });
+      }
+    });
+
+    it("rejects invalid status filter with 400 VALIDATION_ERROR", async () => {
+      const res = await request(app)
+        .get("/api/requests?status=INVALID_STATUS")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe("VALIDATION_ERROR");
+      expect(res.body.error).toContain("Invalid status filter");
+    });
+
+    it("rejects invalid startDate format with 400 VALIDATION_ERROR", async () => {
+      const res = await request(app)
+        .get("/api/requests?startDate=not-a-date")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe("VALIDATION_ERROR");
+      expect(res.body.error).toContain("Invalid startDate format");
+    });
+
+    it("rejects invalid endDate format with 400 VALIDATION_ERROR", async () => {
+      const res = await request(app)
+        .get("/api/requests?endDate=not-a-date")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe("VALIDATION_ERROR");
+      expect(res.body.error).toContain("Invalid endDate format");
+    });
+
+    it("rejects invalid date range where startDate > endDate with 400 VALIDATION_ERROR", async () => {
+      const res = await request(app)
+        .get("/api/requests?startDate=2026-05-01&endDate=2026-04-01")
+        .set("Cookie", requester1Cookie);
+
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe("VALIDATION_ERROR");
+      expect(res.body.error).toContain("startDate must not be after endDate");
+    });
+  });
+
+  describe("TEST-INT-10: Reporting summary aggregation endpoint", () => {
+    const reportPassword = "ReportTestPassword123!";
+    const requestPrefix = `PR-REPORT-${Date.now()}`;
+    let reportReviewer: { id: number; email: string };
+    let reportReviewerCookie: string;
+    let reportRequests: { id: number }[] = [];
+
+    beforeAll(async () => {
+      const passwordHash = await hashPassword(reportPassword);
+      reportReviewer = await prisma.user.create({
+        data: {
+          email: `report-reviewer-${Date.now()}@macau678.com`,
+          name: "Report Test Reviewer",
+          role: "REVIEWER",
+          passwordHash,
+          isActive: true,
+        },
+      });
+
+      const amounts = ["500.00", "200.00", "300.00", "150.00", "100.00"];
+      const statuses = ["APPROVED", "APPROVED", "APPROVED", "PENDING_REVIEW", "REJECTED"] as const;
+      reportRequests = await Promise.all(
+        amounts.map((amount, index) =>
+          prisma.purchaseRequest.create({
+            data: {
+              requestNumber: `${requestPrefix}-${index}`,
+              title: `Reporting Summary Fixture ${index}`,
+              description: "Test report metrics and filtering.",
+              amount,
+              justification: "Integration test fixture.",
+              status: statuses[index],
+              requesterId: seededUsers.requester1.id,
+              reviewerId: reportReviewer.id,
+              createdAt: new Date("2026-04-15T10:00:00.000Z"),
+              updatedAt: new Date("2026-04-15T10:00:00.000Z"),
+            },
+          }),
+        ),
+      );
+
+      await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: `${requestPrefix}-other-reviewer`,
+          title: "Reporting Fixture Assigned Elsewhere",
+          description: "Must not appear in this reviewer's report.",
+          amount: "9999.99",
+          justification: "Integration test fixture.",
+          status: "APPROVED",
+          requesterId: seededUsers.requester1.id,
+          reviewerId: seededUsers.reviewer2.id,
+          createdAt: new Date("2026-04-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-04-15T10:00:00.000Z"),
+        },
+      });
+
+      // Private draft assigned to this reviewer: must never appear in any Reviewer report.
+      await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: `${requestPrefix}-assigned-draft`,
+          title: "Reporting Fixture Private Draft",
+          description: "Drafts are private to the Requester.",
+          amount: "777.77",
+          justification: "Integration test fixture.",
+          status: "DRAFT",
+          requesterId: seededUsers.requester1.id,
+          reviewerId: reportReviewer.id,
+          createdAt: new Date("2026-04-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-04-15T10:00:00.000Z"),
+        },
+      });
+
+      const login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: reportReviewer.email, password: reportPassword });
+      expect(login.status).toBe(200);
+      reportReviewerCookie = login.headers["set-cookie"][0];
+    });
+
+    afterAll(async () => {
+      await prisma.purchaseRequest.deleteMany({
+        where: { requestNumber: { startsWith: requestPrefix } },
+      });
+      if (reportReviewer?.id) {
+        await prisma.user.delete({ where: { id: reportReviewer.id } });
+      }
+    });
+
+    it("excludes assigned drafts from Reviewer report summary and request list, including explicit DRAFT filters", async () => {
+      // Unfiltered: the $777.77 assigned draft is absent from counts, totals, and rows.
+      const summaryRes = await request(app)
+        .get("/api/reports/summary")
+        .set("Cookie", reportReviewerCookie);
+      expect(summaryRes.status).toBe(200);
+      expect(summaryRes.body.totalCount).toBe(5);
+      expect(summaryRes.body.totalAmount).toBe("1250.00");
+      expect(summaryRes.body.statusCounts.DRAFT).toBe(0);
+      expect(summaryRes.body.statusAmounts.DRAFT).toBe("0.00");
+
+      const listRes = await request(app)
+        .get("/api/reports/requests")
+        .set("Cookie", reportReviewerCookie);
+      expect(listRes.status).toBe(200);
+      expect(listRes.body.requests).toHaveLength(5);
+      expect(listRes.body.requests.some((item: { status: string }) => item.status === "DRAFT")).toBe(false);
+
+      // Explicit DRAFT filter: empty results, zero counts and "0.00" amounts.
+      const draftSummary = await request(app)
+        .get("/api/reports/summary?status=DRAFT")
+        .set("Cookie", reportReviewerCookie);
+      expect(draftSummary.status).toBe(200);
+      expect(draftSummary.body.totalCount).toBe(0);
+      expect(draftSummary.body.totalAmount).toBe("0.00");
+      expect(Object.values(draftSummary.body.statusCounts)).toEqual([0, 0, 0, 0, 0, 0]);
+      expect(Object.values(draftSummary.body.statusAmounts)).toEqual(["0.00", "0.00", "0.00", "0.00", "0.00", "0.00"]);
+
+      const draftList = await request(app)
+        .get("/api/reports/requests?status=DRAFT&startDate=2026-04-01&endDate=2026-04-30")
+        .set("Cookie", reportReviewerCookie);
+      expect(draftList.status).toBe(200);
+      expect(draftList.body.requests).toEqual([]);
+    });
+
+    it("returns exact total, all status counts, and only the authenticated reviewer's requests", async () => {
+      const res = await request(app)
+        .get("/api/reports/summary")
+        .set("Cookie", reportReviewerCookie);
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({
+        totalCount: 5,
+        statusCounts: {
+          DRAFT: 0,
+          PENDING_REVIEW: 1,
+          APPROVED: 3,
+          REJECTED: 1,
+          RETURNED: 0,
+          WITHDRAWN: 0,
+        },
+        statusAmounts: {
+          DRAFT: "0.00",
+          PENDING_REVIEW: "150.00",
+          APPROVED: "1000.00",
+          REJECTED: "100.00",
+          RETURNED: "0.00",
+          WITHDRAWN: "0.00",
+        },
+        totalAmount: "1250.00",
+      });
+
+      const requestsRes = await request(app)
+        .get("/api/reports/requests")
+        .set("Cookie", reportReviewerCookie);
+      expect(requestsRes.status).toBe(200);
+      expect(requestsRes.body.requests).toHaveLength(5);
+      expect(requestsRes.body.requests.every((item: { id: number }) =>
+        reportRequests.some((reportRequest) => reportRequest.id === item.id),
+      )).toBe(true);
+    });
+
+    it("applies status and date filters to both results and summary metrics", async () => {
+      const query = "?status=APPROVED&startDate=2026-04-01&endDate=2026-04-30";
+      const summaryRes = await request(app)
+        .get(`/api/reports/summary${query}`)
+        .set("Cookie", reportReviewerCookie);
+      const requestsRes = await request(app)
+        .get(`/api/reports/requests${query}`)
+        .set("Cookie", reportReviewerCookie);
+
+      expect(summaryRes.status).toBe(200);
+      expect(summaryRes.body).toEqual({
+        totalCount: 3,
+        statusCounts: {
+          DRAFT: 0,
+          PENDING_REVIEW: 0,
+          APPROVED: 3,
+          REJECTED: 0,
+          RETURNED: 0,
+          WITHDRAWN: 0,
+        },
+        statusAmounts: {
+          DRAFT: "0.00",
+          PENDING_REVIEW: "0.00",
+          APPROVED: "1000.00",
+          REJECTED: "0.00",
+          RETURNED: "0.00",
+          WITHDRAWN: "0.00",
+        },
+        totalAmount: "1000.00",
+      });
+      expect(requestsRes.status).toBe(200);
+      expect(requestsRes.body.requests).toHaveLength(3);
+      expect(requestsRes.body.requests.every((item: { status: string }) => item.status === "APPROVED")).toBe(true);
+    });
+
+    it("returns a zero-valued summary and empty request list when no records match", async () => {
+      const summaryRes = await request(app)
+        .get("/api/reports/summary?startDate=2099-01-01")
+        .set("Cookie", reportReviewerCookie);
+      const requestsRes = await request(app)
+        .get("/api/reports/requests?startDate=2099-01-01")
+        .set("Cookie", reportReviewerCookie);
+
+      expect(summaryRes.status).toBe(200);
+      expect(summaryRes.body.totalCount).toBe(0);
+      expect(summaryRes.body.totalAmount).toBe("0.00");
+      expect(summaryRes.body.statusCounts).toEqual({
+        DRAFT: 0,
+        PENDING_REVIEW: 0,
+        APPROVED: 0,
+        REJECTED: 0,
+        RETURNED: 0,
+        WITHDRAWN: 0,
+      });
+      expect(summaryRes.body.statusAmounts).toEqual({
+        DRAFT: "0.00",
+        PENDING_REVIEW: "0.00",
+        APPROVED: "0.00",
+        REJECTED: "0.00",
+        RETURNED: "0.00",
+        WITHDRAWN: "0.00",
+      });
+      expect(requestsRes.status).toBe(200);
+      expect(requestsRes.body.requests).toEqual([]);
+    });
+
+    it("rejects requester access to reviewer reports", async () => {
+      const login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: seededUsers.requester1.email, password: seededUsers.requester1.password });
+      const res = await request(app)
+        .get("/api/reports/summary")
+        .set("Cookie", login.headers["set-cookie"][0]);
+
+      expect(login.status).toBe(200);
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe("ACCESS_DENIED");
+    });
+  });
 });

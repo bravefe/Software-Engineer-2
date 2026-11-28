@@ -306,6 +306,131 @@ describe("Frontend component tests: Authentication and Authorization", () => {
       expect(draftButton.hasAttribute("disabled")).toBe(false);
       expect(submitButton.hasAttribute("disabled")).toBe(false);
     });
+
+    it("validates description, justification, and upper bounds with live character counters", () => {
+      render(
+        <MemoryRouter>
+          <CreateRequest initialReviewers={mockReviewers} />
+        </MemoryRouter>,
+      );
+
+      const titleInput = screen.getByLabelText(/request title/i);
+      const amountInput = screen.getByLabelText(/estimated amount/i);
+      const descInput = screen.getByLabelText(/description/i);
+      const justInput = screen.getByLabelText(/business justification/i);
+      const submitButton = screen.getByRole("button", { name: /submit for review/i });
+
+      expect(screen.getAllByText("0 / 2000")).toHaveLength(2);
+
+      // Whitespace-only description and over-limit justification
+      fireEvent.change(descInput, { target: { value: "   " } });
+      expect(descInput.className).toContain("is-invalid");
+      expect(screen.getByText(/description is required and must not exceed 2000 characters/i)).toBeTruthy();
+
+      fireEvent.change(justInput, { target: { value: "J".repeat(2001) } });
+      expect(justInput.className).toContain("is-invalid");
+      expect(screen.getByText("2001 / 2000")).toBeTruthy();
+      expect(
+        screen.getByText(/business justification is required and must not exceed 2000 characters/i),
+      ).toBeTruthy();
+
+      // Amount with > 2 decimals or above max
+      fireEvent.change(amountInput, { target: { value: "450.001" } });
+      expect(amountInput.className).toContain("is-invalid");
+      expect(submitButton.hasAttribute("disabled")).toBe(true);
+
+      // Exact valid boundaries: 3-char title, 0.01 amount, 2000-char description and justification
+      fireEvent.change(titleInput, { target: { value: "ABC" } });
+      fireEvent.change(amountInput, { target: { value: "0.01" } });
+      fireEvent.change(descInput, { target: { value: "D".repeat(2000) } });
+      fireEvent.change(justInput, { target: { value: "J".repeat(2000) } });
+
+      expect(screen.getByText("3 / 150")).toBeTruthy();
+      expect(screen.getAllByText("2000 / 2000")).toHaveLength(2);
+      expect(submitButton.hasAttribute("disabled")).toBe(false);
+    });
+
+    it("shows field-level validation errors and character counters on EditRequest including cleared fields and revision notes", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockImplementation(async (url: string) => {
+          if (url.includes("/api/users/reviewers")) {
+            return {
+              ok: true,
+              json: async () => ({ reviewers: mockReviewers }),
+            } as any;
+          }
+          return {
+            ok: true,
+            json: async () => ({
+              request: {
+                id: 99,
+                requestNumber: "PR-2026-00099",
+                title: "Initial Valid Title",
+                description: "Initial valid description",
+                amount: "250.00",
+                justification: "Initial valid justification",
+                status: "DRAFT",
+                requesterId: 1,
+                reviewerId: 2,
+                submittedAt: null,
+                createdAt: "2026-11-28T00:00:00.000Z",
+                updatedAt: "2026-11-28T00:00:00.000Z",
+              },
+            }),
+          } as any;
+        }),
+      );
+
+      render(
+        <MemoryRouter initialEntries={["/requests/99/edit"]}>
+          <Routes>
+            <Route path="/requests/:id/edit" element={<EditRequest />} />
+          </Routes>
+        </MemoryRouter>,
+      );
+
+      const titleInput = await screen.findByLabelText(/request title/i);
+      const amountInput = screen.getByLabelText(/estimated amount/i);
+      const descInput = screen.getByLabelText(/description/i);
+      const justInput = screen.getByLabelText(/business justification/i);
+      const notesInput = screen.getByLabelText(/modification summary \/ revision notes/i);
+      const saveDraftBtn = screen.getByRole("button", { name: /save draft/i });
+
+      expect(screen.getByText("0 / 2000")).toBeTruthy();
+      expect(saveDraftBtn.hasAttribute("disabled")).toBe(false);
+
+      // Clearing pre-filled fields displays validation errors and invalid styling
+      fireEvent.change(titleInput, { target: { value: "" } });
+      fireEvent.change(amountInput, { target: { value: "" } });
+      fireEvent.change(descInput, { target: { value: "" } });
+      fireEvent.change(justInput, { target: { value: "" } });
+
+      expect(titleInput.className).toContain("is-invalid");
+      expect(amountInput.className).toContain("is-invalid");
+      expect(descInput.className).toContain("is-invalid");
+      expect(justInput.className).toContain("is-invalid");
+      expect(screen.getByText(/title must be at least 3 characters/i)).toBeTruthy();
+      expect(screen.getByText(/amount must be a positive number greater than 0.00/i)).toBeTruthy();
+      expect(screen.getByText(/description is required and must not exceed 2000 characters/i)).toBeTruthy();
+      expect(
+        screen.getByText(/business justification is required and must not exceed 2000 characters/i),
+      ).toBeTruthy();
+      expect(saveDraftBtn.hasAttribute("disabled")).toBe(true);
+
+      // Restore valid required fields, then exceed revision notes limit
+      fireEvent.change(titleInput, { target: { value: "Valid Title" } });
+      fireEvent.change(amountInput, { target: { value: "100.00" } });
+      fireEvent.change(descInput, { target: { value: "Valid description" } });
+      fireEvent.change(justInput, { target: { value: "Valid justification" } });
+      expect(saveDraftBtn.hasAttribute("disabled")).toBe(false);
+
+      fireEvent.change(notesInput, { target: { value: "N".repeat(2001) } });
+      expect(notesInput.className).toContain("is-invalid");
+      expect(screen.getByText("2001 / 2000")).toBeTruthy();
+      expect(screen.getByText(/revision notes must not exceed 2000 characters/i)).toBeTruthy();
+      expect(saveDraftBtn.hasAttribute("disabled")).toBe(true);
+    });
   });
 
   describe("TEST-COMP-03: Review decision modal and mandatory reason enforcement (FEAT-07, FR-04, BR-05, AC-06)", () => {

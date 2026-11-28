@@ -258,7 +258,7 @@ erDiagram
 ### 4.1 Screen and Page Overview
 
 - **Login (`/login`):** Authentication form supporting email and password inputs with immediate error feedback on invalid attempts (FR-01, AC-01).
-- **Requester Dashboard (`/requester/dashboard`):** Displays status summary metric cards (Drafts, Pending Review, Returned, Approved, Rejected, Withdrawn) and a table of recent requests (FR-03, FR-08).
+- **Requester Dashboard (`/requester/dashboard`):** Displays request overview and interactive filter controls (status dropdown, start date, end date, keyword search, and clear filters button) over the requester's own requests table (FR-03, FR-08, FEAT-10).
 - **Create Request (`/requests/new`):** Input form for title, description, amount, justification, and reviewer assignment dropdown with "Save as Draft" and "Submit for Review" options (FR-02, BR-02, AC-02).
 - **Edit Request (`/requests/:id/edit`):** Edit form for the owning Requester when status is `DRAFT`, `PENDING_REVIEW`, or `RETURNED`. Draft edits can be saved or submitted; pending edits preserve `PENDING_REVIEW` and become visible to both participants (FR-05, BR-06, AC-13).
 - **Request Detail View (`/requests/:id`):** Displays comprehensive request details, current status badge, and a role-filtered chronological `RequestHistory` timeline with review reasons (FR-03, FR-06). Requesters see their complete history. Reviewers do not see `CREATED` or individual edits made to returned requests; they see pending edit events, `SUBMITTED`, and review events.
@@ -370,8 +370,8 @@ graph TD
 
 #### Reporting (`/api/reports`)
 
-- `GET /api/reports/summary`: Aggregate counts of requests grouped by status (FR-08, AC-12).
-- `GET /api/reports/requests`: Filter requests by status and date range (`startDate`, `endDate`) (FR-08, AC-12).
+- `GET /api/reports/summary`: Reviewer-only summary of requests assigned to the authenticated reviewer, returning `totalCount`, counts for every status in `statusCounts`, exact two-decimal amount subtotals in `statusAmounts`, and an exact two-decimal `totalAmount`. Accepts optional `status`, `startDate`, and `endDate` filters; summary values reflect the filtered results (FR-08, AC-12).
+- `GET /api/reports/requests`: Reviewer-only list of requests assigned to the authenticated reviewer, filtered by optional `status`, `startDate`, and `endDate` (`YYYY-MM-DD`, inclusive) parameters (FR-08, AC-12). Authorization scope is always applied alongside filters.
 
 ### 5.3 Request and Response Structure
 
