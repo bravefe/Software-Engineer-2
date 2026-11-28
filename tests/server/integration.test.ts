@@ -1690,6 +1690,69 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       expect(rev2Ids).not.toContain(filterReqApproved.id);
     });
 
+    it("filters WITHDRAWN requests for Requester and Reviewer, and returns an empty array for Reviewer ?status=DRAFT", async () => {
+      const withdrawn = await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: "PR-2026-FIL05",
+          title: "Special Filtering Delta Withdrawn Webcam",
+          description: "Withdrawn by requester",
+          amount: "80.00",
+          justification: "No longer needed",
+          status: "WITHDRAWN",
+          requesterId: seededUsers.requester1.id,
+          reviewerId: seededUsers.reviewer1.id,
+          createdAt: new Date("2026-04-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-04-15T10:00:00.000Z"),
+        },
+      });
+
+      try {
+        const reqRes = await request(app)
+          .get("/api/requests?status=WITHDRAWN")
+          .set("Cookie", requester1Cookie);
+        expect(reqRes.status).toBe(200);
+        const reqIds = reqRes.body.requests.map((r: any) => r.id);
+        expect(reqIds).toContain(withdrawn.id);
+        expect(reqRes.body.requests.every((r: any) => r.status === "WITHDRAWN")).toBe(true);
+
+        const revRes = await request(app)
+          .get("/api/requests?status=WITHDRAWN")
+          .set("Cookie", reviewer1Cookie);
+        expect(revRes.status).toBe(200);
+        expect(revRes.body.requests.map((r: any) => r.id)).toContain(withdrawn.id);
+        expect(revRes.body.requests.every((r: any) => r.status === "WITHDRAWN")).toBe(true);
+
+        // Another reviewer must not see it.
+        const otherRevRes = await request(app)
+          .get("/api/requests?status=WITHDRAWN")
+          .set("Cookie", reviewer2Cookie);
+        expect(otherRevRes.status).toBe(200);
+        expect(otherRevRes.body.requests.map((r: any) => r.id)).not.toContain(withdrawn.id);
+
+        // Reviewer explicitly asking for DRAFT gets an empty list, never assigned drafts.
+        const draftRes = await request(app)
+          .get("/api/requests?status=DRAFT")
+          .set("Cookie", reviewer1Cookie);
+        expect(draftRes.status).toBe(200);
+        expect(draftRes.body).toEqual({ requests: [] });
+
+        const draftSearchRes = await request(app)
+          .get("/api/requests?status=DRAFT&search=Standing%20Desk")
+          .set("Cookie", reviewer1Cookie);
+        expect(draftSearchRes.status).toBe(200);
+        expect(draftSearchRes.body).toEqual({ requests: [] });
+
+        // The Requester still sees their own draft with the same filter.
+        const ownDraftRes = await request(app)
+          .get("/api/requests?status=DRAFT")
+          .set("Cookie", requester1Cookie);
+        expect(ownDraftRes.status).toBe(200);
+        expect(ownDraftRes.body.requests.map((r: any) => r.id)).toContain(filterReqDraft.id);
+      } finally {
+        await prisma.purchaseRequest.delete({ where: { id: withdrawn.id } });
+      }
+    });
+
     it("rejects invalid status filter with 400 VALIDATION_ERROR", async () => {
       const res = await request(app)
         .get("/api/requests?status=INVALID_STATUS")
@@ -1786,6 +1849,22 @@ describe("Integration and API tests: Authentication & Authorization", () => {
         },
       });
 
+      // Private draft assigned to this reviewer: must never appear in any Reviewer report.
+      await prisma.purchaseRequest.create({
+        data: {
+          requestNumber: `${requestPrefix}-assigned-draft`,
+          title: "Reporting Fixture Private Draft",
+          description: "Drafts are private to the Requester.",
+          amount: "777.77",
+          justification: "Integration test fixture.",
+          status: "DRAFT",
+          requesterId: seededUsers.requester1.id,
+          reviewerId: reportReviewer.id,
+          createdAt: new Date("2026-04-15T10:00:00.000Z"),
+          updatedAt: new Date("2026-04-15T10:00:00.000Z"),
+        },
+      });
+
       const login = await request(app)
         .post("/api/auth/login")
         .send({ email: reportReviewer.email, password: reportPassword });
@@ -1800,6 +1879,41 @@ describe("Integration and API tests: Authentication & Authorization", () => {
       if (reportReviewer?.id) {
         await prisma.user.delete({ where: { id: reportReviewer.id } });
       }
+    });
+
+    it("excludes assigned drafts from Reviewer report summary and request list, including explicit DRAFT filters", async () => {
+      // Unfiltered: the $777.77 assigned draft is absent from counts, totals, and rows.
+      const summaryRes = await request(app)
+        .get("/api/reports/summary")
+        .set("Cookie", reportReviewerCookie);
+      expect(summaryRes.status).toBe(200);
+      expect(summaryRes.body.totalCount).toBe(5);
+      expect(summaryRes.body.totalAmount).toBe("1250.00");
+      expect(summaryRes.body.statusCounts.DRAFT).toBe(0);
+      expect(summaryRes.body.statusAmounts.DRAFT).toBe("0.00");
+
+      const listRes = await request(app)
+        .get("/api/reports/requests")
+        .set("Cookie", reportReviewerCookie);
+      expect(listRes.status).toBe(200);
+      expect(listRes.body.requests).toHaveLength(5);
+      expect(listRes.body.requests.some((item: { status: string }) => item.status === "DRAFT")).toBe(false);
+
+      // Explicit DRAFT filter: empty results, zero counts and "0.00" amounts.
+      const draftSummary = await request(app)
+        .get("/api/reports/summary?status=DRAFT")
+        .set("Cookie", reportReviewerCookie);
+      expect(draftSummary.status).toBe(200);
+      expect(draftSummary.body.totalCount).toBe(0);
+      expect(draftSummary.body.totalAmount).toBe("0.00");
+      expect(Object.values(draftSummary.body.statusCounts)).toEqual([0, 0, 0, 0, 0, 0]);
+      expect(Object.values(draftSummary.body.statusAmounts)).toEqual(["0.00", "0.00", "0.00", "0.00", "0.00", "0.00"]);
+
+      const draftList = await request(app)
+        .get("/api/reports/requests?status=DRAFT&startDate=2026-04-01&endDate=2026-04-30")
+        .set("Cookie", reportReviewerCookie);
+      expect(draftList.status).toBe(200);
+      expect(draftList.body.requests).toEqual([]);
     });
 
     it("returns exact total, all status counts, and only the authenticated reviewer's requests", async () => {

@@ -45,7 +45,7 @@ router.get("/", async (req, res): Promise<void> => {
   };
 
   // Validate status filter if provided
-  const validStatuses = ["DRAFT", "PENDING_REVIEW", "APPROVED", "REJECTED", "RETURNED"];
+  const validStatuses = ["DRAFT", "PENDING_REVIEW", "APPROVED", "REJECTED", "RETURNED", "WITHDRAWN"];
   if (status && !validStatuses.includes(status)) {
     res.status(400).json({
       error: `Invalid status filter. Valid values: ${validStatuses.join(", ")}`,
@@ -100,11 +100,18 @@ router.get("/", async (req, res): Promise<void> => {
         ? { requesterId: currentUser.id }
         : { reviewerId: currentUser.id, status: { not: "DRAFT" as const } };
 
+    // Drafts are private to their Requester; a Reviewer asking for DRAFT gets nothing.
+    if (currentUser.role === "REVIEWER" && status === "DRAFT") {
+      res.status(200).json({ requests: [] });
+      return;
+    }
+
     // Build dynamic filter predicates on top of mandatory authorization scope
     const whereClause: Record<string, unknown> = { ...ownershipClause };
 
     if (status) {
-      whereClause.status = status;
+      // AND keeps the ownership clause (incl. Reviewer `status: { not: "DRAFT" }`) intact.
+      whereClause.AND = [{ status }];
     }
 
     if (parsedStartDate || parsedEndDate) {

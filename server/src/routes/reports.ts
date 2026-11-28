@@ -45,10 +45,19 @@ function buildReportWhere(
     return { error: "startDate must not be after endDate." };
   }
 
+  // Drafts are private to their Requester: Reviewer reports never include them.
+  // An explicit DRAFT filter matches nothing (empty `in`) instead of widening scope.
+  const statusScope: Prisma.PurchaseRequestWhereInput =
+    status === "DRAFT"
+      ? { status: { in: [] } }
+      : status
+        ? { status }
+        : { status: { not: "DRAFT" } };
+
   return {
     where: {
       reviewerId,
-      ...(status ? { status } : {}),
+      ...statusScope,
       ...(startDate || endDate
         ? { createdAt: { ...(startDate ? { gte: startDate } : {}), ...(endDate ? { lte: endDate } : {}) } }
         : {}),

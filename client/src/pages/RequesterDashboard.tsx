@@ -104,6 +104,7 @@ export default function RequesterDashboard() {
                   <option value="APPROVED">Approved</option>
                   <option value="REJECTED">Rejected</option>
                   <option value="RETURNED">Returned</option>
+                  <option value="WITHDRAWN">Withdrawn</option>
                 </select>
               </div>
 

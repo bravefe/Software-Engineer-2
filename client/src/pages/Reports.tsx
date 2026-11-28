@@ -14,6 +14,9 @@ function formatAmount(amount: string | number): string {
   return typeof amount === "number" ? amount.toFixed(2) : amount;
 }
 
+// Drafts are private to Requesters, so Reviewer reports never list or count them.
+const REVIEWER_REPORT_STATUSES = REPORT_STATUSES.filter((s) => s.value !== "DRAFT");
+
 export default function Reports() {
   const [requests, setRequests] = useState<PurchaseRequest[]>([]);
   const [summary, setSummary] = useState<ReportSummary>(createEmptyReportSummary);
@@ -97,7 +100,7 @@ export default function Reports() {
                   onChange={(event) => setStatusFilter(event.target.value)}
                 >
                   <option value="">All Statuses</option>
-                  {REPORT_STATUSES.map(({ value, label }) => (
+                  {REVIEWER_REPORT_STATUSES.map(({ value, label }) => (
                     <option key={value} value={value}>
                       {label}
                     </option>
@@ -169,7 +172,7 @@ export default function Reports() {
             </div>
           </div>
         </div>
-        {REPORT_STATUSES.map(({ value, label }) => (
+        {REVIEWER_REPORT_STATUSES.map(({ value, label }) => (
           <div className="col-6 col-lg" key={value}>
             <div className="card shadow-sm border-0 h-100">
               <div className="card-body">
