@@ -47,6 +47,7 @@ npm run build
 npm run test:unit
 npm run test:e2e
 npm run db:down
+npm run db:seed
 ```
 
 The tests corresponding to `document/test.md` are currently registered as TODOs under `tests/server`, `tests/client`, and `tests/e2e`. Unit, integration/API, and component cases use Vitest; browser journey cases use Playwright. They are placeholders and do not verify application behavior until implemented.
