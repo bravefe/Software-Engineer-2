@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   fetchRequestById,
@@ -18,6 +18,7 @@ export default function EditRequest() {
   const [reviewers, setReviewers] = useState<UserSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const [title, setTitle] = useState("");
@@ -36,8 +37,9 @@ export default function EditRequest() {
       return;
     }
 
-    Promise.all([fetchRequestById(requestId), fetchReviewers()])
-      .then(([reqData, revData]) => {
+    fetchRequestById(requestId)
+      .then(async (reqData) => {
+        const revData = reqData.status === "DRAFT" || reqData.status === "RETURNED" ? await fetchReviewers() : [];
         setRequest(reqData);
         setReviewers(revData);
 
@@ -73,9 +75,10 @@ export default function EditRequest() {
   const isFormValid =
     isTitleValid && isDescriptionValid && isAmountValid && isJustificationValid && isReviewerValid;
 
-  const handleSave = async (shouldResubmit: boolean) => {
-    if (!isFormValid || isSubmitting) return;
+  const handleSave = async (shouldSubmit: boolean) => {
+    if (!isFormValid || isSubmitting || isSubmittingRef.current) return;
 
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setErrorMessage(null);
 
@@ -89,14 +92,18 @@ export default function EditRequest() {
         reason: editReason.trim() || undefined,
       });
 
-      if (shouldResubmit) {
-        await submitPurchaseRequest(requestId, editReason.trim() || "Resubmitted after modification");
+      if (shouldSubmit) {
+        const submitReason =
+          editReason.trim() ||
+          (request?.status === "DRAFT" ? undefined : "Resubmitted after modification");
+        await submitPurchaseRequest(requestId, submitReason);
       }
 
       navigate(`/requests/${requestId}`);
     } catch (err: any) {
       setErrorMessage(err.message || "Failed to update request");
     } finally {
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -121,14 +128,18 @@ export default function EditRequest() {
     );
   }
 
-  if (request.status !== "RETURNED") {
+  const isPendingEdit = request.status === "PENDING_REVIEW";
+  const isReturnedEdit = request.status === "RETURNED";
+  const isDraftEdit = request.status === "DRAFT";
+
+  if (!isPendingEdit && !isReturnedEdit && !isDraftEdit) {
     return (
       <div className="container py-5">
         <div className="card shadow-sm border-danger">
           <div className="card-body text-center py-5">
             <h3 className="h4 text-danger mb-3">Editing Not Allowed</h3>
             <p className="lead mb-4">
-              Only requests in <strong>RETURNED</strong> status can be edited. Current status is{" "}
+              Only draft, pending, or returned requests can be edited. Current status is{" "}
               <StatusBadge status={request.status} />.
             </p>
             <button
@@ -151,7 +162,9 @@ export default function EditRequest() {
           <div className="card shadow-sm border-0">
             <div className="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
               <div>
-                <h2 className="h4 mb-0">Edit Returned Request</h2>
+                <h2 className="h4 mb-0">
+                  {isDraftEdit ? "Edit Draft Request" : isPendingEdit ? "Edit Pending Request" : "Edit Returned Request"}
+                </h2>
                 <small className="text-muted">{request.requestNumber}</small>
               </div>
               <StatusBadge status={request.status} />
@@ -217,7 +230,7 @@ export default function EditRequest() {
                   )}
                 </div>
 
-                <div className="mb-3">
+                {(isReturnedEdit || isDraftEdit) && <div className="mb-3">
                   <label htmlFor="edit-reviewer" className="form-label">
                     Assigned Reviewer <span className="text-danger">*</span>
                   </label>
@@ -235,7 +248,7 @@ export default function EditRequest() {
                       </option>
                     ))}
                   </select>
-                </div>
+                </div>}
 
                 <div className="mb-3">
                   <div className="d-flex justify-content-between align-items-center">
@@ -309,18 +322,18 @@ export default function EditRequest() {
                   >
                     Cancel
                   </button>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => handleSave(false)}
-                    disabled={!isFormValid || isSubmitting}
-                  >
-                    Save Changes
-                  </button>
+                  {(isReturnedEdit || isDraftEdit) && <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => handleSave(false)}
+                      disabled={!isFormValid || isSubmitting}
+                    >
+                      {isDraftEdit ? "Save Draft" : "Save Changes"}
+                    </button>}
                   <button
                     type="button"
                     className="btn btn-primary"
-                    onClick={() => handleSave(true)}
+                    onClick={() => handleSave(isReturnedEdit || isDraftEdit)}
                     disabled={!isFormValid || isSubmitting}
                   >
                     {isSubmitting ? (
@@ -329,7 +342,11 @@ export default function EditRequest() {
                         Saving...
                       </>
                     ) : (
-                      "Save & Resubmit for Review"
+                      isPendingEdit
+                        ? "Save Changes"
+                        : isDraftEdit
+                          ? "Save & Submit for Review"
+                          : "Save & Resubmit for Review"
                     )}
                   </button>
                 </div>

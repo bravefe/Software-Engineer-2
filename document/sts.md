@@ -1,9 +1,40 @@
 # Software Test Specification (STS) & Test Strategy
 
 **Project Name:** Macau678 University Purchase Approval System  
-**Course:** CPE 334 - Introduction to Software Engineering in the Age of AI Agents (Semester 1/2026)  
-**Theme:** Theme 5: Workflow and Approval System  
-**Baseline References:** [Software Requirements Specification (SRS)](file:///c:/Users/Cent/Desktop/Software-Engineer-2/document/srs.md) | [System Design Specification (SDS)](file:///c:/Users/Cent/Desktop/Software-Engineer-2/document/sds.md) | [Feature Inventory](file:///c:/Users/Cent/Desktop/Software-Engineer-2/document/feature.md)
+**Course:** CPE 334 - Introduction to Software Engineering in the Age of AI Agents (Semester 1/2026)
+
+## Test Execution Summary
+
+| Test ID      | Test Case                                            | Test File                                                                  | Status             |
+| ------------ | ---------------------------------------------------- | -------------------------------------------------------------------------- | ------------------ |
+| TEST-UNIT-01 | Password Hashing and Salt Verification               | `tests/server/unit.test.ts`                                                | PASSED             |
+| TEST-UNIT-02 | Role-Based Authorization Guard Logic                 | `tests/server/unit.test.ts`                                                | PASSED             |
+| TEST-UNIT-03 | Lifecycle State Transition Matrix Validation         | `tests/server/unit.test.ts`                                                | PASSED             |
+| TEST-UNIT-04 | Non-Self-Approval & Mandatory Reason Rules           | `tests/server/unit.test.ts`                                                | PASSED             |
+| TEST-UNIT-05 | Input Validation & Boundary Checks                   | Not yet implemented                                                        | PLANNED (Sprint 2) |
+| TEST-UNIT-06 | Financial Aggregation & Status Metrics Math          | Not yet implemented                                                        | PLANNED (Sprint 2) |
+| TEST-INT-01  | User Authentication & Cookie Lifecycle               | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-02  | Authentication Guards & Unauthenticated Rejection    | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-03  | Purchase Request Creation & Reviewer Assignment      | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-04  | Requester Data Isolation & Cross-Access Blocking     | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-05  | Reviewer Queue Scoping & Assignment Isolation        | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-06  | Review Decision Execution                            | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-07  | Request Modification, Withdrawal & Resubmission      | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-08  | Complete Audit History Persistence                   | `tests/server/integration.test.ts`                                         | PASSED             |
+| TEST-INT-09  | Request Filtering by Status and Date Range           | Not yet implemented                                                        | PLANNED (Sprint 2) |
+| TEST-INT-10  | Reporting Summary Aggregation Endpoint               | Not yet implemented                                                        | PLANNED (Sprint 2) |
+| TEST-COMP-01 | Login Form Rendering and Submission Handling         | `tests/client/components.test.tsx`                                         | PASSED             |
+| TEST-COMP-02 | Purchase Request Form & Character Counters           | `tests/client/components.test.tsx`                                         | PASSED             |
+| TEST-COMP-03 | Review Decision Modal & Mandatory Reason Enforcement | `tests/client/components.test.tsx`                                         | PASSED             |
+| TEST-COMP-04 | History Timeline Presentation                        | `tests/client/components.test.tsx`                                         | PASSED             |
+| TEST-COMP-05 | Dynamic Navigation Bar Role Rendering                | `tests/client/components.test.tsx`                                         | PASSED             |
+| TEST-E2E-01  | Full Purchase Approval Journey                       | `tests/e2e/purchase-approval.spec.ts`                                      | PASSED             |
+| UAT-TC-03    | Draft Privacy and Reviewer Timeline Visibility       | `tests/e2e/purchase-approval.spec.ts` + `tests/server/integration.test.ts` | PASSED             |
+| TEST-E2E-02  | Purchase Rejection Journey with Mandatory Reason     | `tests/e2e/purchase-approval.spec.ts`                                      | PASSED             |
+| TEST-E2E-03  | Security & Authorization Boundary Checks             | `tests/e2e/purchase-approval.spec.ts`                                      | PASSED             |
+| TEST-E2E-04  | Multi-Criteria Filter & Reports Journey              | Not yet implemented                                                        | PLANNED (Sprint 2) |
+| TEST-E2E-05  | Cross-Viewport Responsive Design Verification        | Not yet implemented                                                        | PLANNED (Sprint 3) |
+| TEST-E2E-06  | Pending Request Edit and Withdrawal                  | `tests/e2e/purchase-approval.spec.ts`                                      | PASSED             |
 
 ---
 
@@ -19,9 +50,6 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 - **End-to-End (E2E) Browser Testing (Playwright):** Automates multi-role user journeys across browser engines and responsive viewports (Desktop 1280x720, Tablet 768x1024), validating end-to-end workflow execution.
 
 ### 1.2 Execution Status Convention
-
-> [!NOTE]
-> Test execution results strictly distinguish between verified tests with actual execution evidence and tests currently planned for future sprints.
 
 - **Status Values:**
   - `PASSED`: Test implemented and verified by automated test runner with log evidence.
@@ -219,22 +247,23 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
 - **Expected Result:** Authorization checks and business rules are strictly enforced on review actions.
 - **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
-### TEST-INT-07: Request Modification & Resubmission Enforcement
+### TEST-INT-07: Request Modification, Withdrawal & Resubmission Enforcement
 
 - **Test ID:** `TEST-INT-07`
-- **Test Objective:** Verify that editing is permitted only on RETURNED requests and blocked on all others.
-- **Related Requirements:** FR-05, BR-06, BR-07, AC-07
+- **Test Objective:** Verify that draft, pending, and returned requests can be edited by their owner, pending requests can be withdrawn, and terminal states remain protected.
+- **Related Requirements:** FR-05, FR-06, BR-06, BR-07, AC-07, AC-13
 - **Related Features:** `FEAT-08`
-- **Preconditions:** Request #80 is `PENDING_REVIEW`; Request #81 is `RETURNED`. Authenticated as owning Requester.
+- **Preconditions:** Owning Requester is authenticated. Fixtures include requests in `PENDING_REVIEW`, `RETURNED`, `DRAFT`, `APPROVED`, and `REJECTED`; an assigned Reviewer can inspect the pending request.
 - **Test Steps:**
-  1. Send `PATCH /api/requests/80` with updated description. Assert `409 Conflict` (editing blocked).
-  2. Send `PATCH /api/requests/81` with updated amount (550.00). Assert `200 OK` (editing permitted).
-  3. Send `POST /api/requests/81/submit`.
-  4. Assert status transitions from `RETURNED` to `PENDING_REVIEW`.
-  5. Verify `RequestHistory` records `RESUBMITTED` action.
-  6. After multiple edits, assert the `RESUBMITTED` reason contains each edit note in chronological order and does not repeat the final note sent with both requests.
-  7. Verify the Requester still sees separate `EDITED` records and the Reviewer sees the combined summary only on `RESUBMITTED`.
-- **Expected Result:** Only `RETURNED` requests can be edited and resubmitted.
+  1. Send `PATCH /api/requests/:pendingId` with updated details and revision note. Assert success and status remains `PENDING_REVIEW`.
+  2. Fetch details and history as the Requester and assigned Reviewer. Assert both see current details and the revision event; an unassigned Reviewer remains denied.
+  3. Send `POST /api/requests/:pendingId/withdraw`. Assert status is `WITHDRAWN`, history records the actor and timestamp, and subsequent review, edit, or withdrawal attempts fail.
+  4. Edit the `DRAFT` fixture; assert it remains `DRAFT`, its owner sees the `EDITED` event, and only the owner can submit it. Assert withdrawal of the draft is denied.
+  5. Attempt to edit or withdraw the `APPROVED` and `REJECTED` fixtures; assert each operation is denied without changing data.
+  6. Edit `RETURNED` request #81, submit it, and assert transition to `PENDING_REVIEW` and a `RESUBMITTED` history event.
+  7. After multiple returned-request edits, assert the `RESUBMITTED` reason contains edit notes chronologically without duplicating the final note.
+  8. Verify Requester history retains individual `EDITED` records and Reviewer visibility follows the pending-edit rule and existing returned-resubmission summary rule.
+- **Expected Result:** Draft edits preserve draft status; pending edits preserve review status and are visible to the owner and assigned Reviewer; withdrawal is terminal; existing returned edit/resubmission behavior continues to work; approved/rejected states remain protected.
 - **Status:** `PASSED` (Verified in `tests/server/integration.test.ts`)
 
 ### TEST-INT-08: Complete Audit History Persistence
@@ -483,3 +512,20 @@ The testing strategy for the Macau678 Purchase Approval System implements a mult
   5. Fill and submit a purchase request on tablet viewport to confirm touch accessibility.
 - **Expected Result:** Application renders cleanly across target viewports meeting usability requirements (NFR-02).
 - **Status:** `PLANNED` (Sprint 3)
+
+### TEST-E2E-06: Pending Request Edit and Withdrawal
+
+- **Test ID:** `TEST-E2E-06`
+- **Test Objective:** Verify a Requester can revise or withdraw a pending request through the UI, with updated details visible to the assigned Reviewer.
+- **Related Requirements:** FR-03, FR-05, FR-06, BR-06, BR-07, BR-09, AC-03, AC-04, AC-10, AC-13
+- **Related Features:** `FEAT-05`, `FEAT-06`, `FEAT-08`, `FEAT-09`
+- **Preconditions:** Test Requester, assigned Reviewer, unassigned Reviewer, and test database are available.
+- **Test Steps:**
+  1. As the Requester, submit a request and confirm it is `PENDING_REVIEW`.
+  2. Edit the pending request with a revision note. Confirm it remains pending and the Requester sees the updated details and history event.
+  3. As the assigned Reviewer, open the request and confirm the latest details and revision event are visible. Confirm an unassigned Reviewer cannot access it.
+  4. As the Requester, withdraw the request and confirm `WITHDRAWN` status and history.
+  5. As the assigned Reviewer, confirm the request cannot be approved, rejected, or returned after withdrawal. Confirm the Requester cannot edit or withdraw it again.
+  6. Confirm a separate pending request remains reviewable, and returned-request edit/resubmit behavior remains available.
+- **Expected Result:** Pending edit details are shared only with the Requester and assigned Reviewer; withdrawal is persisted and terminal; unrelated requests and returned-request flow remain unchanged.
+- **Status:** `PASSED` (Verified in `tests/e2e/purchase-approval.spec.ts`)

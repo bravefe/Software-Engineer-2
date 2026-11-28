@@ -231,9 +231,13 @@ export default function RequesterDashboard() {
                         <Link to={`/requests/${req.id}`} className="btn btn-outline-primary">
                           View
                         </Link>
-                        {req.status === "RETURNED" && (
+                        {(req.status === "DRAFT" || req.status === "RETURNED" || req.status === "PENDING_REVIEW") && (
                           <Link to={`/requests/${req.id}/edit`} className="btn btn-outline-warning">
-                            Edit
+                            {req.status === "DRAFT"
+                              ? "Edit Draft"
+                              : req.status === "RETURNED"
+                                ? "Edit"
+                                : "Edit Pending"}
                           </Link>
                         )}
                       </div>
