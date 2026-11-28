@@ -280,16 +280,18 @@ describe("Unit tests", () => {
         { status: "APPROVED", amount: "300.00" },
         { status: "PENDING_REVIEW", amount: "150.00" },
         { status: "REJECTED", amount: "100.00" },
+        { status: "WITHDRAWN", amount: "75.00" },
       ]);
 
       expect(metrics).toEqual({
-        totalCount: 5,
+        totalCount: 6,
         statusCounts: {
           DRAFT: 0,
           PENDING_REVIEW: 1,
           APPROVED: 3,
           REJECTED: 1,
           RETURNED: 0,
+          WITHDRAWN: 1,
         },
         statusAmounts: {
           DRAFT: "0.00",
@@ -297,8 +299,9 @@ describe("Unit tests", () => {
           APPROVED: "1000.00",
           REJECTED: "100.00",
           RETURNED: "0.00",
+          WITHDRAWN: "75.00",
         },
-        totalAmount: "1250.00",
+        totalAmount: "1325.00",
       });
     });
 
@@ -311,6 +314,7 @@ describe("Unit tests", () => {
           APPROVED: 0,
           REJECTED: 0,
           RETURNED: 0,
+          WITHDRAWN: 0,
         },
         statusAmounts: {
           DRAFT: "0.00",
@@ -318,6 +322,7 @@ describe("Unit tests", () => {
           APPROVED: "0.00",
           REJECTED: "0.00",
           RETURNED: "0.00",
+          WITHDRAWN: "0.00",
         },
         totalAmount: "0.00",
       });

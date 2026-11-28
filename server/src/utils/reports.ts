@@ -6,6 +6,7 @@ export const reportStatuses = [
   "APPROVED",
   "REJECTED",
   "RETURNED",
+  "WITHDRAWN",
 ] as const;
 
 export type ReportStatus = (typeof reportStatuses)[number];
@@ -29,6 +30,7 @@ export function aggregateReportMetrics(requests: readonly ReportRequest[]): Repo
     APPROVED: 0,
     REJECTED: 0,
     RETURNED: 0,
+    WITHDRAWN: 0,
   };
   const statusAmounts: Record<ReportStatus, Prisma.Decimal> = {
     DRAFT: new Prisma.Decimal(0),
@@ -36,6 +38,7 @@ export function aggregateReportMetrics(requests: readonly ReportRequest[]): Repo
     APPROVED: new Prisma.Decimal(0),
     REJECTED: new Prisma.Decimal(0),
     RETURNED: new Prisma.Decimal(0),
+    WITHDRAWN: new Prisma.Decimal(0),
   };
   let totalAmount = new Prisma.Decimal(0);
 
@@ -54,6 +57,7 @@ export function aggregateReportMetrics(requests: readonly ReportRequest[]): Repo
       APPROVED: statusAmounts.APPROVED.toFixed(2),
       REJECTED: statusAmounts.REJECTED.toFixed(2),
       RETURNED: statusAmounts.RETURNED.toFixed(2),
+      WITHDRAWN: statusAmounts.WITHDRAWN.toFixed(2),
     },
     totalAmount: totalAmount.toFixed(2),
   };

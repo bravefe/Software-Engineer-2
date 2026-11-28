@@ -31,6 +31,7 @@ describe("Reports page", () => {
               APPROVED: empty ? 0 : 1,
               REJECTED: 0,
               RETURNED: 0,
+              WITHDRAWN: 0,
             },
             statusAmounts: {
               DRAFT: "0.00",
@@ -38,6 +39,7 @@ describe("Reports page", () => {
               APPROVED: empty ? "0.00" : "1250.00",
               REJECTED: "0.00",
               RETURNED: "0.00",
+              WITHDRAWN: "0.00",
             },
             totalAmount: empty ? "0.00" : "1250.00",
           }),

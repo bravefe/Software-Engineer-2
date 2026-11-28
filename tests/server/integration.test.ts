@@ -1744,6 +1744,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
           APPROVED: 3,
           REJECTED: 1,
           RETURNED: 0,
+          WITHDRAWN: 0,
         },
         statusAmounts: {
           DRAFT: "0.00",
@@ -1751,6 +1752,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
           APPROVED: "1000.00",
           REJECTED: "100.00",
           RETURNED: "0.00",
+          WITHDRAWN: "0.00",
         },
         totalAmount: "1250.00",
       });
@@ -1783,6 +1785,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
           APPROVED: 3,
           REJECTED: 0,
           RETURNED: 0,
+          WITHDRAWN: 0,
         },
         statusAmounts: {
           DRAFT: "0.00",
@@ -1790,6 +1793,7 @@ describe("Integration and API tests: Authentication & Authorization", () => {
           APPROVED: "1000.00",
           REJECTED: "0.00",
           RETURNED: "0.00",
+          WITHDRAWN: "0.00",
         },
         totalAmount: "1000.00",
       });
